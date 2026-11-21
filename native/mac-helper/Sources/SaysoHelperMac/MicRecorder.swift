@@ -92,9 +92,30 @@ public final class MicRecorder: AudioRecording {
         if let candidate = ready, ContinuousClock.now - candidate.builtAt > Self.maxPreparedAge {
             ready = nil
         }
-        guard let ready = ready ?? Self.build() else {
+        guard let first = ready ?? Self.build() else {
             throw ServiceError(code: HelperErrorCode.micFailed, message: "no microphone input available")
         }
+        try begin(first, probe: probe)
+        if await waitForFirstAudio(Self.firstAudioTimeout) { return }
+        // The engine started but no sound came: a stale audio route (seen live: every recording was
+        // 0 ms long until the app restarted). Build a brand new engine and try once more.
+        FileHandle.standardError.write(Data("[mic] no audio after \(Self.firstAudioTimeout), rebuilding the engine\n".utf8))
+        teardown()
+        guard let fresh = Self.build() else {
+            throw ServiceError(code: HelperErrorCode.micFailed, message: "no microphone input available")
+        }
+        try begin(fresh, probe: probe)
+        if await waitForFirstAudio(Self.firstAudioTimeout * 2) { return }
+        teardown()
+        throw ServiceError(
+            code: HelperErrorCode.micFailed,
+            message: "The microphone is not delivering sound. Check System Settings → Sound → Input, or reconnect it.")
+    }
+
+    /// How long the first buffer of sound may take before the engine is treated as stuck.
+    private static let firstAudioTimeout: Duration = .milliseconds(700)
+
+    private func begin(_ ready: Prepared, probe: StartProbe) throws {
         let engine = ready.engine
         samples.reset()
         if let sink = ready.sink {
@@ -112,6 +133,15 @@ public final class MicRecorder: AudioRecording {
             throw ServiceError(code: HelperErrorCode.micFailed, message: "audio engine failed: \(error.localizedDescription)")
         }
         self.engine = engine
+    }
+
+    private func waitForFirstAudio(_ timeout: Duration) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if samples.count > 0 { return true }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        return samples.count > 0
     }
 
     public func stop() -> [Float] {
@@ -175,6 +205,9 @@ final class SampleBuffer: SampleSink, @unchecked Sendable {
     func append(_ chunk: UnsafeBufferPointer<Float>) {
         lock.withLock { storage.append(contentsOf: chunk) }
     }
+
+    /// How many samples are waiting.
+    var count: Int { lock.withLock { storage.count } }
 
     func take() -> [Float] {
         lock.withLock {
