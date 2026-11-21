@@ -1,0 +1,146 @@
+{
+  "samples": [
+    {
+      "kind": "dictation",
+      "file": "d01.wav",
+      "script": "um I will meet Priya in Hyderabad tomorrow",
+      "expected": "I will meet Priya in Hyderabad tomorrow.",
+      "entities": ["Priya", "Hyderabad"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d02.wav",
+      "script": "uh please send the report to Srinivas by five p m",
+      "expected": "Please send the report to Srinivas by 5 p.m.",
+      "entities": ["Srinivas"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d03.wav",
+      "script": "we are flying from Bengaluru to Mumbai on Friday",
+      "expected": "We are flying from Bengaluru to Mumbai on Friday.",
+      "entities": ["Bengaluru", "Mumbai"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d04.wav",
+      "script": "um Lakshmi uh asked me to open github and check the pull request",
+      "expected": "Lakshmi asked me to open GitHub and check the pull request.",
+      "entities": ["Lakshmi", "GitHub"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d05.wav",
+      "script": "the meeting with Keshav is in Secunderabad at noon",
+      "expected": "The meeting with Keshav is in Secunderabad at noon.",
+      "entities": ["Keshav", "Secunderabad"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d06.wav",
+      "script": "I I think we should ask chat gpt about it",
+      "expected": "I think we should ask ChatGPT about it.",
+      "entities": ["ChatGPT"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d07.wav",
+      "script": "can you share the link on whats app",
+      "expected": "Can you share the link on WhatsApp?",
+      "entities": ["WhatsApp"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d08.wav",
+      "script": "um go to open ai dot com and sign in",
+      "expected": "Go to openai.com and sign in.",
+      "entities": []
+    },
+    {
+      "kind": "dictation",
+      "file": "d09.wav",
+      "script": "Deepa and Akhilesh are travelling to Chennai next week",
+      "expected": "Deepa and Akhilesh are travelling to Chennai next week.",
+      "entities": ["Deepa", "Akhilesh", "Chennai"]
+    },
+    {
+      "kind": "dictation",
+      "file": "d10.wav",
+      "script": "hmm let us have lunch in Pune on Sunday",
+      "expected": "Let us have lunch in Pune on Sunday.",
+      "entities": ["Pune"]
+    },
+    {
+      "kind": "command",
+      "file": "c01.wav",
+      "script": "new tab",
+      "command": "new_tab"
+    },
+    {
+      "kind": "command",
+      "file": "c02.wav",
+      "script": "close tab",
+      "command": "close_tab"
+    },
+    {
+      "kind": "command",
+      "file": "c03.wav",
+      "script": "go back",
+      "command": "go_back"
+    },
+    {
+      "kind": "command",
+      "file": "c04.wav",
+      "script": "scroll down",
+      "command": "scroll_down"
+    },
+    {
+      "kind": "command",
+      "file": "c05.wav",
+      "script": "scroll up",
+      "command": "scroll_up"
+    },
+    {
+      "kind": "command",
+      "file": "c06.wav",
+      "script": "select all",
+      "command": "select_all"
+    },
+    {
+      "kind": "command",
+      "file": "c07.wav",
+      "script": "undo that",
+      "command": "undo"
+    },
+    {
+      "kind": "command",
+      "file": "c08.wav",
+      "script": "click sign in",
+      "command": "click"
+    },
+    {
+      "kind": "command",
+      "file": "c09.wav",
+      "script": "open the first result",
+      "command": "open_position"
+    },
+    {
+      "kind": "command",
+      "file": "c10.wav",
+      "script": "open Chrome",
+      "command": "open"
+    },
+    {
+      "kind": "command",
+      "file": "c11.wav",
+      "script": "switch to Slack",
+      "command": "switch_app"
+    },
+    {
+      "kind": "command",
+      "file": "c12.wav",
+      "script": "take a screenshot",
+      "command": "screenshot"
+    }
+  ]
+}

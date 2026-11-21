@@ -13,7 +13,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "helper:build": "swift build --package-path native/mac-helper",
-    "helper:test": "native/mac-helper/scripts/test.sh"
+    "helper:test": "native/mac-helper/scripts/test.sh",
+    "benchmark": "scripts/benchmark/bench.sh",
+    "benchmark:test": "vitest run scripts/benchmark"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
