@@ -40,6 +40,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 23:52 · Optional cloud speech (`18b432f`)
+- **Why:** text only appears after you let go, and the on-device model is slow and weak on short phrases and names. Cloud speech is a faster, more accurate choice for those who want it.
+- **What:** a **Cloud speech (optional)** checkbox in Settings (also `SAYSO_CLOUD_SPEECH=on`), **off by default**. When on and an `OPENAI_API_KEY` is set, a held-key recording is handed back by the helper (new `recordStopAudio` request and `audio` reply, 16 kHz PCM, base64), sent to OpenAI (`whisper-1` by default, `OPENAI_STT_MODEL` to change; it returns word times for the pause rule) and the text goes through the same cleanup and commands as before. Names from the built-in list and your dictionary are sent as a short spelling hint. Each recording stays on the provider it started with if you flip the setting mid-way.
+- **Privacy:** the audio leaves the Mac only with this on. Hands-free listening stays on the Mac. README, site and Settings say so.
+- **Tested:** unit tests for the WAV, word times, errors (bad key, offline, no key), routing; helper tests (86) and protocol tests; typecheck, lint, 1,502 desktop tests. **Not tried against the real OpenAI service or by voice yet.**
+- **Known limit:** if OpenAI cannot be reached, that recording is lost (the audio is already out of the helper); the pill says to try again or turn cloud speech off. No automatic fall back to the on-device model yet.
+- **Still no live typing:** it still transcribes after you release the key, just faster. Typing while you speak needs streaming.
+
 ### 23:48 · Word list knows Claude Code and Codex (`fe0b605`)
 - **Why:** saying "Claude Code" was typed as "cloud code" (the speech model hears Claude as cloud).
 - **What:** the built-in word list (`core/cleanup/builtInTerms.ts`) now fixes "cloud code", "clod code", "claud code" and "clawed code" to **Claude Code**, and "code x" to **Codex**; Groq is listed so its capital letters stay. "Cloud" on its own is left alone on purpose (it is a normal word), so "the cloud is down" is unchanged. Your own dictionary still wins when entries overlap.
