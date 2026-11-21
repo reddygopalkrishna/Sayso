@@ -179,8 +179,21 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
             }
             queue.append(contentsOf: Self.children(element))
         }
-        return ScreenElements.clean(raw)
+        // In a browser, the names above the page (open tab titles, toolbar buttons) are private and
+        // not what you would name: only the page itself is listed. If the page area cannot be
+        // found, the top of the window is skipped instead, so tab titles are never listed.
+        var contentTop: Double?
+        if let id = app.bundleIdentifier, Self.browserBundleIds.contains(id) {
+            contentTop = Self.contentArea(of: window).web?.y ?? ((bounds?.y ?? 0) + 120)
+        }
+        return ScreenElements.clean(raw, contentTop: contentTop)
     }
+
+    private static let browserBundleIds: Set<String> = [
+        "com.google.Chrome", "com.google.Chrome.canary", "com.apple.Safari", "org.mozilla.firefox",
+        "company.thebrowser.Browser", "com.microsoft.edgemac", "com.brave.Browser",
+        "com.operasoftware.Opera", "com.vivaldi.Vivaldi", "com.kagi.kagimacOS", "app.zen-browser.zen",
+    ]
 
     /// The page content of a browser window: the largest web area, and the main landmark inside
     /// it when the page has one. Everything above the web area is the tab strip and toolbar.

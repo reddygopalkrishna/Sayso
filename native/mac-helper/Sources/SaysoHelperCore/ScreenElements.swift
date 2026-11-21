@@ -33,8 +33,11 @@ public enum ScreenElements {
 
     /// Top to bottom (left to right on one line), names tidied and shortened, empty ones dropped,
     /// the same name and kind listed once, at most `maxItems`.
-    public static func clean(_ raw: [RawScreenElement]) -> [ScreenElement] {
-        let sorted = raw.sorted { a, b in
+    ///
+    /// `contentTop` is where the page content starts in a browser: anything above it is the tab
+    /// strip or toolbar, whose names (open tab titles) are never listed. Nil keeps everything.
+    public static func clean(_ raw: [RawScreenElement], contentTop: Double? = nil) -> [ScreenElement] {
+        let sorted = raw.filter { PositionFallback.isInContent(y: $0.y, top: contentTop) }.sorted { a, b in
             abs(a.y - b.y) > 8 ? a.y < b.y : a.x < b.x
         }
         var seen = Set<String>()

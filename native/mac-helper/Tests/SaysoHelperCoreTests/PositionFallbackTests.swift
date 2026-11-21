@@ -32,6 +32,30 @@ import Testing
     }
 }
 
+@Suite struct ScreenElementsTabStrip {
+    private func raw(_ label: String, _ role: String = "button", y: Double) -> RawScreenElement {
+        RawScreenElement(label: label, role: role, y: y, x: 0)
+    }
+
+    @Test func dropsTabTitlesAndToolbarButtonsAboveThePage() {
+        let out = ScreenElements.clean(
+            [
+                raw("Inbox (3) - private@example.com - Gmail", "checkbox", y: 20),
+                raw("Bank statement - Memory usage - 120 MB", "checkbox", y: 20),
+                raw("New Tab", y: 22),
+                raw("Back", y: 70),
+                raw("Sign in", y: 400),
+                raw("Help", "link", y: 900),
+            ], contentTop: 110)
+        #expect(out.map(\.label) == ["Sign in", "Help"])
+    }
+
+    @Test func withNoContentTopEverythingIsListed() {
+        let out = ScreenElements.clean([raw("Back", y: 70), raw("Sign in", y: 400)])
+        #expect(out.map(\.label) == ["Back", "Sign in"])
+    }
+}
+
 @Suite struct PositionColumns {
     @Test func theListColumnIsTheOneMostItemsShare() {
         // Filter links at x=16, issue titles at x=489 (a few pixels apart).
