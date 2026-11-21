@@ -51,6 +51,15 @@ Today a risky button ("Pay", "Delete", "Sign out", "Publish") is refused. Infina
 
 Needs: a pending-action state in the pipeline (not just one utterance), a new "yes" command, a prompt the pill can show (a new dictation phase), and tests for timeout, Esc, app change and a second command in between.
 
+## Design: hands-free mode (toggle on, then just speak; started 21 Nov)
+Today every dictation or command needs a held key. Hands-free listens all the time while its switch is on.
+1. **Switch** in the app (Home and Settings) and later a double-tap key. A visible indicator (the pill) shows while it listens. Nothing is recorded to disk; audio is only transcribed on this Mac.
+2. **Listening:** the helper captures the microphone and cuts it into utterances with a voice-activity detector (speech starts, then about 1 s of silence ends it). Each utterance is transcribed on-device like a normal dictation. The held key keeps working and pauses hands-free while held.
+3. **What it acts on (so ambient chatter never types):** an utterance is used only if it starts with "type …" (dictation), is "send it" / "enter" / "new line", or starts with "open …". Other commands (click, new tab, go back…) need the wake word first, or follow within about a minute of a recognised trigger. Everything else is ignored, not typed.
+4. **Safety:** the same SafetyGate, preview chip and "yes?" check as today. Never in password fields or meeting apps.
+5. **Slices, one commit each:** (1) the voice-activity detector in the helper (pure logic, tested); (2) continuous listening in the helper and the protocol (`startListening`, `stopListening`, a `heard` event); (3) the app side: the trigger rules, the switch, the indicator, pause while the hold key is down.
+6. **Open:** the wake word. The product name is undecided, so it starts as "Sayso" and becomes a setting.
+
 ## Dropped for now: Chrome extension
 The original build plan (Phase 3, item 5) listed a Chrome extension for reliable clicks in web pages. Decided 15 Nov 2026: not needed. Infina does not use one; Chrome and Electron apps now expose their pages to Accessibility (Stage B); extensions add a second code path, store review and page-reading permission. Revisit only if Stage A still shows web clicks failing after the fix.
 
