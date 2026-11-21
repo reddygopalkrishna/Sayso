@@ -39,6 +39,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 13:03 · Fix "type chatgpt.com": type with the hold key, names and web addresses (`e648c57`)
+- **Bug:** holding the dictation key and saying "type chatgpt.com" typed the word "type" and a misheard "chartgpt" / "chagpt . com" (reported through another session).
+- **"type …" with the hold key:** the rest is typed as said, with no AI and no end command (a trailing "send" is typed as a word). "type" inside a sentence is still normal dictation.
+- **Built-in names:** ChatGPT, OpenAI, GitHub, Gemini, Anthropic, Perplexity, Copilot, LinkedIn, YouTube, WhatsApp, JavaScript and macOS, with their usual mishearings ("chart gpt", "charge gpt", "chat gpt", "chagpt"…). They join your own dictionary; your entries win. Ordinary words such as "cloud" and "cursor" are left out on purpose.
+- **Web addresses:** "chatgpt dot com" and "chagpt . com" become chatgpt.com; the host is lowercase; an address said on its own has no capital and no full stop. "Wait. So what?", "the dot com bubble" and emails are left alone. Applies to hold-key and hands-free dictation.
+- Tests: 1,089 desktop tests pass; typecheck and lint clean. Not tried by voice yet (needs a restart of `pnpm dev`).
+- **Still to do:** pass your dictionary words to WhisperKit as prompt tokens, so mishearings stop at the source (listed under Pending).
+
 ### 12:56 · Quieter start: the hold key waits for the helper (`c72d85b`)
 - At startup the saved hold key was sent before the helper had connected, which printed a harmless "could not set the hold key" warning. It is sent on connect anyway, so it now waits for that.
 
