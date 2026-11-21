@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { OpenInApp } from './OpenInApp.tsx';
+import { hasCurrentApi, RestartNeeded } from './RestartNeeded.tsx';
 import { Chip } from './Chip.tsx';
 import { Pill } from './Pill.tsx';
 import './index.css';
@@ -25,8 +26,10 @@ createRoot(root).render(
       <Pill />
     ) : view === '#chip' ? (
       <Chip />
-    ) : (
+    ) : hasCurrentApi(window.sayso) ? (
       <App />
+    ) : (
+      <RestartNeeded />
     )}
   </StrictMode>,
 );

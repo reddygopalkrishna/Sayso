@@ -38,6 +38,10 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
+### 16:35 · The window says "Restart Sayso" when it is newer than the program behind it
+- In development the screens hot-reload but the main program does not. After step 7 this left a running copy with the new History / Dictionary / permission screens on the old backend: no database file, no permission log line, and screens that could crash. The window now checks that the backend has the features it needs and, if not, shows a clear "Restart Sayso" message with what to do. Tested with the older API shape.
+- If you ever see "Restart Sayso": quit Sayso (or Ctrl+C in the terminal) and run `pnpm dev` again.
+
 ### 16:33 · Phase 0 step 7: history, personal dictionary, remembered choices and permission setup (`e3a35bd`)
 - **History tab:** the last 50 things you said and what Sayso did (heard text, typed text, app, time, how long it took, done / cancelled / blocked / failed). Stored on this Mac only (`~/Library/Application Support/Sayso/sayso.sqlite`, readable only by you). **Anything said into a password field is never saved.** "Clear history" at any time; `SAYSO_HISTORY_KEEP=0` turns history off.
 - **Dictionary tab:** add names and terms (Kairo, GitHub, Sayso) and, optionally, what Sayso mishears them as ("say so" → Sayso). They are spelled correctly locally before cleanup (Light and Full), and sent to the AI as exact spellings.
