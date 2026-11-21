@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 01:21 · Hands-free: "type", pause, then the words (`70a9929`)
+- **Why:** the founder's log: people say "type", pause, then speak, so hands-free heard two utterances: a lone "Type" (ignored) and the words (ignored, no "type" in front). Nothing was typed.
+- **What:** a lone "type" now waits up to 10 s and types the next utterance as it is (through the usual dictionary and cleanup). Saying "type Codex" in one breath still works. "Cancel" after "type" types nothing.
+- **Tested:** unit tests (1,586 desktop); not tried by voice yet.
+- **From the same log, not changed:** "New chat" is heard as "New chart" and there is no "new chat" command (⌘N would open a new browser window in Chrome, so it needs per-app keys); "Click on Link" has no matching on-screen name; "Open Cloud" correctly opens the Claude app. Phrases like "What is the difference between Codex and Cloud Code?" are rightly ignored (conversation).
+
 ### 01:05 · Next field, previous field, backspace, delete word (`ec66d75`)
 - **Why:** the founder asked to move between form fields and delete by voice.
 - **What:** four new commands in `commands.json`: **next field** (also "next input", "next box", "go to next", "go to the next field", "tab"), **previous field** ("shift tab", "go to previous"), **backspace**, **delete word** ("delete last word"). They press Tab, Shift+Tab, Delete and Option+Delete. "Delete that" still deletes the selection; to clear a field say "select all, delete that". A bare "next" is deliberately not a command (too easy to say by accident while hands-free listens).
