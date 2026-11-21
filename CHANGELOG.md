@@ -39,6 +39,9 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 12:56 · Quieter start: the hold key waits for the helper (`c72d85b`)
+- At startup the saved hold key was sent before the helper had connected, which printed a harmless "could not set the hold key" warning. It is sent on connect anyway, so it now waits for that.
+
 ### 12:53 · Hands-free, slice 3b: the switch, the pill reminder and the wake word (`b2c21c7`)
 - **Home:** a Hands-free card with a switch, the state in words (Off, Starting, Listening, Stopped), what to say ("type …", "send it", "open Slack", "Sayso, new tab"), and why it stopped. The switch is disabled until the speech model has loaded. Hands-free starts off at every launch, on purpose.
 - **Pill:** while hands-free listens, the pill stays on screen with a quiet "Hands-free" reminder that the microphone is on. A dictation in progress still takes the pill.
