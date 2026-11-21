@@ -38,6 +38,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
+### 23:36 · Plan: faster AI cleanup (no code changed)
+- Written to `docs/PLAN_FAST_CLEANUP.md`, with measurements from this Mac. Findings: Gemini has a floor of about 0.6 s and a cold connection adds 0.25–0.5 s, so it can never match Infina's 0.2 s; Apple's built-in on-device model runs at 0.35–1.1 s with a short prompt but is sloppy (over-lists, drops words, summarises long text); on your 19 real dictations, local rules alone gave identical text for 6 and the AI changed words for 11 (mostly your long dictations).
+- Recommended order: (1) warm the connection when Fn goes down and skip the AI for short clean text; (2) test a fast hosted model (Groq/Cerebras) with a key; (3) Apple's on-device model as the keyless, offline tier with guard rails; (4) our own small model later.
+- Four questions for you are at the end of the plan.
+
 ### 23:26 · Lists and structure in dictation; Infina recordings reviewed (`1800494`)
 - **Your observation was right:** "first one … second one … third one" came out as one running paragraph, where Wispr Flow and Infina make points. My cleanup prompt said "keep the order of ideas" and "no markdown", so the AI never made points. Now it writes a numbered list when two or more items are clearly enumerated ("first one / second one", "number one", "point one", "step one", "first, … second, …"), drops the spoken ordinals, keeps a lead-in sentence only if you said one, and never invents one (found and fixed in testing: it added "Here are the tasks to complete:").
 - Also handled: "new line" / "new paragraph" said in the middle of a dictation become real line breaks; several unrelated topics in a long dictation become short paragraphs; "john at example dot com" becomes john@example.com and "example dot org slash pricing" example.org/pricing.

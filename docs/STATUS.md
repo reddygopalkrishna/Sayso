@@ -17,7 +17,8 @@ Update this file at the end of every step. Keep it under 80 lines.
 
 ## Next
 - Hand-test the open items in CHANGELOG "Pending" (scroll direction, the Microphone and Accessibility settings links), then daily use. Confirmed by hand: History, password box in Chrome, Keyboard settings link.
-- From the Infina recordings (details in COMPETITOR_INFINA.md): make the AI cleanup as fast as theirs (+0.2 s; on-device small model), choose-your-hold-key, per-app Default/Chill style, snippets, go back / windows / chats commands.
+- **Faster AI cleanup: see `docs/PLAN_FAST_CLEANUP.md`** (measured; recommended order: warm the connection + skip the AI for short clean text, then test a fast hosted model, then Apple's on-device model, then our own). Waiting on the four decisions at the end of that plan.
+- From the Infina recordings (details in COMPETITOR_INFINA.md): choose-your-hold-key, per-app Default/Chill style, snippets, go back / windows / chats commands.
 - Phase 1 (BUILD_PLAN §3): hands-free mode and wake word; press-by-name with a "yes?" check for risky buttons (needs the confirm dialog); position navigation ("open the third email", "go back"); system commands (volume, lock, dark mode, screenshot, music); a real settings window; demo videos.
 
 ## Later steps (from BUILD_PLAN §3)
