@@ -93,18 +93,6 @@ const methodLabel: Record<LastUtterance['method'], string> = {
   fallback: 'light cleanup (AI fallback)',
 };
 
-function StatusRow({ row }: { row: Row }): React.JSX.Element {
-  return (
-    <li className="flex items-start gap-3">
-      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${dot[row.tone]}`} />
-      <div className="min-w-0">
-        <p className="text-sm font-medium">{row.label}</p>
-        {row.detail && <p className="truncate text-xs text-neutral-500">{row.detail}</p>}
-      </div>
-    </li>
-  );
-}
-
 function databaseRow(d: AppStatus['database']): Row | null {
   return d.state === 'error'
     ? {
@@ -115,15 +103,136 @@ function databaseRow(d: AppStatus['database']): Row | null {
     : null;
 }
 
-const SHORTCUTS: Array<[keys: string, what: string]> = [
-  ['Fn', 'Hold and speak to dictate. Pause, then say "send" to send.'],
-  ['Fn + Shift', 'Hold and say a command: undo, copy, new tab, click Submit, open Slack…'],
-  ['Esc', 'Cancels the preview before a send.'],
+const KEY_NAME: Record<AppStatus['holdKey'], string> = {
+  fn: 'Fn',
+  rightOption: 'Right ⌥',
+  rightCommand: 'Right ⌘',
+  rightControl: 'Right ⌃',
+};
+
+/** What to say, grouped: each line is something Sayso does today. */
+const THINGS_TO_SAY: Array<{ title: string; lines: Array<[say: string, does: string]> }> = [
+  {
+    title: 'Type',
+    lines: [
+      ['type hello there', 'types the words'],
+      ['type my email', 'types the email you saved'],
+      ['send it / enter', 'presses Enter'],
+    ],
+  },
+  {
+    title: 'Open and move',
+    lines: [
+      ['open Slack', 'opens or switches to an app'],
+      ['open the first result', 'opens the 1st to 10th item'],
+      ['new tab · close tab · go back', 'works in any browser'],
+      ['scroll down', 'scrolls the page'],
+    ],
+  },
+  {
+    title: 'Click and fill',
+    lines: [
+      ['click Sign in', 'presses a button by its name'],
+      ['fill in my details', 'fills a form from About me'],
+      ['log me in', 'your own words work too'],
+    ],
+  },
 ];
 
-/** The status screen: permissions to fix, what is running, the last thing you said, a cheat sheet. */
+function Card({
+  title,
+  children,
+}: {
+  title?: string;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <section
+      aria-label={title}
+      className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      {title && <h2 className="mb-2 text-sm font-semibold">{title}</h2>}
+      {children}
+    </section>
+  );
+}
+
+/** The key you hold, shown like a keycap, and what happens when you hold it. */
+export function HoldKeyCard({ holdKey }: { holdKey: AppStatus['holdKey'] }): React.JSX.Element {
+  const key = KEY_NAME[holdKey];
+  return (
+    <Card title="Or hold a key and speak">
+      <div className="flex items-center gap-4">
+        <kbd className="flex h-14 min-w-14 items-center justify-center rounded-xl border border-neutral-300 bg-neutral-50 px-3 text-lg font-semibold shadow-[0_2px_0_0] shadow-neutral-300 dark:border-neutral-600 dark:bg-neutral-800 dark:shadow-neutral-700">
+          {key}
+        </kbd>
+        <ul className="text-sm text-neutral-600 dark:text-neutral-300">
+          <li>
+            Hold <b>{key}</b>, speak, let go: it types what you said.
+          </li>
+          <li>
+            Hold <b>{key} + Shift</b> and say a command.
+          </li>
+          <li>
+            <b>Esc</b> cancels a preview before it runs.
+          </li>
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
+/** Small status chips: what is running, in a line instead of a list. */
+export function StatusChips({ status }: { status: AppStatus }): React.JSX.Element {
+  const rows = [
+    helperRow(status.helper),
+    sttRow(status.stt),
+    fnRow(status),
+    cleanupRow(status.cleanup),
+    ...(databaseRow(status.database) ? [databaseRow(status.database) as Row] : []),
+  ];
+  return (
+    <ul aria-label="Status" className="flex flex-wrap gap-2">
+      {rows.map((row) => (
+        <li
+          key={row.label}
+          title={row.detail}
+          className="flex items-center gap-2 rounded-full border border-neutral-200 px-3 py-1 text-xs dark:border-neutral-800"
+        >
+          <span className={`h-2 w-2 shrink-0 rounded-full ${dot[row.tone]}`} />
+          {row.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function ThingsToSay(): React.JSX.Element {
+  return (
+    <Card title="Things you can say">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {THINGS_TO_SAY.map((group) => (
+          <div key={group.title}>
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              {group.title}
+            </h3>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {group.lines.map(([say, does]) => (
+                <li key={say}>
+                  <span className="font-medium">“{say}”</span>
+                  <span className="block text-xs text-neutral-500">{does}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/** Home: hands-free first, the key to hold, what is running, the last thing you said, what to say. */
 export function Home({ status }: { status: AppStatus }): React.JSX.Element {
-  const db = databaseRow(status.database);
   return (
     <div className="flex flex-col gap-5">
       <Onboarding permissions={status.permissions} />
@@ -132,59 +241,39 @@ export function Home({ status }: { status: AppStatus }): React.JSX.Element {
         wakeWord={status.wakeWord}
         ready={status.stt.state === 'ready' && status.helper.state === 'connected'}
       />
-      <ul className="flex flex-col gap-3">
-        <StatusRow row={helperRow(status.helper)} />
-        <StatusRow row={sttRow(status.stt)} />
-        <StatusRow row={fnRow(status)} />
-        <StatusRow row={cleanupRow(status.cleanup)} />
-        {db && <StatusRow row={db} />}
-      </ul>
+      <HoldKeyCard holdKey={status.holdKey} />
+      <StatusChips status={status} />
       {status.last && (
-        <section className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
+        <Card title={status.last.mode === 'command' ? 'Last command' : 'Last typed'}>
           <p className="text-xs text-neutral-500">
-            {status.last.mode === 'command' ? 'Command' : 'Last inserted'}
-            {status.last.appName ? ` in ${status.last.appName}` : ''} ·{' '}
+            {status.last.appName ? `in ${status.last.appName} · ` : ''}
             {status.last.mode === 'command'
               ? `STT ${Math.round(status.last.sttMs)} ms`
               : `${methodLabel[status.last.method]} (${status.last.tone}) · STT ${Math.round(status.last.sttMs)} ms · cleanup ${Math.round(status.last.cleanupMs)} ms`}
           </p>
           {status.last.text && (
-            <p className="mt-1 line-clamp-6 whitespace-pre-line text-sm">{status.last.text}</p>
+            <p className="mt-1.5 line-clamp-6 whitespace-pre-line text-sm">{status.last.text}</p>
           )}
           {status.last.command && (
-            <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <p className="mt-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               {status.last.mode === 'command' ? 'ran' : 'then ran'} “
               {status.last.command.replace('_', ' ')}”
             </p>
           )}
-        </section>
+        </Card>
       )}
-      <section aria-label="How to use Sayso">
-        <h2 className="mb-2 text-sm font-semibold">How to use it</h2>
-        <dl className="flex flex-col gap-1.5 text-sm">
-          {SHORTCUTS.map(([keys, what]) => (
-            <div key={keys} className="flex gap-3">
-              <dt className="w-24 shrink-0">
-                <kbd className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs dark:border-neutral-600 dark:bg-neutral-800">
-                  {keys}
-                </kbd>
-              </dt>
-              <dd className="text-neutral-600 dark:text-neutral-300">{what}</dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-2 text-xs text-neutral-500">
-          Tip: set System Settings → Keyboard → “Press 🌐 key to” → Do Nothing, so Fn does not also
-          open the emoji picker.{' '}
-          <button
-            type="button"
-            className="underline"
-            onClick={() => void window.sayso.permissions.openSettings('keyboard')}
-          >
-            Open Keyboard settings
-          </button>
-        </p>
-      </section>
+      <ThingsToSay />
+      <p className="text-xs text-neutral-500">
+        Tip: in System Settings → Keyboard, set “Press 🌐 key to” → Do Nothing, so Fn does not also
+        open the emoji picker.{' '}
+        <button
+          type="button"
+          className="underline"
+          onClick={() => void window.sayso.permissions.openSettings('keyboard')}
+        >
+          Open Keyboard settings
+        </button>
+      </p>
     </div>
   );
 }

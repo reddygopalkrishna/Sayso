@@ -31,11 +31,15 @@ export function HandsFreeCard({
   return (
     <section
       aria-label="Hands-free"
-      className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-700"
+      className={`flex flex-col gap-3 rounded-2xl border p-5 shadow-sm ${
+        status.state === 'listening'
+          ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30'
+          : 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900'
+      }`}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Hands-free</h2>
+          <h2 className="text-lg font-semibold">Hands-free</h2>
           <p className="text-xs text-neutral-500">
             Talk without holding a key. The microphone stays on while this is on; audio never leaves
             this Mac and nothing is saved.

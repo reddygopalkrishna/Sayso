@@ -8,6 +8,7 @@ import { Onboarding } from './Onboarding.tsx';
 import { HandsFreeCard } from './HandsFree.tsx';
 import { pillContent } from './Pill.tsx';
 import { AboutMeForm } from './AboutMe.tsx';
+import { HoldKeyCard, StatusChips, ThingsToSay } from './Home.tsx';
 import { SECTIONS, Sidebar } from './Sidebar.tsx';
 import { AppStyleList, SettingsForm } from './Settings.tsx';
 import { initialStatus } from '../../shared/status.ts';
@@ -594,6 +595,54 @@ describe('Sidebar', () => {
     for (const section of SECTIONS) {
       expect(section.title.length).toBeGreaterThan(0);
       expect(section.subtitle.endsWith('.')).toBe(true);
+    }
+  });
+});
+
+describe('Home cards', () => {
+  it('the hold-key card names the key you chose, as a keycap, with what it does', () => {
+    const fn = html(<HoldKeyCard holdKey="fn" />);
+    expect(fn).toContain('Hold <b>Fn</b>');
+    expect(fn).toContain('Fn + Shift');
+    expect(html(<HoldKeyCard holdKey="rightOption" />)).toContain('Right ⌥');
+    expect(html(<HoldKeyCard holdKey="rightCommand" />)).toContain('Right ⌘');
+  });
+
+  it('the status chips show what is running, in a line', () => {
+    const out = html(
+      <StatusChips
+        status={{
+          ...initialStatus,
+          helper: { state: 'connected', helperVersion: '0.2.0', os: 'macOS' },
+          stt: { state: 'ready', model: 'm' },
+          fnListener: 'active',
+        }}
+      />,
+    );
+    for (const text of ['Helper connected', 'Speech model ready', 'Fn listener on']) {
+      expect(out).toContain(text);
+    }
+  });
+
+  it('the status chips show a problem as a problem', () => {
+    const out = html(
+      <StatusChips status={{ ...initialStatus, helper: { state: 'missing', path: '/x' } }} />,
+    );
+    expect(out).toContain('Helper not built');
+    expect(out).toContain('bg-amber-500');
+  });
+
+  it('the cheat sheet lists real things Sayso does today', () => {
+    const out = html(<ThingsToSay />);
+    for (const text of [
+      '“type my email”',
+      '“open the first result”',
+      '“click Sign in”',
+      '“fill in my details”',
+      '“scroll down”',
+      '“log me in”',
+    ]) {
+      expect(out).toContain(text);
     }
   });
 });
