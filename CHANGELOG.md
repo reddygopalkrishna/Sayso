@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 01:35 · "New chat" (`aa2cd64`)
+- **Why:** the founder said "new chat" in ChatGPT and Claude; it was heard as "new chart" and no command matched.
+- **What:** new command **new chat** ("start a new chat", "open a new chat", "new conversation"). It presses **⌘N** in the ChatGPT and Claude desktop apps (read from their File menus: "New Chat" in ChatGPT, "New Session" in Claude) and **⇧⌘O** everywhere else, which is the shortcut on chatgpt.com and claude.ai. The heard-as "new chart" and "new check" count as "new chat" when they are the whole utterance. A new action type, `contextual_new_chat`, picks the keys by app like "send" does.
+- **Caveat:** on a web page that is not ChatGPT or Claude, ⇧⌘O only opens Chrome's bookmark manager. Safe class: runs at once, never in password fields or meeting apps.
+- **Tested:** unit tests for the keys per app, the phrases, the safety matrix (1,602 desktop). **Not tried by voice or in the apps yet.**
+
 ### 01:21 · Hands-free: "type", pause, then the words (`70a9929`)
 - **Why:** the founder's log: people say "type", pause, then speak, so hands-free heard two utterances: a lone "Type" (ignored) and the words (ignored, no "type" in front). Nothing was typed.
 - **What:** a lone "type" now waits up to 10 s and types the next utterance as it is (through the usual dictionary and cleanup). Saying "type Codex" in one breath still works. "Cancel" after "type" types nothing.
