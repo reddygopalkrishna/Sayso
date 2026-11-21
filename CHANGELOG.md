@@ -24,6 +24,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
+### 10:01 · Docs and skills: smaller start for every session (no app code changed)
+- CLAUDE.md cut from about 15 KB to about 2.5 KB. It is now a short index and the rules; the repo detail moved to `docs/REPO_MAP.md`, and the status to `docs/STATUS.md`. Every session reads these first, so the start costs far fewer tokens.
+- Added the `sayso-testing` skill (test commands, fixtures, the required cases for the pause rule, commands and SafetyGate). `build-step` now points to STATUS and REPO_MAP.
+- Moved the superseded `EARLY_PLAN.md`, the Buildathon submission and its deck out of the repo (kept in `../Sayso-archive/`).
+
 ### 09:53 · Phase 0 step 4: say "send" after a pause to send (`60e87a4`)
 - Say your message, pause, then say **"send"** (or "send it"): the text is typed, then the message is sent. Also **"enter"** / "press enter" and **"new line"** (Shift+Enter, a line break that does not send).
 - It only counts as a command when it is the last thing you say, after a pause of at least 600 ms. "Send me a flower" and "reply send" (no pause) stay text. Saying just "send" on its own presses send.
