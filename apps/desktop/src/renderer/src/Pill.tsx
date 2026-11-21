@@ -11,6 +11,8 @@ function content(state: DictationState): { text: string; dot: string } | null {
       return { text: 'Transcribing…', dot: 'bg-sky-400 animate-pulse' };
     case 'inserting':
       return { text: 'Typing…', dot: 'bg-sky-400' };
+    case 'prompt':
+      return { text: state.message, dot: 'bg-violet-400' };
     case 'error':
       return { text: state.message, dot: 'bg-amber-400' };
     case 'idle':

@@ -8,7 +8,7 @@ export type RefuseReason =
 export type SafetyDecision =
   | { kind: 'run' }
   | { kind: 'preview'; ms: number }
-  | { kind: 'confirm' }
+  | { kind: 'confirm'; reason?: 'risky_label' }
   | { kind: 'refuse'; reason: RefuseReason };
 
 /**
@@ -48,7 +48,7 @@ export function decideAction(
   if (isMeetingApp(context.bundleId)) return { kind: 'refuse', reason: 'meeting_app' };
   if (context.secureField) return { kind: 'refuse', reason: 'password_field' };
   if (command.action.type === 'pressElement' && isRiskyLabel(args['label'] ?? '')) {
-    return { kind: 'refuse', reason: 'risky_label' };
+    return { kind: 'confirm', reason: 'risky_label' };
   }
   switch (command.safety) {
     case 'safe':

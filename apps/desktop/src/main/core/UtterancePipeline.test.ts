@@ -55,7 +55,7 @@ const installedApps: KnownApp[] = [
   { name: 'Claude', bundleId: 'com.anthropic.claudefordesktop', running: true },
 ];
 
-function setup({ contexts, chip = 'proceed', llm, dictionary }: Setup) {
+function setup({ contexts, chip = 'proceed', llm, dictionary, confirmMs }: Setup & { confirmMs?: number }) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
   let reads = 0;
@@ -89,6 +89,9 @@ function setup({ contexts, chip = 'proceed', llm, dictionary }: Setup) {
     endCommands,
     engine: new CommandEngine(commands),
     settleMs: () => 0,
+    confirmMs: () => confirmMs ?? 8_000,
+    onAwaitConfirm: (prompt, ms) => void log.push(`prompt ${prompt} ${ms}`),
+    onConfirmEnd: () => void log.push('prompt end'),
     dictionary: () => dictionary ?? [],
     resolver: {
       resolveOpen: async (t) => resolveOpen(t, installedApps),
@@ -347,11 +350,79 @@ describe('UtterancePipeline: command mode', () => {
     expect(t.log.some((l) => l.startsWith('insert') || l.startsWith('llm'))).toBe(false);
   });
 
-  it('refuses risky buttons and says why', async () => {
-    const error = await run('click Delete').catch((e) => e);
+  it('a risky button asks for "yes" and presses nothing yet', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('click Delete'), 'command');
+    expect(t.log).toEqual(['prompt Say “yes” to press “delete” 8000']);
+    expect(t.outcomes[0]?.command).toEqual({ id: 'click', result: 'awaiting' });
+  });
+
+  it('"yes" presses it once, in the same app', async () => {
+    const t = setup({ contexts: [slack, slack, slack] });
+    await t.pipeline.deliver(said('click Delete'), 'command');
+    await t.pipeline.deliver(said('yes'), 'command');
+    expect(t.log).toEqual([
+      'prompt Say “yes” to press “delete” 8000',
+      'prompt end',
+      'press delete',
+    ]);
+    expect(t.outcomes.at(-1)?.command).toEqual({ id: 'click', result: 'ran' });
+  });
+
+  it('"yes" with nothing waiting does nothing and says so', async () => {
+    const t = setup({ contexts: [slack] });
+    const error = await t.pipeline.deliver(said('yes'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toBe('Nothing is waiting for “yes”.');
+    expect(t.log).toEqual([]);
+  });
+
+  it('the wait expires: a late "yes" presses nothing', async () => {
+    const t = setup({ contexts: [slack], confirmMs: 20 });
+    await t.pipeline.deliver(said('click Delete'), 'command');
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const error = await t.pipeline.deliver(said('yes'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(t.log).toEqual(['prompt Say “yes” to press “delete” 20', 'prompt end']);
+  });
+
+  it('any other command ends the wait: a later "yes" presses nothing', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('click Delete'), 'command');
+    await t.pipeline.deliver(said('undo'), 'command');
+    const error = await t.pipeline.deliver(said('yes'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(t.log).toEqual([
+      'prompt Say “yes” to press “delete” 8000',
+      'prompt end',
+      'key cmd+z',
+    ]);
+  });
+
+  it('if the app changed before "yes", nothing is pressed', async () => {
+    const safari = context('com.apple.Safari');
+    const t = setup({ contexts: [slack, slack, slack, safari] });
+    await t.pipeline.deliver(said('click Delete'), 'command');
+    const error = await t.pipeline.deliver(said('yes'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toBe('The app changed, so nothing was pressed.');
+    expect(t.log.some((line) => line.startsWith('press'))).toBe(false);
+  });
+
+  it('Esc (cancelPending) drops the wait', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('click Delete'), 'command');
+    t.pipeline.cancelPending();
+    const error = await t.pipeline.deliver(said('yes'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(t.log).toEqual(['prompt Say “yes” to press “delete” 8000', 'prompt end']);
+  });
+
+  it('a risky button in a meeting app is refused outright: no prompt', async () => {
+    const t = setup({ contexts: [context('us.zoom.xos')] });
+    const error = await t.pipeline.deliver(said('click Delete'), 'command').catch((e) => e);
     expect(error).toBeInstanceOf(CommandRefused);
-    expect(error.reason).toBe('risky_label');
-    expect(error.message).toBe('That button needs confirmation, which Sayso cannot ask for yet.');
+    expect(t.log).toEqual([]);
   });
 
   it('refuses in a meeting app, a password field and Terminal (close tab), with the reason', async () => {

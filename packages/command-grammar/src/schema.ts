@@ -26,6 +26,8 @@ export const CommandActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('switchApp') }).strict(),
   /** Do nothing: "cancel" / "never mind". */
   z.object({ type: z.literal('cancel') }).strict(),
+  /** Press the risky action that is waiting for "yes" (see UtterancePipeline). */
+  z.object({ type: z.literal('confirmPending') }).strict(),
   z
     .object({
       type: z.literal('keyPress'),

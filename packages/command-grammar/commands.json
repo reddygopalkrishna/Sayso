@@ -269,6 +269,17 @@
       },
       "safety": "safe",
       "blockedIn": []
+    },
+    {
+      "id": "confirm",
+      "label": "Yes",
+      "phrases": ["yes", "yes do it", "yes go ahead", "yes click it", "confirm"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "confirmPending"
+      },
+      "safety": "safe",
+      "blockedIn": []
     }
   ]
 }

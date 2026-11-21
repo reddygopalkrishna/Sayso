@@ -39,6 +39,7 @@ type Internal =
   | { phase: 'recording'; id: string; startedAt: number; command: boolean }
   | { phase: 'transcribing'; id: string }
   | { phase: 'inserting'; id: string }
+  | { phase: 'prompt'; message: string }
   | { phase: 'error'; message: string };
 
 /**
@@ -51,6 +52,7 @@ export class DictationController {
   private readonly listeners = new Set<(s: DictationState) => void>();
   private maxTimer: NodeJS.Timeout | null = null;
   private errorTimer: NodeJS.Timeout | null = null;
+  private promptTimer: NodeJS.Timeout | null = null;
   private readonly now: () => number;
   private readonly minHoldMs: number;
   private readonly maxRecordMs: number;
@@ -78,7 +80,7 @@ export class DictationController {
     const s = this.state;
     switch (phase) {
       case 'down':
-        if (s.phase === 'idle' || s.phase === 'error') void this.begin();
+        if (s.phase === 'idle' || s.phase === 'error' || s.phase === 'prompt') void this.begin();
         break;
       case 'up':
         if (s.phase === 'recording') void this.finish(s.id, s.startedAt);
@@ -97,7 +99,9 @@ export class DictationController {
 
   /** The helper went away: whatever was in flight is lost. */
   reset(reason: string): void {
-    if (this.state.phase === 'idle' || this.state.phase === 'error') return;
+    if (this.state.phase === 'idle' || this.state.phase === 'error' || this.state.phase === 'prompt') {
+      return;
+    }
     this.log(`dictation reset: ${reason}`);
     this.clearMaxTimer();
     this.set({ phase: 'idle' });
@@ -200,10 +204,29 @@ export class DictationController {
     this.maxTimer = null;
   }
 
+  /** Shows a "say yes" prompt in the pill for `ms`. Not shown while an utterance is in progress. */
+  showPrompt(message: string, ms: number): void {
+    if (this.state.phase === 'starting' || this.state.phase === 'recording') return;
+    this.set({ phase: 'prompt', message });
+    if (this.promptTimer) clearTimeout(this.promptTimer);
+    this.promptTimer = setTimeout(() => {
+      this.promptTimer = null;
+      if (this.state.phase === 'prompt') this.set({ phase: 'idle' });
+    }, ms);
+  }
+
+  clearPrompt(): void {
+    if (this.state.phase === 'prompt') this.set({ phase: 'idle' });
+  }
+
   private set(next: Internal): void {
     if (this.errorTimer && next.phase !== 'error') {
       clearTimeout(this.errorTimer);
       this.errorTimer = null;
+    }
+    if (this.promptTimer && next.phase !== 'prompt') {
+      clearTimeout(this.promptTimer);
+      this.promptTimer = null;
     }
     const before = publicState(this.state);
     this.state = next;
@@ -220,6 +243,8 @@ function publicState(s: Internal): DictationState {
       return { phase: 'listening', mode: s.command ? 'command' : 'dictation' };
     case 'error':
       return { phase: 'error', message: s.message };
+    case 'prompt':
+      return { phase: 'prompt', message: s.message };
     default:
       return { phase: s.phase };
   }

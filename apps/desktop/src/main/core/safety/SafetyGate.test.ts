@@ -85,6 +85,7 @@ const safeInstant = [
   'new_tab',
   'go_back',
   'go_forward',
+  'confirm',
   'scroll_up',
   'scroll_down',
   'open',
@@ -179,7 +180,7 @@ describe('click: buttons that spend money, delete or sign out are refused', () =
     expect(isRiskyLabel(label)).toBe(true);
     expect(decideAction(command('click'), contexts['slack'] ?? ctx(null), 1000, { label })).toEqual(
       {
-        kind: 'refuse',
+        kind: 'confirm',
         reason: 'risky_label',
       },
     );

@@ -39,6 +39,7 @@ describe('commands.json', () => {
       'Scroll up',
       'Scroll down',
       'Cancel',
+      'Yes',
     ]);
   });
 
@@ -60,6 +61,7 @@ describe('commands.json', () => {
       'scroll_up',
       'scroll_down',
       'cancel',
+      'confirm',
     ]);
   });
 

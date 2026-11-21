@@ -122,6 +122,15 @@ function readDictionary(): DictionaryTerm[] {
 
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
+  // A risky button waits for "yes": show the prompt, and catch Esc while it is up.
+  onAwaitConfirm: (prompt, ms) => {
+    dictation.showPrompt(prompt, ms);
+    void actions.captureEscape(true).catch(() => undefined);
+  },
+  onConfirmEnd: () => {
+    dictation.clearPrompt();
+    void actions.captureEscape(false).catch(() => undefined);
+  },
   cleanup: new TextCleanup({
     provider,
     timeoutMs: cleanupTimeoutMs,
@@ -224,6 +233,7 @@ helper.onMessage((message) => {
       dictation.handleHotkey(message.phase);
       break;
     case 'escape':
+      pipeline.cancelPending();
       for (const listener of [...escapeListeners]) listener();
       break;
     case 'fnListener':

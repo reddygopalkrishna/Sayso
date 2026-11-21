@@ -18,6 +18,8 @@ export type DictationState =
   | { phase: 'listening'; mode: 'dictation' | 'command' }
   | { phase: 'transcribing' }
   | { phase: 'inserting' }
+  /** A risky action waits for "yes": the text is shown in the pill. */
+  | { phase: 'prompt'; message: string }
   | { phase: 'error'; message: string };
 
 export interface CleanupStatus {

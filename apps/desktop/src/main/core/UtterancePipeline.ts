@@ -19,7 +19,12 @@ export type CommandOutcome =
   | { id: string; result: 'ran' }
   /** The user pressed Esc on the preview chip. In dictation the spoken word was typed instead. */
   | { id: string; result: 'cancelled' }
-  | { id: string; result: 'skipped'; reason: string };
+  | { id: string; result: 'skipped'; reason: string }
+  /** A risky button was named: nothing is pressed until the user says "yes" (see confirmPending). */
+  | { id: string; result: 'awaiting' };
+
+/** How long a risky action waits for "yes" before it is dropped. */
+const CONFIRM_MS = 8_000;
 
 export interface UtteranceOutcome {
   mode: PipelineMode;
@@ -47,6 +52,11 @@ export interface UtterancePipelineOptions {
   };
   /** Pause between chained steps, so the screen can update first. Default 300 ms. */
   settleMs?: () => number;
+  /** Time a risky action waits for "yes". Default 8 s. */
+  confirmMs?: () => number;
+  /** Show the "say yes" prompt (and let Esc cancel it), and clear it again. */
+  onAwaitConfirm?: (prompt: string, ms: number) => void;
+  onConfirmEnd?: () => void;
   /** Your own words: "sounds like" entries also fix mis-heard words in spoken commands. */
   dictionary?: () => readonly DictionaryTerm[];
   resolver: {
@@ -77,7 +87,20 @@ export interface PipelineFailure {
  * fields while the AI cleanup or the preview chip was running.
  */
 export class UtterancePipeline {
+  /** The risky action waiting for "yes": one at a time, and only until it expires. */
+  private pending: {
+    match: InstantMatch;
+    bundleId: string | null;
+    expiresAt: number;
+    timer: ReturnType<typeof setTimeout>;
+  } | null = null;
+
   constructor(private readonly opts: UtterancePipelineOptions) {}
+
+  /** Esc, or anything else that ends the wait: drops the risky action without pressing it. */
+  cancelPending(): void {
+    this.clearPending();
+  }
 
   async deliver(segment: TranscriptSegment, mode: PipelineMode = 'dictation'): Promise<void> {
     const context = await this.opts.readContext();
@@ -91,6 +114,7 @@ export class UtterancePipeline {
   }
 
   private async deliverDictation(segment: TranscriptSegment, context: AppContext): Promise<void> {
+    this.clearPending();
     const routing = route(segment, {
       endCommands: this.opts.endCommands,
       pauseMs: this.opts.pauseMs(),
@@ -146,12 +170,29 @@ export class UtterancePipeline {
     // Command mode never types: an unrecognised utterance is reported, not inserted.
     if (!steps) throw new CommandNotUnderstood(segment.text);
 
+    // "yes" answers a waiting risky action. Any other command ends that wait.
+    const isYes = steps.length === 1 && steps[0]?.command.action.type === 'confirmPending';
+    if (!isYes) this.clearPending();
+    if (isYes) {
+      const command = await this.confirmPending();
+      this.opts.onOutcome?.({
+        mode: 'command',
+        segment,
+        context,
+        routing: null,
+        cleanup: null,
+        inserted: false,
+        command,
+      });
+      return;
+    }
+
     // Steps run in order, each after a short settle so the screen can catch up. A refusal or a
-    // failure throws and stops the chain; a cancel or a skip stops it without an error.
+    // failure throws and stops the chain; a cancel, a skip or a wait for "yes" stops it.
     let command: CommandOutcome | null = null;
     for (const [index, step] of steps.entries()) {
       if (index > 0) await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
-      command = await this.runCommand(step, { failOnRefusal: true });
+      command = await this.runCommand(step, { failOnRefusal: true, allowConfirm: true });
       if (command.result !== 'ran') break;
     }
     this.opts.onOutcome?.({
@@ -175,13 +216,62 @@ export class UtterancePipeline {
     await this.opts.actions.insertText(text);
   }
 
+  /** Asks for "yes" before a risky action. Nothing is pressed here. */
+  private awaitConfirmation(match: InstantMatch, live: AppContext): CommandOutcome {
+    const spec = match.command;
+    const ms = this.opts.confirmMs?.() ?? CONFIRM_MS;
+    const what =
+      spec.action.type === 'pressElement'
+        ? `press “${match.args['label'] ?? ''}”`
+        : spec.label.toLowerCase();
+    this.clearPending();
+    this.pending = {
+      match,
+      bundleId: live.bundleId,
+      expiresAt: Date.now() + ms,
+      timer: setTimeout(() => this.clearPending(), ms),
+    };
+    this.opts.onAwaitConfirm?.(`Say “yes” to ${what}`, ms);
+    return { id: spec.id, result: 'awaiting' };
+  }
+
+  /** Presses the waiting action, if it is still waiting, still in the same app, and still allowed. */
+  private async confirmPending(): Promise<CommandOutcome> {
+    const waiting = this.pending;
+    this.clearPending();
+    if (!waiting || Date.now() > waiting.expiresAt) {
+      throw new CommandFailed('Nothing is waiting for “yes”.');
+    }
+    const live = await this.opts.readContext();
+    if (live.bundleId !== waiting.bundleId) {
+      throw new CommandFailed('The app changed, so nothing was pressed.');
+    }
+    const decision = decideAction(
+      waiting.match.command,
+      live,
+      this.opts.previewMs(),
+      waiting.match.args,
+    );
+    if (decision.kind === 'refuse') throw new CommandRefused(decision.reason, live.appName);
+    await this.perform(waiting.match.command.action, waiting.match.args, live);
+    return { id: waiting.match.command.id, result: 'ran' };
+  }
+
+  private clearPending(): void {
+    if (!this.pending) return;
+    clearTimeout(this.pending.timer);
+    this.pending = null;
+    this.opts.onConfirmEnd?.();
+  }
+
   private async runCommand(
     match: InstantMatch,
-    how: { onCancel?: () => Promise<void>; failOnRefusal?: boolean },
+    how: { onCancel?: () => Promise<void>; failOnRefusal?: boolean; allowConfirm?: boolean },
   ): Promise<CommandOutcome> {
     const spec = match.command;
     const live = await this.opts.readContext();
     const decision = decideAction(spec, live, this.opts.previewMs(), match.args);
+    if (decision.kind === 'confirm' && how.allowConfirm) return this.awaitConfirmation(match, live);
     if (decision.kind === 'refuse' || decision.kind === 'confirm') {
       const reason = decision.kind === 'refuse' ? decision.reason : 'needs_confirmation';
       // In command mode nothing is typed, so the user must be told why nothing happened.
@@ -244,6 +334,9 @@ export class UtterancePipeline {
       }
       case 'cancel':
         return;
+      case 'confirmPending':
+        // Handled in deliverCommand; a "yes" never reaches the generic path.
+        throw new CommandFailed('Nothing is waiting for “yes”.');
     }
   }
 }

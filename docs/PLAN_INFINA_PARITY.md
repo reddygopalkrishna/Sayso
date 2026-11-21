@@ -13,7 +13,7 @@ Written 15 Nov 2026. Source of the gaps: the Screen Recording of 15 Nov 11:49 (6
 ## Stages
 - **Stage A: measure.** Test matrix below. Each run records pass, wrong target, not found, or slow (over 1 s), plus the app name.
 - **Stage B: make single commands reliable.** Done: web accessibility on, focused window first, short not-found message in the pill, one retry on the first click in a new web app. Still to test by hand in Chrome.
-- **Stage C: Phase 1 features in order.** Status: step 1 (chained commands) committed (bb883f9). Step 2 (go back / go forward, ⌘[ and ⌘]) built, not yet committed or tried live. Multi-command sentences with a check after each step (stop at first failure); press by name with a "yes?" check for risky buttons; position navigation ("third email", "go back"); hands-free with wake word; the WhatsApp recipe; system commands.
+- **Stage C: Phase 1 features in order.** Status: "yes?" before risky buttons built (16 Nov, not committed or tried live). Earlier: step 1 (chained commands) committed (bb883f9). Step 2 (go back / go forward, ⌘[ and ⌘]) built, not yet committed or tried live. Multi-command sentences with a check after each step (stop at first failure); press by name with a "yes?" check for risky buttons; position navigation ("third email", "go back"); hands-free with wake word; the WhatsApp recipe; system commands.
 - **Stage D: quick wins.** Snippets, per-app Default/Chill style, choice of hold key, Settings window.
 - **Stage E: demos** of real tasks for posting.
 
@@ -41,6 +41,20 @@ Record the time from the end of the phrase to the result. Target: under 1 s for 
 - `LabelMatch` table tests for the new search order (focused window before root).
 - A helper test for `pressElement` with the not-found error code (exists in the protocol fixtures).
 - Live check: `printf` a `pressElement` line to the helper with Claude frontmost; expect `done`. (Done 15 Nov for "Search" in Claude.)
+
+## Design: "yes?" before risky buttons (built 16 Nov, not committed or tried live)
+Today a risky button ("Pay", "Delete", "Sign out", "Publish") is refused. Infina asks first. Proposed:
+1. Say "click Pay" in command mode. Sayso does not press it. It shows a prompt in the pill: "Say yes to press “Pay” (8 s), or Esc".
+2. Say "yes" (or "yes do it") within 8 seconds. Sayso presses it. Esc, any other command, or the timeout cancels. Nothing runs by silence.
+3. Before pressing, Sayso reads the app and window again. If the app changed, it cancels and says why.
+4. Nothing is remembered between sessions. Each risky press needs its own "yes".
+
+Needs: a pending-action state in the pipeline (not just one utterance), a new "yes" command, a prompt the pill can show (a new dictation phase), and tests for timeout, Esc, app change and a second command in between.
+
+## Dropped for now: Chrome extension
+The original build plan (Phase 3, item 5) listed a Chrome extension for reliable clicks in web pages. Decided 15 Nov 2026: not needed. Infina does not use one; Chrome and Electron apps now expose their pages to Accessibility (Stage B); extensions add a second code path, store review and page-reading permission. Revisit only if Stage A still shows web clicks failing after the fix.
+
+Multi-step tasks use fixed recipes with a check after each step (as Infina does), not an AI planner. An AI planner stays a Phase 3 idea, to be considered only if recipes cannot cover the common cases.
 
 ## Decisions still open
 1. Stage order: A and B first (recommended), then C.

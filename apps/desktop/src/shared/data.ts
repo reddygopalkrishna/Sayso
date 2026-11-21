@@ -6,7 +6,8 @@ export type HistoryOutcome = 'done' | 'cancelled' | 'blocked' | 'failed';
 export interface HistoryAction {
   /** The command that ran or was attempted, e.g. "send" or "click". */
   command: string;
-  result: 'ran' | 'cancelled' | 'skipped';
+  /** 'awaiting': a risky action is waiting for "yes". */
+  result: 'ran' | 'cancelled' | 'skipped' | 'awaiting';
   args?: Record<string, string>;
 }
 

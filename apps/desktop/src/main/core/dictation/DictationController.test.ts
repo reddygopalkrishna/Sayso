@@ -339,3 +339,45 @@ describe('DictationController', () => {
     expect(deliver).not.toHaveBeenCalled();
   });
 });
+
+describe('DictationController: the "say yes" prompt', () => {
+  function watch(controller: DictationController): DictationState[] {
+    const seen: DictationState[] = [];
+    controller.onState((s) => seen.push(s));
+    return seen;
+  }
+
+  it('shows the prompt, and a new hold starts an utterance over it', async () => {
+    const { controller, states } = setup();
+    controller.showPrompt('Say “yes” to press “delete”', 60_000);
+    controller.handleHotkey('down');
+    await flush();
+    expect(states).toContain('prompt');
+    expect(states.at(-1)).toBe('listening');
+  });
+
+  it('clearPrompt returns the pill to idle, and only while a prompt is showing', () => {
+    const { controller } = setup();
+    const seen = watch(controller);
+    controller.showPrompt('Say “yes”', 60_000);
+    controller.clearPrompt();
+    controller.clearPrompt();
+    expect(seen).toEqual([
+      { phase: 'prompt', message: 'Say “yes”' },
+      { phase: 'idle' },
+    ]);
+  });
+
+  it('the prompt goes away by itself after its time', () => {
+    vi.useFakeTimers();
+    try {
+      const { controller } = setup();
+      const seen = watch(controller);
+      controller.showPrompt('Say “yes”', 1_000);
+      vi.advanceTimersByTime(1_000);
+      expect(seen.at(-1)).toEqual({ phase: 'idle' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
