@@ -28,7 +28,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
-### 12:29 · Phase 0 step 5: safety gate, preview chip, no typing into password fields
+### 12:29 · Phase 0 step 5: safety gate, preview chip, no typing into password fields (`060bb67`)
 - **Preview chip:** before "send" or "enter" runs, a small chip above the pill shows "Send · Esc to cancel" with a bar that fills for 1 second (`SAYSO_PREVIEW_MS`). Press **Esc** and the command is cancelled and the word you said is typed instead. "New line" (Safe) runs at once without the chip.
 - **Esc is swallowed only while the chip shows**, so it does not also hit the app underneath (Esc clears drafts in some apps). The helper switches this off by itself after 3 seconds, so a crashed app can never leave Esc disabled.
 - **Password fields:** Sayso never types into one, and never presses keys there. The check uses the focused element from Accessibility, is done again right before typing (the focus can move while the AI is cleaning up), and happens before any text is sent to the AI. The pill says why.
