@@ -40,6 +40,15 @@ const normText = (text: string): string =>
 const STOP_LISTENING =
   /^(?:(?:please|ok|okay|hey)\s+)?(?:(?:stop|quit|exit|end|pause)\s+(?:listening|hands\s?free(?:\s+mode)?)|(?:turn|switch)\s+(?:off|of)\s+(?:hands\s?free(?:\s+mode)?|listening)|(?:turn|switch)\s+(?:hands\s?free(?:\s+mode)?|listening)\s+off|hands\s?free(?:\s+mode)?\s+off|go\s+to\s+sleep|disable\s+hands\s?free(?:\s+mode)?)$/;
 
+/** "Start typing" / "dictation mode": everything said is typed until "stop typing". */
+const START_TYPING =
+  /^(?:(?:please|ok|okay|hey)\s+)?(?:(?:start|begin|turn\s+on|enable)\s+(?:typing|dictation|dictating)(?:\s+mode)?|(?:typing|dictation)\s+mode(?:\s+on)?|(?:typing|dictation)\s+on)$/;
+const STOP_TYPING =
+  /^(?:(?:please|ok|okay|hey)\s+)?(?:(?:stop|end|finish|exit|quit)\s+(?:typing|dictation|dictating)(?:\s+mode)?|(?:turn|switch)\s+off\s+(?:typing|dictation)(?:\s+mode)?|done\s+(?:typing|dictating)|(?:typing|dictation)\s+(?:mode\s+)?off)$/;
+
+export const isStartTyping = (text: string): boolean => START_TYPING.test(normText(text));
+export const isStopTyping = (text: string): boolean => STOP_TYPING.test(normText(text));
+
 /** Just the word "type": the words to type come in the next utterance. */
 export function isLoneType(text: string): boolean {
   return normText(text) === 'type';

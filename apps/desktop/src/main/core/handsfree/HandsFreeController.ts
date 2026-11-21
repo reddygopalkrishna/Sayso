@@ -3,7 +3,13 @@ import type { HandsFreeStatus } from '../../../shared/status.ts';
 import { cleanWords, stripNonSpeech } from '../stt/normalize.ts';
 import type { TranscriptSegment } from '../stt/types.ts';
 import type { PipelineMode } from '../UtterancePipeline.ts';
-import { classifyHeard, isLoneType, isStopListening } from './triggers.ts';
+import {
+  classifyHeard,
+  isLoneType,
+  isStartTyping,
+  isStopListening,
+  isStopTyping,
+} from './triggers.ts';
 
 /** How long Sayso stays awake after a trigger: commands then work without the wake word. */
 const AWAKE_MS = 60_000;
@@ -36,6 +42,8 @@ export interface HandsFreeDeps {
  */
 /** How long after a lone "type" the next utterance is still typed. */
 const TYPE_NEXT_MS = 10_000;
+/** Typing mode ends by itself this long after the last thing said. */
+const TYPING_IDLE_MS = 180_000;
 
 export class HandsFreeController {
   private current: HandsFreeStatus = { state: 'off' };
@@ -44,6 +52,8 @@ export class HandsFreeController {
   private readonly now: () => number;
   /** After "type" said on its own, the next utterance (until this time) is typed as it is. */
   private typeNextUntil = 0;
+  /** "Start typing": every utterance is typed until "stop typing" (or this long after the last). */
+  private typingUntil = 0;
 
   constructor(private readonly deps: HandsFreeDeps) {
     this.now = deps.now ?? Date.now;
@@ -72,6 +82,8 @@ export class HandsFreeController {
 
   async disable(): Promise<void> {
     if (this.current.state === 'off') return;
+    this.typingUntil = 0;
+    this.typeNextUntil = 0;
     this.set({ state: 'off' });
     this.awakeUntil = 0;
     try {
@@ -114,6 +126,31 @@ export class HandsFreeController {
     if (isStopListening(segment.text)) {
       this.deps.log?.(`[hands-free] heard ${heardText}: turning hands-free off`);
       await this.disable();
+      return;
+    }
+    // "Start typing" … "stop typing": a long text told in several breaths, typed as it is said.
+    if (isStopTyping(segment.text)) {
+      this.typingUntil = 0;
+      this.deps.log?.(`[hands-free] heard ${heardText}: typing mode off`);
+      return;
+    }
+    if (isStartTyping(segment.text)) {
+      this.typingUntil = this.now() + TYPING_IDLE_MS;
+      this.deps.log?.(
+        `[hands-free] heard ${heardText}: typing mode on (say "stop typing" to end it)`,
+      );
+      return;
+    }
+    if (this.now() < this.typingUntil && segment.text !== '') {
+      this.typingUntil = this.now() + TYPING_IDLE_MS;
+      this.deps.log?.(
+        `[hands-free] heard ${heardText}: typing (typing mode); STT ${Math.round(message.sttMs)} ms`,
+      );
+      try {
+        await this.deps.deliver(segment, 'dictation');
+      } catch (error) {
+        this.deps.onError(this.deps.describeError(error));
+      }
       return;
     }
     // "Type" … (a pause) … "hello there": people pause after "type", so it arrives as two utterances.

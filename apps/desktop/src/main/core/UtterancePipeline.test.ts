@@ -182,6 +182,20 @@ describe('UtterancePipeline', () => {
     expect(log).toEqual(['llm hello there', 'insert Hello there.']);
   });
 
+  it('joins pieces told one after another with a space, and starts clean after a command', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('hello there'));
+    await pipeline.deliver(segment('how are you'));
+    expect(log.filter((entry) => entry.startsWith('insert'))).toEqual([
+      'insert Hello there.',
+      'insert  How are you.',
+    ]);
+    await pipeline.deliver(segment('see you soon', send));
+    await pipeline.deliver(segment('next message'));
+    const inserts = log.filter((entry) => entry.startsWith('insert'));
+    expect(inserts.at(-1)).toBe('insert Next message.');
+  });
+
   it('inserts, shows the preview chip, then sends', async () => {
     const { pipeline, log, outcomes } = setup({ contexts: [slack] });
     await pipeline.deliver(segment('see you soon', send));

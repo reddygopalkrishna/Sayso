@@ -53,6 +53,44 @@ function setup(over: { sttReady?: boolean; startFails?: boolean; holdBusy?: bool
   };
 }
 
+describe('HandsFreeController: typing mode', () => {
+  it('types every utterance, with pauses between, until "stop typing"', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('Start typing.'));
+    t.advance(2_000);
+    await t.controller.handleHeard(heard('Once upon a time there was a king'));
+    t.advance(5_000);
+    await t.controller.handleHeard(heard('He had three sons'));
+    await t.controller.handleHeard(heard('Stop typing'));
+    await t.controller.handleHeard(heard('He had three sons'));
+    expect(t.log).toEqual([
+      'start',
+      'dictation: Once upon a time there was a king',
+      'dictation: He had three sons',
+    ]);
+  });
+
+  it('ends by itself after three quiet minutes', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('start dictation'));
+    t.advance(181_000);
+    await t.controller.handleHeard(heard('hello there how are you'));
+    expect(t.log).toEqual(['start']);
+  });
+
+  it('turning hands-free off ends it', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('start typing'));
+    await t.controller.disable();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('hello there how are you'));
+    expect(t.log).toEqual(['start', 'stop', 'start']);
+  });
+});
+
 describe('HandsFreeController: "type" then the words', () => {
   it('types the next utterance after a lone "type"', async () => {
     const t = setup();

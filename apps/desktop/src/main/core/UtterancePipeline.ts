@@ -136,6 +136,9 @@ export interface PipelineFailure {
  * The context is read again right before every action, because the user may have switched apps or
  * fields while the AI cleanup or the preview chip was running.
  */
+/** Text typed within this long of the last, in the same app, is joined with a space. */
+const JOIN_WINDOW_MS = 30_000;
+
 export class UtterancePipeline {
   /** The risky action waiting for "yes": one at a time, and only until it expires. */
   private pending: {
@@ -173,7 +176,7 @@ export class UtterancePipeline {
       // "type my email" / "type calendly": a snippet or a fact about you is typed as saved.
       const text =
         this.opts.snippets?.find(literal) ?? typeLiterally(literal, this.opts.dictionary?.() ?? []);
-      if (text !== '') await this.insert(text);
+      if (text !== '') await this.insertJoined(text);
       this.opts.onOutcome?.({
         mode: 'dictation',
         segment,
@@ -218,7 +221,7 @@ export class UtterancePipeline {
           ),
         );
         if (typed !== '') {
-          await this.insert(typed);
+          await this.insertJoined(typed);
           inserted = true;
           if (typed !== cleanup.text) styled = typed;
         }
@@ -252,6 +255,7 @@ export class UtterancePipeline {
   }
 
   private async deliverCommand(segment: TranscriptSegment, context: AppContext): Promise<void> {
+    this.lastTyped = null;
     const text = applyDictionary(segment.text, this.opts.dictionary?.() ?? []);
     const steps = this.opts.engine.matchChain
       ? this.opts.engine.matchChain(text)
@@ -321,9 +325,29 @@ export class UtterancePipeline {
     if (!check.ok) throw new SafetyRefusal(check.reason);
   }
 
+
+  /** The last text typed, so a story told in several pieces gets a space between them. */
+  private lastTyped: { bundleId: string | null; at: number; endsOpen: boolean } | null = null;
+
   private async insert(text: string): Promise<void> {
     this.assertCanInsert(await this.opts.readContext());
     await this.opts.actions.insertText(text);
+  }
+
+  /** Dictated text: joined to the piece typed just before it with a space (see `lastTyped`). */
+  private async insertJoined(text: string): Promise<void> {
+    const context = await this.opts.readContext();
+    this.assertCanInsert(context);
+    const now = Date.now();
+    const joins =
+      this.lastTyped !== null &&
+      this.lastTyped.bundleId === context.bundleId &&
+      now - this.lastTyped.at < JOIN_WINDOW_MS &&
+      this.lastTyped.endsOpen &&
+      !/^[\s.,;:!?)\]}'"”’]/.test(text);
+    const typed = joins ? ` ${text}` : text;
+    await this.opts.actions.insertText(typed);
+    this.lastTyped = { bundleId: context.bundleId, at: now, endsOpen: !/\s$/.test(typed) };
   }
 
   /**
@@ -544,6 +568,7 @@ export class UtterancePipeline {
     match: InstantMatch,
     how: { onCancel?: () => Promise<void>; failOnRefusal?: boolean; allowConfirm?: boolean },
   ): Promise<CommandOutcome> {
+    this.lastTyped = null; // a command (send, enter, new line) ends the run of text
     const spec = match.command;
     const live = await this.opts.readContext();
     const decision = decideAction(spec, live, this.opts.previewMs(), match.args);

@@ -2,7 +2,12 @@ import { commands } from '@sayso/command-grammar';
 import { describe, expect, it } from 'vitest';
 import { CommandEngine } from '../commands/CommandEngine.ts';
 import type { TranscriptSegment } from '../stt/types.ts';
-import { classifyHeard, isStopListening } from './triggers.ts';
+import {
+  classifyHeard,
+  isStartTyping,
+  isStopListening,
+  isStopTyping,
+} from './triggers.ts';
 
 const engine = new CommandEngine(commands);
 const isCommand = (text: string): boolean => engine.matchChain(text) !== null;
@@ -124,4 +129,22 @@ describe('isStopListening', () => {
   ])('%j does not', (text) => {
     expect(isStopListening(text)).toBe(false);
   });
+});
+
+describe('typing mode phrases', () => {
+  it.each(['Start typing.', 'start dictation', 'Dictation mode', 'begin typing', 'turn on dictation mode'])(
+    '%j starts it',
+    (text) => expect(isStartTyping(text)).toBe(true),
+  );
+  it.each(['Stop typing.', 'stop dictation', 'End dictation', 'done typing', 'dictation off'])(
+    '%j stops it',
+    (text) => expect(isStopTyping(text)).toBe(true),
+  );
+  it.each(['type start typing', 'I want to start typing a story', 'stop', 'typing'])(
+    '%j is neither',
+    (text) => {
+      expect(isStartTyping(text)).toBe(false);
+      expect(isStopTyping(text)).toBe(false);
+    },
+  );
 });
