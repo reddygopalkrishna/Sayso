@@ -39,6 +39,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:22 · UI: a sidebar like Infina's (`38ba5d5`)
+- **What:** the top tabs are now a left sidebar: Sayso mark and name; Home, Activity, About me, Words, Settings with icons; the current one highlighted; and a small status at the bottom ("Listening" / "Hands-free off"). Every page has a title and a one-line subtitle, in a centred column.
+- **Next in the UI:** restyle Home (a big hands-free card, the hold key), then the other screens.
+- **See it without the app:** `http://localhost:5173/?preview` while `pnpm dev` runs.
+- Tests: desktop tests pass (new: the sidebar); typecheck and lint clean.
+
 ### 15:19 · The interpreter forgives what speech recognition mishears (`0899fa0`)
 - **From your own log:** "New tab" was heard as "New time" and "Close tab" as "Closed", and the interpreter gave up. It is now told the words come from speech recognition (with examples) and to pick the command or screen name they sound like; it still gives nothing when nothing is close.
 - **Checked live against Groq:** "New time" → new tab; "Closed" → close tab; "Go bag" → go back; "Scroll don" → scroll down; "click sign it" → click Sign in; "New time and search for AWS" → new tab, type AWS (160 to 290 ms). "banana" and a weather question: no plan.
