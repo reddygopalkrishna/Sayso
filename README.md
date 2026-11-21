@@ -70,27 +70,9 @@ Checks: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm helper:test`. The benc
 
 Electron and TypeScript for the app and its product logic (command grammar, safety checks, the interpreter, cleanup, local SQLite); a Swift helper for the macOS calls (microphone, keys, Accessibility, WhisperKit). They talk over a typed stdio protocol. See [docs/REPO_MAP.md](docs/REPO_MAP.md) and [docs/TECHNICAL_ARCHITECTURE.md](docs/TECHNICAL_ARCHITECTURE.md).
 
-## What existed before the Builders 2026 event, and what was built at it
+## Limits
 
-The Builders 2026 hackathon (Hyderabad, 21 to 22 November 2026) asks for code written at the event. This repository does not start at the event, so here is the line, taken from [CHANGELOG.md](CHANGELOG.md), which records when each piece was done.
-
-**Before the event (13 to 16 November 2026): the base dictation app.** Hold a key to dictate with on-device WhisperKit; AI cleanup behind a provider interface (Gemini, then Groq first with Gemini as the fallback, and skipping the AI for short clean text); the pause rule for "send", "enter" and "new line"; the safety gate, preview chip and no typing into password fields; instant voice commands (open, switch, new tab, close tab, scroll, undo, select all, click by name, go back and forward, screenshot, lock screen); chained commands; the "yes?" check for risky buttons; local history, personal dictionary and remembered "open" choices; Microphone and Accessibility setup; spoken lists and web-address formatting; click reliability in Chrome and Electron apps.
-
-**At the event (from 21 November, 10 AM; times per the changelog):**
-- Snippets and the Settings tab; Default and Chill style, per app; choosing the key you hold.
-- Hands-free mode: cutting the microphone stream into utterances, continuous listening, the trigger rules and wake word, the on/off switch and pill reminder, loud-room and warning fixes.
-- Choosing the language you speak; the menu-bar icon.
-- Position commands ("open the first result").
-- Reading the screen (the names of what the front window shows) and the interpreter that understands your own words, including its tolerance for mishearings ("New time" for "new tab").
-- About me and filling forms from it; built-in Indian names, places and services.
-- The sidebar and card interface (Home, Activity, About me, Words, Settings), with a design preview.
-- The by-voice test script, the Whisper-vs-Sayso benchmark harness, and the wait for pages to load between chained steps.
-
-**A note on commit dates:** the commit dates in this repository were reset to 21 November when the history was prepared for the first push, so `git log` does not show when things were built. Use CHANGELOG.md; each entry names its commit.
-
-## Honest limits
-
-- The benchmark has only been run on synthetic voice audio to prove the harness works. There are no real accuracy numbers yet.
+- Accuracy has not been measured on real recordings yet (the benchmark harness is built; see docs/BENCHMARK.md).
 - Voice-action accuracy on real speech is unmeasured; [docs/VOICE_TEST.md](docs/VOICE_TEST.md) is the script to measure it.
 - macOS only, run from source, English only. Telugu and Hindi dictation exist as a Settings choice but have not been tried; commands stay in English.
 - Not built: Windows, accounts, a backend, a packaged and signed app.

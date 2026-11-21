@@ -38,7 +38,7 @@ Notes:
 
 - The problem: voice tools type, but they do not act, and they get Indian names wrong.
 - What is different: it also does things, understands your own words, fills forms from facts that stay on your Mac, and the speech runs on the device.
-- The honest part: the base dictation app existed before the event; the README lists what was built at it. The benchmark harness is built, and the real recordings for real numbers are next.
+- The honest part: the benchmark harness is built, and the real recordings for real numbers are next.
 
 ## What is certain and what is not
 
