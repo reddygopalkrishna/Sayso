@@ -43,8 +43,27 @@ describe('GeminiProvider', () => {
     expect(body.generationConfig.temperature).toBe(0);
   });
 
-  it('defaults to the latest Flash model', () => {
-    expect(new GeminiProvider({ apiKey: 'k', fetch: ok('x') }).model).toBe('gemini-flash-latest');
+  it('defaults to Flash-Lite with minimal thinking', async () => {
+    const fetchMock = ok('x');
+    const gemini = new GeminiProvider({ apiKey: 'k', fetch: fetchMock });
+    expect(gemini.model).toBe('gemini-flash-lite-latest');
+    await gemini.cleanup(request, new AbortController().signal);
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      generationConfig: { thinkingConfig?: { thinkingLevel: string } };
+    };
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' });
+  });
+
+  it('sends no thinking config for a custom model unless asked', async () => {
+    const fetchMock = ok('x');
+    await new GeminiProvider({ apiKey: 'k', model: 'gemini-x', fetch: fetchMock }).cleanup(
+      request,
+      new AbortController().signal,
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      generationConfig: { thinkingConfig?: unknown };
+    };
+    expect(body.generationConfig.thinkingConfig).toBeUndefined();
   });
 
   it.each([

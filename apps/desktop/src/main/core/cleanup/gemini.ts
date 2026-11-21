@@ -2,10 +2,21 @@ import { z } from 'zod';
 import { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
 import { LLMError, type CleanupRequest, type LLMProvider } from './types.ts';
 
+/**
+ * Default: Google's current Flash-Lite with minimal thinking. Measured Nov 2026: about 0.9–1.3 s,
+ * well inside the cleanup timeout, while the full Flash models were often overloaded (503) or slow.
+ */
+export const DEFAULT_GEMINI_MODEL = 'gemini-flash-lite-latest';
+
 export interface GeminiOptions {
   apiKey: string;
-  /** `gemini-flash-latest` follows Google's current Flash model. */
+  /** Any Gemini model id; defaults to DEFAULT_GEMINI_MODEL. */
   model?: string;
+  /**
+   * Sent as `thinkingConfig.thinkingLevel`. Defaults to 'minimal' for the default model only,
+   * because not every model accepts every level (an unsupported one is a 400 error).
+   */
+  thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high' | null;
   fetch?: typeof fetch;
   baseUrl?: string;
 }
@@ -28,6 +39,7 @@ const ErrorSchema = z.object({ error: z.object({ message: z.string() }) });
 export class GeminiProvider implements LLMProvider {
   readonly name = 'gemini';
   readonly model: string;
+  private readonly thinkingLevel: GeminiOptions['thinkingLevel'];
   private readonly apiKey: string;
   private readonly fetchImpl: typeof fetch;
   private readonly baseUrl: string;
@@ -35,7 +47,13 @@ export class GeminiProvider implements LLMProvider {
   constructor(options: GeminiOptions) {
     if (!options.apiKey) throw new LLMError('Gemini API key is empty');
     this.apiKey = options.apiKey;
-    this.model = options.model ?? 'gemini-flash-latest';
+    this.model = options.model ?? DEFAULT_GEMINI_MODEL;
+    this.thinkingLevel =
+      options.thinkingLevel !== undefined
+        ? options.thinkingLevel
+        : this.model === DEFAULT_GEMINI_MODEL
+          ? 'minimal'
+          : null;
     this.fetchImpl = options.fetch ?? fetch;
     this.baseUrl = options.baseUrl ?? 'https://generativelanguage.googleapis.com/v1beta';
   }
@@ -50,6 +68,7 @@ export class GeminiProvider implements LLMProvider {
         candidateCount: 1,
         // Room for the cleaned text, which is never much longer than the input.
         maxOutputTokens: Math.min(8192, 64 + Math.ceil(request.rawText.length / 2)),
+        ...(this.thinkingLevel ? { thinkingConfig: { thinkingLevel: this.thinkingLevel } } : {}),
       },
     };
     let response: Response;
