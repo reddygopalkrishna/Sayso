@@ -17,7 +17,8 @@ export type FnListenerStatus = 'unknown' | 'active' | 'unavailable';
 export type HandsFreeStatus =
   | { state: 'off' }
   | { state: 'starting' }
-  | { state: 'listening' }
+  /** `typing`: typing mode is on, so everything said is typed (until "stop typing"). */
+  | { state: 'listening'; typing?: boolean }
   | { state: 'error'; message: string };
 
 export type DictationState =

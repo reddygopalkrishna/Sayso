@@ -71,6 +71,19 @@ describe('HandsFreeController: typing mode', () => {
     ]);
   });
 
+  it('tells the pill when typing mode is on and off', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('start typing'));
+    await t.controller.handleHeard(heard('stop typing'));
+    expect(t.statuses).toEqual([
+      { state: 'starting' },
+      { state: 'listening' },
+      { state: 'listening', typing: true },
+      { state: 'listening' },
+    ]);
+  });
+
   it('ends by itself after three quiet minutes', async () => {
     const t = setup();
     await t.controller.enable();

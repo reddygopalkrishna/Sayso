@@ -429,6 +429,15 @@ describe('HandsFreeCard', () => {
 });
 
 describe('pillContent', () => {
+  it('shows typing mode, the one time hands-free needs a sign', () => {
+    const shown = pillContent({
+      ...initialStatus,
+      handsFree: { state: 'listening', typing: true },
+    });
+    expect(shown?.text).toContain('Typing mode');
+    expect(shown?.text).toContain('stop typing');
+  });
+
   it('is empty when idle and hands-free is off', () => {
     expect(pillContent(initialStatus)).toBeNull();
   });

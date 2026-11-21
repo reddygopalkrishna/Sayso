@@ -24,6 +24,10 @@ function content(state: DictationState): { text: string; dot: string } | null {
 export function pillContent(status: AppStatus): { text: string; dot: string } | null {
   const dictating = content(status.dictation);
   if (dictating) return dictating;
+  // Typing mode has no key held, so the pill is the only sign that everything said is being typed.
+  if (status.handsFree.state === 'listening' && status.handsFree.typing) {
+    return { text: 'Typing mode · say “stop typing” to end', dot: 'bg-emerald-500' };
+  }
   return status.handsFree.state === 'listening'
     ? { text: 'Hands-free · say “type …”', dot: 'bg-emerald-500' }
     : null;

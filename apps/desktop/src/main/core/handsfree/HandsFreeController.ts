@@ -54,6 +54,7 @@ export class HandsFreeController {
   private typeNextUntil = 0;
   /** "Start typing": every utterance is typed until "stop typing" (or this long after the last). */
   private typingUntil = 0;
+  private typingTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly deps: HandsFreeDeps) {
     this.now = deps.now ?? Date.now;
@@ -82,7 +83,7 @@ export class HandsFreeController {
 
   async disable(): Promise<void> {
     if (this.current.state === 'off') return;
-    this.typingUntil = 0;
+    this.setTyping(false);
     this.typeNextUntil = 0;
     this.set({ state: 'off' });
     this.awakeUntil = 0;
@@ -130,12 +131,12 @@ export class HandsFreeController {
     }
     // "Start typing" … "stop typing": a long text told in several breaths, typed as it is said.
     if (isStopTyping(segment.text)) {
-      this.typingUntil = 0;
+      this.setTyping(false);
       this.deps.log?.(`[hands-free] heard ${heardText}: typing mode off`);
       return;
     }
     if (isStartTyping(segment.text)) {
-      this.typingUntil = this.now() + TYPING_IDLE_MS;
+      this.setTyping(true);
       this.deps.log?.(
         `[hands-free] heard ${heardText}: typing mode on (say "stop typing" to end it)`,
       );
@@ -143,6 +144,7 @@ export class HandsFreeController {
     }
     if (this.now() < this.typingUntil && segment.text !== '') {
       this.typingUntil = this.now() + TYPING_IDLE_MS;
+      this.typingTimer?.refresh();
       this.deps.log?.(
         `[hands-free] heard ${heardText}: typing (typing mode); STT ${Math.round(message.sttMs)} ms`,
       );
@@ -192,6 +194,21 @@ export class HandsFreeController {
       await this.deps.deliver(result.intent.segment, mode);
     } catch (error) {
       this.deps.onError(this.deps.describeError(error));
+    }
+  }
+
+  /** Turns typing mode on or off and tells the pill. `idleTimer` ends it after a quiet while. */
+  private setTyping(on: boolean): void {
+    const changed = (this.typingUntil !== 0) !== on;
+    if (this.typingTimer) clearTimeout(this.typingTimer);
+    this.typingTimer = null;
+    this.typingUntil = on ? this.now() + TYPING_IDLE_MS : 0;
+    if (on) {
+      this.typingTimer = setTimeout(() => this.setTyping(false), TYPING_IDLE_MS);
+      this.typingTimer.unref?.();
+    }
+    if (changed && this.current.state === 'listening') {
+      this.set(on ? { state: 'listening', typing: true } : { state: 'listening' });
     }
   }
 
