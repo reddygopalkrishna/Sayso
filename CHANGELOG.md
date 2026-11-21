@@ -14,7 +14,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Adaptive pause:** the pause before "send" is fixed at 600 ms (`SAYSO_PAUSE_MS` to change it). The plan is to learn it per user from cancellations (`adaptive_stats`, step 7).
 - **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
 - **Phase 0 step 7:** local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
-- **Chrome, Electron apps and "click X" / password detection (verify, then decide):** Chromium-based apps (Chrome, Slack, VS Code, Claude, Discord) only expose their accessibility tree after an assistive tool turns it on (setting `AXManualAccessibility` on the app). Until then the focused field reads as unknown there, so password-field detection and "click Submit" may not see anything in those apps. Native apps (Safari, Mail, Notes, Finder) are fine. Fix if the hand tests confirm it: switch accessibility on for the frontmost app when its tree looks empty (a small speed cost in that app, so it needs your OK).
+- **Password-field detection in Chrome (still to verify):** "click Submit" works in Chrome (tested for real: it pressed a search suggestion), so Chrome does expose its page. Whether Chrome also reports a *password* box as secure is not yet checked, and other Chromium/Electron apps (Slack, VS Code, Claude) may expose less. Test by hand: focus a password box in Chrome and dictate; expect "Sayso does not type into password fields." If it types, the fix is to switch accessibility on for the frontmost app (a small speed cost in that app, so it needs your OK).
 - **"Delete that" removes the current selection only,** not the last thing you dictated. A reliable "delete my last dictation" needs the length of the last paste (or an undo of it); decide with real use.
 - **Remembered choices for "open X":** when an app and a website both fit ("GitHub" vs GitHub Desktop) the PRD asks once and remembers; for now an exact app name wins, then a known site, then a prefix match. Needs the local database (step 7) and a chip.
 - **More commands from the PRD:** volume, lock screen, dark mode, screenshot; positional arguments ("open the third email"); "open GitHub in Chrome" (a named browser).
@@ -32,6 +32,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 15:35 · Fix: "open Chrome" opened a web search instead of the app
+- Found in your real test: "Open Chrome" ran a Google search for "chrome" (which opened in Chrome), because app names only matched from their first word and "chrome" is the second word of "Google Chrome".
+- A whole word inside an app name now counts: "open chrome" → Google Chrome, "open code" → Visual Studio Code, "switch to chrome" works too. Order: exact app name → known website → name starts with it → name contains it as a word → close mis-hearing → web search. Partial words still don't match ("chro" is not Chrome).
+- Your test also confirmed in real use: open Calculator, new tab, close tab, scroll down, click by label in Chrome, and send/enter after a pause.
 
 ### 12:49 · Phase 0 step 6: instant voice commands (hold Fn+Shift) (`0cc6831`)
 - **Command mode:** hold **Fn + Shift** and speak a command. Everything said in command mode is a command and is never typed; if it is not a command, the pill says what it heard. Plain Fn is still dictation (so "undo" said while dictating is just text). The pill shows "Command…" while you hold.

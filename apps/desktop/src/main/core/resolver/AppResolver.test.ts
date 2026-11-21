@@ -23,15 +23,15 @@ describe('resolveOpen', () => {
     ['Slack', 'app', 'com.tinyspeck.slackmacgap'],
     ['calculator', 'app', 'com.apple.calculator'],
     ['visual studio', 'app', 'com.microsoft.VSCode'], // prefix of the app name
-    ['chrome', 'app', 'com.google.Chrome'] as const, // not exact, no site: falls to... see below
+    ['chrome', 'app', 'com.google.Chrome'], // a word inside the app name (open Chrome)
+    ['code', 'app', 'com.microsoft.VSCode'],
+    ['studio code', 'app', 'com.microsoft.VSCode'],
   ])('%s → %s', (target, type, bundleId) => {
-    const r = resolveOpen(target, apps);
-    if (target === 'chrome') {
-      // "chrome" is not a prefix of "Google Chrome"; it falls through to a web search.
-      expect(r.type).toBe('url');
-      return;
-    }
-    expect(r).toMatchObject({ type, bundleId });
+    expect(resolveOpen(target, apps)).toMatchObject({ type, bundleId });
+  });
+
+  it('a word match must be a whole word: chro is not Chrome', () => {
+    expect(resolveOpen('chro', apps)).toMatchObject({ type: 'url', kind: 'search' });
   });
 
   it('a known site wins over an app that merely starts with its name', () => {
@@ -113,6 +113,7 @@ describe('resolveSwitch', () => {
     ['safari', 'com.apple.Safari'],
     ['Slack', 'com.tinyspeck.slackmacgap'],
     ['google chrome', 'com.google.Chrome'],
+    ['chrome', 'com.google.Chrome'],
   ])('%s', (name, bundleId) => {
     expect(resolveSwitch(name, apps)?.bundleId).toBe(bundleId);
   });

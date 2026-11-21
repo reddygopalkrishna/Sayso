@@ -82,7 +82,8 @@ function similarity(a: string, b: string): number {
   return longest === 0 ? 1 : 1 - (prev[b.length] ?? 0) / longest;
 }
 
-type Tier = 'exact' | 'prefix' | 'fuzzy';
+/** Exact name; name starts with the words; name contains them as a word (chrome, Google Chrome); mis-hearing. */
+type Tier = 'exact' | 'prefix' | 'word' | 'fuzzy';
 
 /** Best app for a spoken name at the given tier; running apps and shorter names win ties. */
 function findApp(name: string, apps: readonly KnownApp[], tier: Tier): KnownApp | null {
@@ -90,6 +91,7 @@ function findApp(name: string, apps: readonly KnownApp[], tier: Tier): KnownApp 
     const n = words(app.name);
     if (tier === 'exact') return n === name;
     if (tier === 'prefix') return n.startsWith(`${name} `);
+    if (tier === 'word') return ` ${n} `.includes(` ${name} `);
     return name.length >= FUZZY_MIN_LENGTH && similarity(n, name) >= FUZZY_MIN_SIMILARITY;
   });
   candidates.sort((a, b) => Number(b.running) - Number(a.running) || a.name.length - b.name.length);
@@ -110,7 +112,8 @@ function findSite(name: string, tier: 'exact' | 'fuzzy'): string | null {
 
 /**
  * "open X" (PRD §7.5). Order: a domain you spelled out → an installed app with exactly that name →
- * a known website → an app whose name starts with it → a close mis-hearing of an app or site → a
+ * a known website → an app whose name starts with it, or contains it as a word (chrome, Google
+ * Chrome) → a close mis-hearing of an app or site → a
  * web search. (When an app and a site both match, the PRD asks once and remembers; that needs the
  * local database, step 7, so the exact app wins for now.)
  */
@@ -130,6 +133,7 @@ export function resolveOpen(target: string, apps: readonly KnownApp[]): OpenReso
     app('exact') ??
     site('exact') ??
     app('prefix') ??
+    app('word') ??
     app('fuzzy') ??
     site('fuzzy') ?? {
       type: 'url',
@@ -144,7 +148,10 @@ export function resolveSwitch(name: string, apps: readonly KnownApp[]): KnownApp
   const running = apps.filter((app) => app.running);
   const n = words(name);
   return (
-    findApp(n, running, 'exact') ?? findApp(n, running, 'prefix') ?? findApp(n, running, 'fuzzy')
+    findApp(n, running, 'exact') ??
+    findApp(n, running, 'prefix') ??
+    findApp(n, running, 'word') ??
+    findApp(n, running, 'fuzzy')
   );
 }
 
