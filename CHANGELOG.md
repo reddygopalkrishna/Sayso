@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 01:50 · Speech right after the double tap, ChatGPT and "new chat" mishearings (`1322303`)
+- **Why:** the founder's log: "Open chat GPT" said just after the double tap was ignored ("said while holding the key"), because the tap that started hands-free counted as a recent hold; ChatGPT was heard as "Charged GPT", "to RGBT", "charge GPT"; "A new chat?" was ignored and "Click/Open New Chart" clicked or searched instead of starting a chat.
+- **What:** a tap (cancelled as too short) no longer counts as a recent hold. "charged gpt", "to rgbt" and a few more are added to the built-in ChatGPT spellings. "new chart" now means "new chat" anywhere in a command, and "a new chat" is accepted.
+- **Tested:** unit tests (1,608 desktop); not tried by voice yet.
+- **Not fixed:** "Click Sign in"-style clicks still need a visible button with that name; "Open Chrome" ran "in Claude" only because Claude was in front when you spoke.
+
 ### 01:35 · "New chat" (`aa2cd64`)
 - **Why:** the founder said "new chat" in ChatGPT and Claude; it was heard as "new chart" and no command matched.
 - **What:** new command **new chat** ("start a new chat", "open a new chat", "new conversation"). It presses **⌘N** in the ChatGPT and Claude desktop apps (read from their File menus: "New Chat" in ChatGPT, "New Session" in Claude) and **⇧⌘O** everywhere else, which is the shortcut on chatgpt.com and claude.ai. The heard-as "new chart" and "new check" count as "new chat" when they are the whole utterance. A new action type, `contextual_new_chat`, picks the keys by app like "send" does.
