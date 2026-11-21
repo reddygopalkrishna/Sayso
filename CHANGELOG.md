@@ -39,6 +39,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 14:46 · Reading the screen, slice 1: the helper lists what the front window shows (`b392613`)
+- **What:** a new helper request, `listElements`, answers with the names and kinds (button, link, menu, checkbox, field) of what the front window shows, top to bottom, at most 60. Names only: a field is listed by its label or placeholder, never by what is typed in it; password fields are skipped.
+- **Why:** to let Sayso understand your own words, it has to know what you could name on screen. This is the "read the screen" half; the interpreter that uses it comes in slice 2 and 3.
+- **Privacy note for the next slices:** the list includes things like your open Chrome tab titles. It will only be sent to an AI when the "understand my own words" fallback is used (never for exact commands), and that will be a setting you can switch off.
+- **Checked live** against Chrome: 60 items with their kinds. Nothing uses it yet, so no visible change.
+- Tests: 70 helper, 67 protocol and 1,127 desktop tests pass; typecheck and lint clean.
+
 ### 14:37 · UI work, step 1: design preview with sample data (`46b4cc0`)
 - **Development only:** open the dev URL in a normal browser with `?preview` (e.g. `http://localhost:5173/?preview` while `pnpm dev` runs) to see every screen with sample data. Not part of the app build.
 - The app status now carries the hold key, for Home to show which key to hold.
