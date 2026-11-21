@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 00:40 · Hands-free: noisy rooms no longer make long utterances (`b3a867d`)
+- **Why:** the founder's log showed hands-free "utterances" of 9–15 s for two words ("Open Chrome." heard after 12.9 s). The helper's room-noise estimate started at "silent room" and took about 6 s to catch up, so a room that was already noisy (video, fan, typing) was cut into long chunks of noise, and a command inside one ran about 10 s late.
+- **What:** the room's level is now also the lowest level of the last 1.5 s. Speech has dips between words, steady noise does not, so noise is learned within about 1.5 s and the utterance ends 0.65 s after the last word. The 0.65 s end-of-speech silence (was 1 s) from the working folder is included with its test.
+- **Tested:** two new helper tests (noise that starts suddenly; speech over background ends with the speech) and all 88 helper tests pass. **Not tried live:** restart `pnpm dev` and say "open Chrome" in hands-free; the `heard (… s)` figure should now be 2–3 s, not 9–15 s.
+- **Seen in the same log, not fixed:** a held-key recording made while hands-free was decoding a long chunk took 3.1 s (the model decodes one thing at a time), so shorter hands-free chunks should help that too. macOS's own "press Fn twice" shortcut should be **Off** (it was turned on).
+
 ### 00:33 · Double-tap Fn toggles hands-free (`2fc184a`)
 - **Why:** the founder asked to switch hands-free on and off with Fn, Fn instead of the switch.
 - **What:** two quick taps of the hold key (each under 0.25 s, the second within 0.45 s of the first) turn hands-free on, or off if it is on. The second press is swallowed, so no recording starts for it; Fn with another key or Shift is never counted as a tap. The pill shows the error if hands-free cannot start (model still loading, no microphone).
