@@ -40,6 +40,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 16:29 · Messages are exactly what was said (`a45fbe9`)
+- **What:** in "message Priya on Slack saying …", everything after "saying" / "that says" is the message, word for word: it is never matched to commands (so "type", "send it", "open Slack", "new tab", "yes", "never mind" inside it stay text), never cut at a comma or "then", never touched by an AI (no cleanup call any more), and keeps its capitals, apostrophes and punctuation. Only your own spellings and web addresses are fixed, as when typing by voice ("www dot example dot com" becomes www.example.com). The end of the message is the pause in your speech; no stop word is used ("stop" stays the cancel command).
+- **New phrasings:** "send Priya a message saying …", "tell Priya that …" and "tell Priya to say …". "tell Priya hello" is not taken (a name and a text cannot be told apart without a marker).
+- **Interpreter:** it may still choose to send a message (for example "tell priya on slack I am running late"), but its text is replaced by the words really said, found in what you said ignoring case and punctuation. If the AI changed, shortened or invented the text, the whole plan is dropped and nothing runs. The prompt now says to copy the words exactly.
+- **Chains:** "open Slack, message Priya saying hello, then bye" is two steps; the message runs to the end of the sentence.
+- **Tested in code:** the matcher (apostrophes and punctuation kept, "type" / "send it" / "open" / "new tab" / "yes" / "cancel" words inside a message, commas and "then", chains, the ambiguous "tell" forms), the pipeline with fakes (the text typed and shown on the chip, no AI call, only the recipe's own keys pressed, a web address, your spellings, interpreter plans rewritten to the real words or dropped), and `verbatimIn` itself. 1,404 desktop tests pass.
+- **Restart needed:** main-process change.
+
 ### 16:26 · A one-page site (`4999a5c`)
 - **What:** `site/` is a static page (`index.html`, `styles.css`, no build step, no JavaScript, no external fonts or scripts): the hero "Say it. Sayso does it.", what it does today, a "still being tested" box, a demo-video placeholder, how it works, privacy, planned pricing and an "English today, Telugu and Hindi next" line. Light and dark, works at phone width. `site/README.md` explains previewing it and deploying it to AWS (S3 with CloudFront, or Amplify).
 - **Kept honest:** every feature card says how far it has been tested (by hand, through the helper, in code), hands-free, messaging and non-English dictation are listed as still being tested, and no number, testimonial or download link is shown. Pricing is labelled **planned pricing, no billing yet** (Free; Pro ₹399 a month or $99 a year; Teams next).
