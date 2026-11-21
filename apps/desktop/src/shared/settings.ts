@@ -13,6 +13,27 @@ export const CLEANUP_LEVELS = ['off', 'light', 'full'] as const;
 export const HOLD_KEYS = ['fn', 'rightOption', 'rightCommand', 'rightControl'] as const;
 export type HoldKeyName = (typeof HOLD_KEYS)[number];
 
+/** Languages you can speak, by their two-letter code; "auto" lets the speech model detect it. */
+export const LANGUAGES = [
+  'auto',
+  'en',
+  'te',
+  'hi',
+  'ta',
+  'kn',
+  'ml',
+  'mr',
+  'bn',
+  'gu',
+  'pa',
+  'ur',
+  'es',
+  'fr',
+  'de',
+  'pt',
+] as const;
+export type Language = (typeof LANGUAGES)[number];
+
 /** Default: capitals and full punctuation. Chill: no capitals and minimal punctuation. */
 export const STYLES = ['default', 'chill'] as const;
 export type Style = (typeof STYLES)[number];
@@ -35,6 +56,8 @@ export interface UserSettings {
   holdKey: HoldKeyName;
   /** Hands-free: one word said before a command, lowercase ("sayso"). */
   wakeWord: string;
+  /** The language you speak, or "auto" to detect it each time. */
+  language: Language;
 }
 
 /** One or more settings to change. Anything else, or any value out of range, is rejected. */
@@ -47,6 +70,7 @@ export const SettingsPatchSchema = z
     style: z.enum(STYLES),
     holdKey: z.enum(HOLD_KEYS),
     wakeWord: z.string().regex(/^[a-z][a-z0-9]{1,29}$/),
+    language: z.enum(LANGUAGES),
     historyKeep: z
       .number()
       .int()

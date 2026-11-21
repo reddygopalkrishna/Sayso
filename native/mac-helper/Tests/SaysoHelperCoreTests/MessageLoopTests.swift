@@ -29,8 +29,16 @@ final class BufferWriter: LineWriter, @unchecked Sendable {
     }
 }
 
+/// Records the language the loop asked for (the real transcriber passes it to WhisperKit).
+actor LanguageLog {
+    private(set) var codes: [String?] = []
+    func add(_ code: String?) { codes.append(code) }
+}
+
 struct FakeTranscriber: Transcribing {
     let modelName = "fake-model"
+    var languages = LanguageLog()
+    func setLanguage(_ code: String?) async { await languages.add(code) }
     var result = Transcription(text: "hello world", words: [
         Word(text: "hello", startMs: 0, endMs: 400, p: 0.9),
         Word(text: "world", startMs: 450, endMs: 900, p: 0.8),
@@ -354,6 +362,15 @@ struct Harness {
         #expect(h.out.messages == [.done(id: "e-1"), .done(id: "e-2")])
         await h.send(#"{"v":1,"type":"shutdown"}"#)
         #expect(h.escape.states.last == false)
+    }
+
+    @Test func changesTheSpokenLanguageOnRequest() async {
+        let transcriber = FakeTranscriber()
+        let h = Harness(transcriber: transcriber)
+        await h.send(#"{"v":1,"type":"setLanguage","id":"g-1","language":"te"}"#)
+        await h.send(#"{"v":1,"type":"setLanguage","id":"g-2","language":null}"#)
+        #expect(await transcriber.languages.codes == ["te", nil])
+        #expect(h.out.messages == [.done(id: "g-1"), .done(id: "g-2")])
     }
 
     @Test func changesTheHoldKeyOnRequest() async {

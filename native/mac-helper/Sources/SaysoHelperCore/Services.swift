@@ -28,6 +28,12 @@ public protocol Transcribing: Sendable {
     var modelName: String { get }
     /// Transcribes 16 kHz mono samples with word timings. Throws `ServiceError` (stt_failed).
     func transcribe(_ samples: [Float]) async throws -> Transcription
+    /// The language spoken, as a two-letter code ("en", "te", "hi"), or nil to detect it.
+    func setLanguage(_ code: String?) async
+}
+
+extension Transcribing {
+    public func setLanguage(_ code: String?) async {}
 }
 
 @MainActor

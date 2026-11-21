@@ -80,6 +80,7 @@ const settingsNow = (): UserSettings => ({
   style: config.style,
   holdKey: config.holdKey,
   wakeWord: config.wakeWord,
+  language: config.language,
 });
 const startingSettings = settingsNow();
 // Tells the helper which key is held to dictate (on connect, after a restart, and on a change).
@@ -89,6 +90,13 @@ const sendHoldKey = (): void => {
   void actions
     .setHoldKey(config.holdKey)
     .catch((error: unknown) => warn('could not set the hold key', error));
+};
+// Tells the helper which language is spoken (on connect and when it changes).
+const sendLanguage = (): void => {
+  if (helper.status.state !== 'connected') return;
+  void actions
+    .setLanguage(config.language === 'auto' ? null : config.language)
+    .catch((error: unknown) => warn('could not set the language', error));
 };
 const refreshCleanupStatus = (): void =>
   status.update({
@@ -289,6 +297,7 @@ helper.onStatus((helperStatus) => {
   if (helperStatus.state === 'connected') {
     void permissions.refresh();
     sendHoldKey();
+    sendLanguage();
   } else permissions.reset();
   if (helperStatus.state !== 'connected') {
     handsFree.reset(`helper ${helperStatus.state}`);
@@ -373,6 +382,7 @@ app.whenReady().then(async () => {
     Object.assign(config, storage.settings.get());
     refreshCleanupStatus();
     sendHoldKey();
+    sendLanguage();
   } catch (error) {
     console.error('[storage] could not open the local database', error);
     status.update({
@@ -402,6 +412,7 @@ app.whenReady().then(async () => {
         Object.assign(config, patch);
         refreshCleanupStatus();
         if (patch.holdKey) sendHoldKey();
+        if (patch.language) sendLanguage();
         return settingsNow();
       },
       reset: () => {
@@ -410,6 +421,7 @@ app.whenReady().then(async () => {
         Object.assign(config, startingSettings);
         refreshCleanupStatus();
         sendHoldKey();
+        sendLanguage();
         return settingsNow();
       },
     },

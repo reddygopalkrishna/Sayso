@@ -171,6 +171,11 @@ public final class MessageLoop {
             escapeCapture.setCapture(enabled)
             send(.done(id: id))
             return (.keepRunning, nil)
+        case let .setLanguage(id, language):
+            return (.keepRunning, Task { [transcriber] in
+                await transcriber.setLanguage(language)
+                self.send(.done(id: id))
+            })
         case let .startListening(id):
             return (.keepRunning, Task { await self.startListening(id) })
         case let .stopListening(id):

@@ -71,6 +71,11 @@ export class HelperActions implements TextInserter, KeyPresser, CommandActions {
     await this.helper.request({ type: 'stopListening' }, { timeoutMs: 30_000 });
   }
 
+  /** The language spoken: a two-letter code, or null to detect it. */
+  async setLanguage(language: string | null): Promise<void> {
+    await this.helper.request({ type: 'setLanguage', language }, { timeoutMs: 2_000 });
+  }
+
   /** Change the key that is held to dictate (Fn, or a right-hand modifier key). */
   async setHoldKey(key: HoldKeyName): Promise<void> {
     await this.helper.request({ type: 'setHoldKey', key }, { timeoutMs: 1_000 });

@@ -42,6 +42,9 @@ Record the time from the end of the phrase to the result. Target: under 1 s for 
 - A helper test for `pressElement` with the not-found error code (exists in the protocol fixtures).
 - Live check: `printf` a `pressElement` line to the helper with Claude frontmost; expect `done`. (Done 15 Nov for "Search" in Claude.)
 
+## Beyond Infina: languages (built 21 Nov)
+Infina is English only. Sayso's speech model already understands many languages, so Settings has "Language you speak": English (default), Telugu, Hindi, Tamil, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Urdu, Spanish, French, German, Portuguese, or detect it each time. Text is typed in that language's own script and the AI cleanup never translates. Voice commands and hands-free words stay in English for now; Telugu and Hindi command words are a later step.
+
 ## Design: "yes?" before risky buttons (built 16 Nov, not committed or tried live)
 Today a risky button ("Pay", "Delete", "Sign out", "Publish") is refused. Infina asks first. Proposed:
 1. Say "click Pay" in command mode. Sayso does not press it. It shows a prompt in the pill: "Say yes to press “Pay” (8 s), or Esc".

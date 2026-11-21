@@ -13,6 +13,7 @@ const defaults: UserSettings = {
   style: 'default',
   holdKey: 'fn',
   wakeWord: 'sayso',
+  language: 'en',
 };
 const settings = {
   current: () => defaults,

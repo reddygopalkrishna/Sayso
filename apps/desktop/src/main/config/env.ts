@@ -2,7 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { DEFAULT_FAST_MODEL } from '../core/cleanup/providers.ts';
 import type { CleanupLevel } from '../core/cleanup/types.ts';
-import { HOLD_KEYS, type HoldKeyName, type Style } from '../../shared/settings.ts';
+import {
+  HOLD_KEYS,
+  LANGUAGES,
+  type HoldKeyName,
+  type Language,
+  type Style,
+} from '../../shared/settings.ts';
 
 export interface AppConfig {
   geminiApiKey: string | null;
@@ -28,6 +34,8 @@ export interface AppConfig {
   holdKey: HoldKeyName;
   /** Hands-free: the word said before a command (one word, lowercase). */
   wakeWord: string;
+  /** The language spoken (two-letter code) or "auto". */
+  language: Language;
 }
 
 /**
@@ -52,6 +60,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_STYLE',
     'SAYSO_HOLD_KEY',
     'SAYSO_WAKE_WORD',
+    'SAYSO_STT_LANGUAGE',
     'GROQ_API_KEY',
     'SAYSO_FAST_MODEL',
     'SAYSO_AI_PROVIDER',
@@ -79,6 +88,10 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     wakeWord: /^[a-z][a-z0-9]{1,29}$/.test((merged['SAYSO_WAKE_WORD'] ?? '').trim().toLowerCase())
       ? (merged['SAYSO_WAKE_WORD'] ?? '').trim().toLowerCase()
       : 'sayso',
+    language:
+      LANGUAGES.find(
+        (code) => code === (merged['SAYSO_STT_LANGUAGE'] ?? '').trim().toLowerCase(),
+      ) ?? 'en',
     holdKey: HOLD_KEYS.find((key) => key === (merged['SAYSO_HOLD_KEY'] ?? '').trim()) ?? 'fn',
     skipAi: !['off', 'false', '0', 'no'].includes(
       (merged['SAYSO_SKIP_AI'] ?? '').trim().toLowerCase(),

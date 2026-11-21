@@ -99,6 +99,7 @@ public enum AppMessage: Equatable, Sendable {
     case captureEscape(id: String, enabled: Bool)
     case setHoldKey(id: String, key: HoldKey)
     case startListening(id: String)
+    case setLanguage(id: String, language: String?)
     case stopListening(id: String)
     case scroll(id: String, direction: ScrollDirection, amount: Int)
     case pressElement(id: String, label: String)
@@ -148,6 +149,14 @@ public enum AppMessage: Equatable, Sendable {
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
+        case "setLanguage":
+            struct L: Decodable { let language: String? }
+            let code = try field(L.self, data).language
+            // Two lowercase letters (ISO 639-1), or null for "detect the language".
+            if let code, code.count != 2 || !code.allSatisfy({ $0 >= "a" && $0 <= "z" }) {
+                throw ProtocolError.invalidJSON
+            }
+            return .setLanguage(id: try requestID(data), language: code)
         case "startListening": return .startListening(id: try requestID(data))
         case "stopListening": return .stopListening(id: try requestID(data))
         case "setHoldKey":

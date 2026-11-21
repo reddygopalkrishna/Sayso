@@ -3,6 +3,8 @@ import type { AppStyle } from '../../shared/data.ts';
 import {
   CLEANUP_LEVELS,
   HOLD_KEYS,
+  LANGUAGES,
+  type Language,
   type HoldKeyName,
   SETTING_LIMITS,
   STYLES,
@@ -25,6 +27,25 @@ const HOLD_KEY_TEXT: Record<HoldKeyName, string> = {
   rightOption: 'Right Option ⌥',
   rightCommand: 'Right Command ⌘',
   rightControl: 'Right Control ⌃',
+};
+
+const LANGUAGE_TEXT: Record<Language, string> = {
+  auto: 'Detect it each time',
+  en: 'English',
+  te: 'Telugu (తెలుగు)',
+  hi: 'Hindi (हिन्दी)',
+  ta: 'Tamil (தமிழ்)',
+  kn: 'Kannada (ಕನ್ನಡ)',
+  ml: 'Malayalam (മലയാളം)',
+  mr: 'Marathi (मराठी)',
+  bn: 'Bengali (বাংলা)',
+  gu: 'Gujarati (ગુજરાતી)',
+  pa: 'Punjabi (ਪੰਜਾਬੀ)',
+  ur: 'Urdu (اردو)',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  pt: 'Portuguese',
 };
 
 const STYLE_CARDS: Record<Style, { title: string; hint: string; example: string }> = {
@@ -127,6 +148,27 @@ export function SettingsForm({
           {HOLD_KEYS.map((key) => (
             <option key={key} value={key}>
               {HOLD_KEY_TEXT[key]}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium">Language you speak</span>
+        <span className="text-xs text-neutral-500">
+          Text is typed in this language and its own script. “Detect it each time” suits mixing
+          languages, but is a little less accurate. Voice commands (“send”, “open”, “type”) stay in
+          English.
+        </span>
+        <select
+          className={field}
+          aria-label="Language you speak"
+          value={values.language}
+          onChange={(e) => onChange({ language: e.target.value as Language })}
+        >
+          {LANGUAGES.map((code) => (
+            <option key={code} value={code}>
+              {LANGUAGE_TEXT[code]}
             </option>
           ))}
         </select>

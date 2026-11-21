@@ -7,13 +7,17 @@ import SaysoHelperCore
 public actor WhisperTranscriber: Transcribing {
     public nonisolated let modelName: String
     private let modelsDir: URL
-    private let language: String?
+    private var language: String?
     private var loading: Task<KitBox, Error>?
 
     public init(modelName: String, modelsDir: URL, language: String?) {
         self.modelName = modelName
         self.modelsDir = modelsDir
         self.language = language
+    }
+
+    public func setLanguage(_ code: String?) {
+        language = code
     }
 
     /// Downloads (first run) and loads the model. Safe to call more than once.

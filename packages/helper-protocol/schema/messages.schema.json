@@ -360,6 +360,42 @@
             },
             "type": {
               "type": "string",
+              "const": "setLanguage"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "language": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z]{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "language"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
               "const": "scroll"
             },
             "id": {

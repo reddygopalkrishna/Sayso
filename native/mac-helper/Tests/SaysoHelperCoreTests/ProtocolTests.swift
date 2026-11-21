@@ -24,10 +24,11 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 20)
+        #expect(names.count == 21)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
+        #expect(try AppMessage.decode(fixture("app.setLanguage.json")) == .setLanguage(id: "g-1", language: "te"))
         #expect(try AppMessage.decode(fixture("app.startListening.json")) == .startListening(id: "l-1"))
         #expect(try AppMessage.decode(fixture("app.stopListening.json")) == .stopListening(id: "l-2"))
         #expect(try AppMessage.decode(fixture("app.setHoldKey.json")) == .setHoldKey(id: "h-1", key: .rightOption))
@@ -68,6 +69,8 @@ func fixtureNames(prefix: String) throws -> [String] {
         ("{\"v\":1,\"type\":\"captureEscape\",\"id\":\"e\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"setHoldKey\",\"id\":\"h\",\"key\":\"capsLock\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"setHoldKey\",\"id\":\"h\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"setLanguage\",\"id\":\"g\",\"language\":\"telugu\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"setLanguage\",\"id\":\"g\",\"language\":\"TE\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"requestPermission\",\"id\":\"r\",\"kind\":\"screen\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"down\",\"amount\":10}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"left\",\"amount\":100}", ProtocolError.invalidJSON),

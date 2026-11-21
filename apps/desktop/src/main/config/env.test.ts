@@ -26,6 +26,7 @@ describe('loadConfig', () => {
       style: 'default',
       holdKey: 'fn',
       wakeWord: 'sayso',
+      language: 'en',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -51,6 +52,7 @@ describe('loadConfig', () => {
       style: 'default',
       holdKey: 'fn',
       wakeWord: 'sayso',
+      language: 'en',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -174,5 +176,19 @@ describe('wake word in the config', () => {
     ['9lives', 'sayso'],
   ])('SAYSO_WAKE_WORD=%j → %s', (value, expected) => {
     expect(loadConfig(files(`SAYSO_WAKE_WORD=${value}`), {}).wakeWord).toBe(expected);
+  });
+});
+
+describe('language in the config', () => {
+  it.each([
+    ['te', 'te'],
+    ['HI', 'hi'],
+    ['auto', 'auto'],
+    ['en', 'en'],
+    ['', 'en'],
+    ['telugu', 'en'],
+    ['xx', 'en'],
+  ])('SAYSO_STT_LANGUAGE=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_STT_LANGUAGE=${value}`), {}).language).toBe(expected);
   });
 });

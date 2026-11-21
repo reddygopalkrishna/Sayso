@@ -91,6 +91,22 @@ export const StartListeningSchema = z.object({ v, type: z.literal('startListenin
 /** Stop listening. The utterance in progress is still transcribed and reported. Answered with `done`. */
 export const StopListeningSchema = z.object({ v, type: z.literal('stopListening'), id }).strict();
 
+/**
+ * The language spoken, as a two-letter code ("en", "te", "hi"), or null to let the speech model
+ * detect it. Takes effect for the next utterance. Answered with `done`.
+ */
+export const SetLanguageSchema = z
+  .object({
+    v,
+    type: z.literal('setLanguage'),
+    id,
+    language: z
+      .string()
+      .regex(/^[a-z]{2}$/)
+      .nullable(),
+  })
+  .strict();
+
 /** The keys that can be held to dictate. Fn is the default; the others sit on the right. */
 export const HoldKeySchema = z.enum(['fn', 'rightOption', 'rightCommand', 'rightControl']);
 
@@ -172,6 +188,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   SetHoldKeySchema,
   StartListeningSchema,
   StopListeningSchema,
+  SetLanguageSchema,
   ScrollSchema,
   PressElementSchema,
   ListAppsSchema,

@@ -232,6 +232,7 @@ describe('SettingsForm', () => {
     style: 'default',
     holdKey: 'fn',
     wakeWord: 'sayso',
+    language: 'en',
   } as const;
   const noop = () => undefined;
   const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
@@ -289,6 +290,7 @@ describe('Style in Settings', () => {
           style,
           holdKey: 'fn',
           wakeWord: 'sayso',
+          language: 'en',
         }}
         message={null}
         saved={false}
@@ -348,6 +350,7 @@ describe('Hold key in Settings', () => {
           style: 'default',
           holdKey,
           wakeWord: 'sayso',
+          language: 'en',
         }}
         message={null}
         saved={false}
@@ -434,5 +437,42 @@ describe('pillContent', () => {
       dictation: { phase: 'transcribing' as const },
     };
     expect(pillContent(status)?.text).toBe('Transcribing…');
+  });
+});
+
+describe('Language in Settings', () => {
+  const noop = () => undefined;
+  const form = (language: 'en' | 'te' | 'auto') =>
+    html(
+      <SettingsForm
+        values={{
+          pauseMs: 600,
+          previewMs: 1000,
+          cleanupLevel: 'full',
+          skipAi: true,
+          historyKeep: 50,
+          style: 'default',
+          holdKey: 'fn',
+          wakeWord: 'sayso',
+          language,
+        }}
+        message={null}
+        saved={false}
+        onChange={noop}
+        onSave={noop}
+        onReset={noop}
+      />,
+    );
+
+  it('lists Indian languages in their own script, and detection', () => {
+    const out = form('en');
+    for (const text of ['Telugu (తెలుగు)', 'Hindi (हिन्दी)', 'Tamil (தமிழ்)', 'Detect it each time']) {
+      expect(out).toContain(text);
+    }
+    expect(out).toContain('Voice commands (“send”, “open”, “type”) stay in');
+  });
+
+  it('shows the chosen language as selected', () => {
+    expect(form('te')).toContain('<option value="te" selected="">');
   });
 });
