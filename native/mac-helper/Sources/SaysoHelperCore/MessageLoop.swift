@@ -33,6 +33,7 @@ public final class MessageLoop {
     private let escapeCapture: EscapeCapturing
     private let holdKeys: HoldKeyConfiguring?
     private let listener: ContinuousListening?
+    private let screenReader: ScreenReading?
     private let appControl: AppControlling
     private let scroller: Scrolling
     private let elementPresser: ElementPressing
@@ -61,6 +62,7 @@ public final class MessageLoop {
         permissions: PermissionControlling,
         holdKeys: HoldKeyConfiguring? = nil,
         listener: ContinuousListening? = nil,
+        screenReader: ScreenReading? = nil,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -72,6 +74,7 @@ public final class MessageLoop {
         self.escapeCapture = escapeCapture
         self.holdKeys = holdKeys
         self.listener = listener
+        self.screenReader = screenReader
         self.appControl = appControl
         self.scroller = scroller
         self.elementPresser = elementPresser
@@ -181,6 +184,18 @@ public final class MessageLoop {
             return (.keepRunning, Task { [transcriber] in
                 await transcriber.setLanguage(language)
                 self.send(.done(id: id))
+            })
+        case let .listElements(id):
+            return (.keepRunning, Task {
+                guard let reader = self.screenReader else {
+                    self.send(.error(id: id, code: HelperErrorCode.accessibilityDenied, msg: "reading the screen is not available"))
+                    return
+                }
+                do {
+                    self.send(.elements(id: id, items: try await reader.listElements()))
+                } catch {
+                    self.sendError(id: id, error, fallbackCode: HelperErrorCode.accessibilityDenied)
+                }
             })
         case let .startListening(id):
             return (.keepRunning, Task { await self.startListening(id) })

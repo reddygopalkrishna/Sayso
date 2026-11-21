@@ -86,6 +86,14 @@ public protocol ElementPressing: AnyObject {
 }
 
 @MainActor
+public protocol ScreenReading: AnyObject {
+    /// The buttons, links, menu items and fields of the front window, by name, top to bottom.
+    /// Names only: never the text in a field, and nothing from a password field. Throws
+    /// `ServiceError` (accessibility_denied).
+    func listElements() async throws -> [ScreenElement]
+}
+
+@MainActor
 public protocol EscapeCapturing: AnyObject {
     /// While on, the Escape key is swallowed and reported; implementations must switch themselves
     /// off after a few seconds so a crashed app cannot leave Escape disabled.

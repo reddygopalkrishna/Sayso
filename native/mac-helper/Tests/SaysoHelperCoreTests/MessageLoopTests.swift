@@ -131,6 +131,15 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakeScreen: ScreenReading {
+    var items: [ScreenElement] = []
+    var error: ServiceError?
+    func listElements() async throws -> [ScreenElement] {
+        if let error { throw error }
+        return items
+    }
+}
+
 @MainActor final class FakeListener: ContinuousListening {
     var startError: ServiceError?
     private(set) var running = false
@@ -177,12 +186,12 @@ struct Harness {
     let permissions = FakePermissions()
     let loop: MessageLoop
 
-    init(transcriber: FakeTranscriber = FakeTranscriber()) {
+    init(transcriber: FakeTranscriber = FakeTranscriber(), screen: FakeScreen = FakeScreen()) {
         loop = MessageLoop(
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
             contextProvider: context, keyPresser: keys, escapeCapture: escape,
             appControl: apps, scroller: scroller, elementPresser: presser, permissions: permissions,
-            holdKeys: holdKeys, listener: listener, osDescription: "macOS 14.0")
+            holdKeys: holdKeys, listener: listener, screenReader: screen, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -367,6 +376,22 @@ struct Harness {
         #expect(h.out.messages == [.done(id: "e-1"), .done(id: "e-2")])
         await h.send(#"{"v":1,"type":"shutdown"}"#)
         #expect(h.escape.states.last == false)
+    }
+
+    @Test func readsTheScreenOnRequest() async {
+        let screen = FakeScreen()
+        screen.items = [ScreenElement(label: "Reply", role: "button"), ScreenElement(label: "Search mail", role: "field")]
+        let h = Harness(screen: screen)
+        await h.send(#"{"v":1,"type":"listElements","id":"e-1"}"#)
+        #expect(h.out.messages == [.elements(id: "e-1", items: screen.items)])
+    }
+
+    @Test func saysWhyWhenTheScreenCannotBeRead() async {
+        let screen = FakeScreen()
+        screen.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "off")
+        let h = Harness(screen: screen)
+        await h.send(#"{"v":1,"type":"listElements","id":"e-2"}"#)
+        #expect(h.out.messages == [.error(id: "e-2", code: HelperErrorCode.accessibilityDenied, msg: "off")])
     }
 
     @Test func pressesTheNthItemOnRequest() async {

@@ -6,7 +6,7 @@ import SaysoHelperCore
 /// presses it through Accessibility (AXPress). A breadth-first search with node and time limits,
 /// so a huge window can never stall a command.
 @MainActor
-public final class AXElementPresser: ElementPressing {
+public final class AXElementPresser: ElementPressing, ScreenReading {
     private static let pressableRoles: Set<String> = [
         "AXButton", "AXLink", "AXMenuItem", "AXMenuBarItem", "AXCheckBox", "AXRadioButton",
         "AXPopUpButton", "AXMenuButton", "AXDisclosureTriangle",
@@ -118,6 +118,62 @@ public final class AXElementPresser: ElementPressing {
             for child in children(element) { queue.append((child, nextAncestor)) }
         }
         return best
+    }
+
+    private static let fieldRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
+
+    private static func friendlyRole(_ role: String) -> String {
+        switch role {
+        case "AXLink": "link"
+        case "AXMenuItem", "AXMenuBarItem", "AXMenuButton", "AXPopUpButton": "menu"
+        case "AXCheckBox", "AXRadioButton": "checkbox"
+        case "AXTextField", "AXTextArea", "AXComboBox", "AXSearchField": "field"
+        default: "button"
+        }
+    }
+
+    /// What the front window shows that you could name: buttons, links, menu items and fields. Names
+    /// only: a field is listed by its label or placeholder, never by what is typed in it, and a
+    /// password field is skipped. Bounded like every search here, so a huge page cannot stall it.
+    public func listElements() async throws -> [ScreenElement] {
+        guard AXIsProcessTrusted() else {
+            throw ServiceError(
+                code: HelperErrorCode.accessibilityDenied,
+                message: "Accessibility access is off, so Sayso cannot read the screen.")
+        }
+        guard let app = NSWorkspace.shared.frontmostApplication else { return [] }
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(root, 0.2)
+        enableWebAccessibility(app.processIdentifier, root: root)
+        let window = Self.element(root, kAXFocusedWindowAttribute) ?? root
+        let bounds = Self.frame(window)
+
+        let started = ContinuousClock.now
+        var raw: [RawScreenElement] = []
+        var queue: [AXUIElement] = [window]
+        var head = 0
+        while head < queue.count, head < 6_000, ContinuousClock.now - started < .milliseconds(500) {
+            let element = queue[head]
+            head += 1
+            let role = Self.string(element, kAXRoleAttribute) ?? ""
+            if Self.pressableRoles.contains(role) || Self.fieldRoles.contains(role),
+               let item = Self.frame(element), Self.visible(item, in: bounds)
+            {
+                var label = Self.string(element, kAXTitleAttribute) ?? Self.string(element, kAXDescriptionAttribute) ?? ""
+                if label.isEmpty, Self.fieldRoles.contains(role) {
+                    label = Self.string(element, "AXPlaceholderValue") ?? ""
+                }
+                if label.isEmpty, !Self.fieldRoles.contains(role) {
+                    // Web buttons and links often carry their name as a text child.
+                    label = Self.children(element).lazy.compactMap { child in
+                        Self.string(child, kAXRoleAttribute) == "AXStaticText" ? Self.string(child, kAXValueAttribute) : nil
+                    }.first ?? ""
+                }
+                raw.append(RawScreenElement(label: label, role: Self.friendlyRole(role), y: item.y, x: item.x))
+            }
+            queue.append(contentsOf: Self.children(element))
+        }
+        return ScreenElements.clean(raw)
     }
 
     /// "Open the third email": finds the items of that kind in the front window, counts them from

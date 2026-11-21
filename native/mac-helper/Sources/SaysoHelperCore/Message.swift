@@ -99,6 +99,7 @@ public enum AppMessage: Equatable, Sendable {
     case captureEscape(id: String, enabled: Bool)
     case setHoldKey(id: String, key: HoldKey)
     case startListening(id: String)
+    case listElements(id: String)
     case setLanguage(id: String, language: String?)
     case stopListening(id: String)
     case scroll(id: String, direction: ScrollDirection, amount: Int)
@@ -163,6 +164,7 @@ public enum AppMessage: Equatable, Sendable {
                 throw ProtocolError.invalidJSON
             }
             return .setLanguage(id: try requestID(data), language: code)
+        case "listElements": return .listElements(id: try requestID(data))
         case "startListening": return .startListening(id: try requestID(data))
         case "stopListening": return .stopListening(id: try requestID(data))
         case "setHoldKey":
@@ -254,6 +256,7 @@ public enum HelperMessage: Equatable, Sendable {
     case heard(transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
     case context(id: String, context: AppContext)
     case apps(id: String, apps: [AppInfo])
+    case elements(id: String, items: [ScreenElement])
     case permissions(id: String, state: PermissionState)
     case hotkey(phase: HotkeyPhase)
     case escape
@@ -322,6 +325,10 @@ public enum HelperMessage: Equatable, Sendable {
                     "running": .bool($0.running),
                 ])
             })
+        case let .elements(id, items):
+            f["type"] = "elements"
+            f["id"] = .string(id)
+            f["items"] = .array(items.map { .object(["label": .string($0.label), "role": .string($0.role)]) })
         case let .permissions(id, state):
             f["type"] = "permissions"
             f["id"] = .string(id)
@@ -401,6 +408,11 @@ public enum HelperMessage: Equatable, Sendable {
             struct A: Decodable { let id: String; let apps: [AppInfo] }
             let a = try field(A.self, data)
             return .apps(id: a.id, apps: a.apps)
+        case "elements":
+            struct I: Decodable { let label: String; let role: String }
+            struct E: Decodable { let id: String; let items: [I] }
+            let e = try field(E.self, data)
+            return .elements(id: e.id, items: e.items.map { ScreenElement(label: $0.label, role: $0.role) })
         case "permissions":
             struct P: Decodable { let id: String; let microphone: MicrophoneAccess; let accessibility: Bool }
             let p = try field(P.self, data)

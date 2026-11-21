@@ -59,6 +59,7 @@ let (loop, fnTap) = MainActor.assumeIsolated {
     let fnTap = FnEventTap(
         onPhase: { phase in box.loop?.send(.hotkey(phase: phase)) },
         onEscape: { box.loop?.send(.escape) })
+    let presser = AXElementPresser()
     let loop = MessageLoop(
         writer: StandardOutputWriter(),
         recorder: MicRecorder(),
@@ -69,10 +70,11 @@ let (loop, fnTap) = MainActor.assumeIsolated {
         escapeCapture: fnTap,
         appControl: apps,
         scroller: ScrollPoster(),
-        elementPresser: AXElementPresser(),
+        elementPresser: presser,
         permissions: SystemPermissions(),
         holdKeys: fnTap,
-        listener: StreamingMic()
+        listener: StreamingMic(),
+        screenReader: presser
     )
     box.loop = loop
     return (loop, fnTap)

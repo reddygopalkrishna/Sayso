@@ -1,6 +1,6 @@
 import type { PositionKind } from '@sayso/command-grammar';
 import type { HoldKeyName } from '../../../shared/settings.ts';
-import type { AppInfo, Key, Modifier } from '@sayso/helper-protocol';
+import type { AppInfo, Key, Modifier, ScreenItem } from '@sayso/helper-protocol';
 import type { HelperRequester } from '../../helper/HelperProcess.ts';
 
 export interface TextInserter {
@@ -43,6 +43,13 @@ export class HelperActions implements TextInserter, KeyPresser, CommandActions {
 
   async pressPosition(kind: PositionKind, index: number): Promise<void> {
     await this.helper.request({ type: 'pressPosition', kind, index }, { timeoutMs: 4_000 });
+  }
+
+  /** What the front window shows that could be named (buttons, links, fields), top to bottom. */
+  async listElements(): Promise<ScreenItem[]> {
+    const reply = await this.helper.request({ type: 'listElements' }, { timeoutMs: 3_000 });
+    if (reply.type !== 'elements') throw new Error(`expected elements, got ${reply.type}`);
+    return reply.items;
   }
 
   async listApps(): Promise<AppInfo[]> {

@@ -119,6 +119,12 @@ export const SetHoldKeySchema = z
   .strict();
 
 /**
+ * Read what the front window shows that could be named: buttons, links, menu items and fields,
+ * top to bottom. Names only, never the text typed in a field. Answered with `elements`.
+ */
+export const ListElementsSchema = z.object({ v, type: z.literal('listElements'), id }).strict();
+
+/**
  * Open or click the Nth item of a kind in the front window, counted from the top: search results,
  * links, rows (emails, messages, list items), buttons, or "any" (results, then rows, then links).
  * `index` is 1-based, or -1 for the last. Answered with `done`, or `element_not_found`.
@@ -212,6 +218,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   ScrollSchema,
   PressElementSchema,
   PressPositionSchema,
+  ListElementsSchema,
   ListAppsSchema,
   OpenAppSchema,
   ActivateAppSchema,
@@ -267,6 +274,25 @@ export const HeardSchema = z
     audioMs: z.number().nonnegative(),
     sttMs: z.number().nonnegative(),
     model: z.string().min(1),
+  })
+  .strict();
+
+/** The answer to `listElements`: what is on screen, by name. */
+export const ElementsSchema = z
+  .object({
+    v,
+    type: z.literal('elements'),
+    id,
+    items: z
+      .array(
+        z
+          .object({
+            label: z.string().min(1).max(80),
+            role: z.enum(['button', 'link', 'menu', 'checkbox', 'field', 'tab']),
+          })
+          .strict(),
+      )
+      .max(100),
   })
   .strict();
 
@@ -355,6 +381,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   DoneSchema,
   TranscriptSchema,
   HeardSchema,
+  ElementsSchema,
   ContextSchema,
   AppsSchema,
   PermissionsSchema,
@@ -371,6 +398,8 @@ export type HelperMessage = z.infer<typeof HelperMessageSchema>;
 export type ReadyMessage = z.infer<typeof ReadySchema>;
 export type TranscriptMessage = z.infer<typeof TranscriptSchema>;
 export type HeardMessage = z.infer<typeof HeardSchema>;
+export type ElementsMessage = z.infer<typeof ElementsSchema>;
+export type ScreenItem = ElementsMessage['items'][number];
 export type WordTiming = z.infer<typeof WordTimingSchema>;
 export type HotkeyMessage = z.infer<typeof HotkeySchema>;
 export type ContextMessage = z.infer<typeof ContextSchema>;
@@ -390,7 +419,10 @@ export type RequestBody = DistributiveOmit<RequestMessage, 'v' | 'id'>;
 /** Helper messages that answer a request. */
 export type ReplyMessage = Extract<
   HelperMessage,
-  { type: 'pong' | 'done' | 'transcript' | 'context' | 'apps' | 'permissions' | 'error' }
+  {
+    type:
+      'pong' | 'done' | 'transcript' | 'context' | 'apps' | 'elements' | 'permissions' | 'error';
+  }
 >;
 
 /** Error codes the helper sends. */
