@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 05:25 · No more silent 0 ms recordings (`cc01278`)
+- **Why:** after a restart the founder's app recorded every held-key utterance as `0 ms audio, STT 0 ms, 0 words` (no sound reached the helper), so nothing was ever typed. A fresh helper started from a shell recorded the same microphone normally (2.4 s, RMS 0.045), so the microphone and its permission were fine; the helper inside the running app was stuck. The cause was not found.
+- **What:** after the audio engine starts, the helper waits up to 0.7 s for the first sound. If none comes it throws the engine away, builds a new one and tries once more (printing `[mic] no audio … rebuilding the engine`); if that also fails the pill says "The microphone is not delivering sound. Check System Settings → Sound → Input, or reconnect it." instead of silently doing nothing. The recordStart reply now arrives after the first sound (about 0.1 s later), not before.
+- **Tested:** helper unit tests (94) and a live recording through a fresh helper (2.6 s, RMS 0.049). **Not reproduced**, so not proven to cure the stuck state; restart `pnpm dev` and watch for the new line.
+- **If it still records 0 ms:** quit the app that may hold the microphone (Zoom, a browser call, FaceTime), check System Settings → Privacy & Security → Microphone for Terminal and Electron, and replug a headset if one is connected.
+
 ### 03:40 · Stability checklist (`652e0b9`)
 - **What:** `docs/STABILITY_CHECK.md`: 35 rows (26 hands-free commands, 5 held-key checks, 4 things that must not happen), three tries each, the setup, and exactly what to send for a failure (row, words said, expected vs actual, the terminal lines, the app in front).
 - **Why:** to find and fix the exact failing lines before the code freeze, without adding features.
