@@ -31,6 +31,9 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
+### 00:35 · No AI attribution in commits from now on
+- New rule in CLAUDE.md: commits, PRs and repo files carry no Claude/Anthropic attribution or co-author line. Earlier commits are unchanged.
+
 ### 00:33 · Only one Sayso runs at a time
 - Starting `pnpm dev` while another copy was running left both copies listening to Fn, so each dictation was pasted twice (up to five times tonight).
 - Now a newly started dev copy makes the old one quit and takes over (it has your latest code). A packaged app instead brings its existing window forward.
