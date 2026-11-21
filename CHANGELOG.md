@@ -40,6 +40,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 01:05 · Next field, previous field, backspace, delete word (`ec66d75`)
+- **Why:** the founder asked to move between form fields and delete by voice.
+- **What:** four new commands in `commands.json`: **next field** (also "next input", "next box", "go to next", "go to the next field", "tab"), **previous field** ("shift tab", "go to previous"), **backspace**, **delete word** ("delete last word"). They press Tab, Shift+Tab, Delete and Option+Delete. "Delete that" still deletes the selection; to clear a field say "select all, delete that". A bare "next" is deliberately not a command (too easy to say by accident while hands-free listens).
+- **Safety:** next/previous field are Safe, backspace and delete word are Normal (preview chip); all four are refused in password fields and meeting apps like the other editing commands. Added to the every-command-by-context matrix.
+- **Tested:** unit tests (1,583 desktop, 58 grammar); not tried by voice yet.
+- **Incident:** while adding these, a script of mine emptied `commands.json` in the working folder; it was restored from the last commit with the one uncommitted line ("glows tab" in close tab) re-added, with the founder's go-ahead.
+
 ### 00:46 · Hands-free keeps a soft first word (`8b2efcb`)
 - **Why:** after the noise fix, the next live log was healthy (utterances 1.1–1.5 s, speech 400–440 ms, "Open Chrome", "Open WhatsApp", "New tab" all ran) but "type Codex" arrived as "Codex": the soft "t" of "type" was clipped, so it was ignored.
 - **What:** the helper keeps 0.5 s of audio from before speech is noticed (was 0.3 s) and counts speech as started after 2 loud frames (was 3).
