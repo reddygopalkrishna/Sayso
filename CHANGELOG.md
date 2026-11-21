@@ -38,7 +38,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
-### 23:26 · Lists and structure in dictation; Infina recordings reviewed
+### 23:26 · Lists and structure in dictation; Infina recordings reviewed (`1800494`)
 - **Your observation was right:** "first one … second one … third one" came out as one running paragraph, where Wispr Flow and Infina make points. My cleanup prompt said "keep the order of ideas" and "no markdown", so the AI never made points. Now it writes a numbered list when two or more items are clearly enumerated ("first one / second one", "number one", "point one", "step one", "first, … second, …"), drops the spoken ordinals, keeps a lead-in sentence only if you said one, and never invents one (found and fixed in testing: it added "Here are the tasks to complete:").
 - Also handled: "new line" / "new paragraph" said in the middle of a dictation become real line breaks; several unrelated topics in a long dictation become short paragraphs; "john at example dot com" becomes john@example.com and "example dot org slash pricing" example.org/pricing.
 - Does **not** make lists out of ordinary sentences: "milk, eggs and bread", "first of all, thank you" and short chat messages stay as they are (checked live on seven cases).
