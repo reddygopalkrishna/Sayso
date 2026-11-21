@@ -23,7 +23,6 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Interactive tutorial** ("say send after a pause", PRD onboarding) and a first-run flag; onboarding only shows while a permission is missing.
 - **Dictionary helps Whisper too:** today it only corrects the text after speech-to-text. Passing the words to WhisperKit as prompt tokens could stop the mishearing at the source.
 - **Packaged app permissions:** macOS grants go to Sayso.app, not Terminal; untested until there is a packaged build.
-- **Settings window:** pause length, preview time, cleanup level and history size are still `.env` settings.
 - **Scroll direction:** `scroll down` posts a negative pixel scroll; with "natural scrolling" on some Macs the direction may feel reversed. Verify by hand.
 - **Verify password-field detection by hand in browsers:** Sayso reads the focused field through Accessibility (`AXSecureTextField`). Native apps expose it; Chrome and Safari may only do so when accessibility is on for the page. Test: focus a password box in each browser, dictate, expect the pill to say "Sayso does not type into password fields."
 - **Confirm dialog for Risky actions:** the SafetyGate returns "confirm" for Risky commands, but there is no dialog yet, so they never run. No Risky command exists yet; build the dialog with the first one (delete, git push…).
@@ -36,6 +35,16 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Streaming cleanup:** Gemini is called without streaming; fine for paste, but streaming could cut latency.
 - **Model load time:** the first load in a new helper process took 131 s (Neural Engine compile); later loads about 10 s. Show progress in the window.
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
+
+## 2026-11-21
+
+### 11:52 · Snippets and a Settings tab (`7ad6b32`)
+- **Snippets (Dictionary tab):** say a short trigger on its own ("calendly") and Sayso types the saved text exactly as written, with no AI. It also works as "calendly", pause, "send". A trigger inside a longer sentence is just dictation. Never typed into a password field. Up to 200 snippets; trigger up to 60 characters, text up to 2,000.
+- **Settings tab:** pause before "send", preview time, text cleanup level (off, light, full), skip the AI for short clean text, and history size. Changes apply at once, with no restart, and win over `.env`, which only gives the starting values. "Reset to defaults" goes back to the `.env` values. Out-of-range values are refused.
+- **Database:** schema 4 (snippets) and 5 (settings). Tested by upgrading older databases.
+- **History** records the text that was typed for a snippet.
+- Tests: typecheck and lint clean; 939 desktop tests and 17 grammar tests pass.
+- Not yet seen in the running app: restart `pnpm dev` first (until then the window shows "Restart Sayso").
 
 ## 2026-11-16
 
