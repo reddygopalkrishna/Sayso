@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 16:17 · Opening an app waits until it is in front (`594850c`)
+- **What:** after "open <app>" in a chain or plan, Sayso checks every 150 ms which app is in front and only runs the next step once it is the app just opened, up to 3 s (then it carries on; the next step's own safety checks decide). Websites are not polled (they have the page wait). So "open Slack, new tab" no longer lands in the app that was in front before.
+- **Tested in code:** fake-timer tests: waits until the app is in front, carries on after the limit, does not wait when already in front, no polling for a website. 
+- **Tested live** (helper, one run each): `openApp` Calculator → in front after 338 ms (the first check still saw the old app, so the wait is needed); TextEdit → 341 ms. Not tried by voice, and not with a slow-starting app.
+- **Restart needed:** main-process change.
+
 ### 16:10 · README is about the product only (`2472b68`)
 - **What:** removed the section about what existed before the Builders 2026 event and what was built at it, and the note on commit dates, from `README.md` (at the founder's request); the README now covers only the product, how to run it and its limits. One line about it was also removed from `docs/DEMO_SCRIPT.md`. The record of when things were built stays in this changelog.
 
