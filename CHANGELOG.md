@@ -40,6 +40,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 23:48 · Word list knows Claude Code and Codex (`fe0b605`)
+- **Why:** saying "Claude Code" was typed as "cloud code" (the speech model hears Claude as cloud).
+- **What:** the built-in word list (`core/cleanup/builtInTerms.ts`) now fixes "cloud code", "clod code", "claud code" and "clawed code" to **Claude Code**, and "code x" to **Codex**; Groq is listed so its capital letters stay. "Cloud" on its own is left alone on purpose (it is a normal word), so "the cloud is down" is unchanged. Your own dictionary still wins when entries overlap.
+- **Tested:** unit tests for the new names and for "cloud" and "code editor" staying as they are (1,493 desktop tests, typecheck and lint clean). Not tried by voice yet.
+
 ### 17:06 · Faster microphone start (`451b6b8`)
 - **Why:** short commands arrived clipped because the first syllable was lost while the mic started.
 - **What:** the helper builds the audio engine, converter and formats ahead of time (never started: no capture, no mic indicator until the key goes down; rebuilt after each recording and on a device change) and prints one `[mic]` line per recording: key down → first audio, with setup and first-buffer parts.
