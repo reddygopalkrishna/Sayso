@@ -105,6 +105,19 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakePermissions: PermissionControlling {
+    var state = PermissionState(microphone: .undetermined, accessibility: false)
+    /// What the user answers when asked.
+    var answers = PermissionState(microphone: .granted, accessibility: false)
+    private(set) var requested: [PermissionKind] = []
+    func status() -> PermissionState { state }
+    func request(_ kind: PermissionKind) async -> PermissionState {
+        requested.append(kind)
+        if kind == .microphone { state.microphone = answers.microphone }
+        return state
+    }
+}
+
 @MainActor final class FakeEscape: EscapeCapturing {
     private(set) var states: [Bool] = []
     func setCapture(_ enabled: Bool) { states.append(enabled) }
@@ -121,13 +134,15 @@ struct Harness {
     let apps = FakeApps()
     let scroller = FakeScroller()
     let presser = FakePresser()
+    let permissions = FakePermissions()
     let loop: MessageLoop
 
     init(transcriber: FakeTranscriber = FakeTranscriber()) {
         loop = MessageLoop(
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
             contextProvider: context, keyPresser: keys, escapeCapture: escape,
-            appControl: apps, scroller: scroller, elementPresser: presser, osDescription: "macOS 14.0")
+            appControl: apps, scroller: scroller, elementPresser: presser, permissions: permissions,
+            osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -247,6 +262,17 @@ struct Harness {
         h.keys.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "no AX")
         await h.send(#"{"v":1,"type":"keyPress","id":"k-3","key":"enter","modifiers":[]}"#)
         #expect(h.out.messages.last == .error(id: "k-3", code: HelperErrorCode.accessibilityDenied, msg: "no AX"))
+    }
+
+    @Test func reportsAndRequestsPermissions() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"getPermissions","id":"g-1"}"#)
+        await h.send(#"{"v":1,"type":"requestPermission","id":"r-1","kind":"microphone"}"#)
+        #expect(h.permissions.requested == [.microphone])
+        #expect(h.out.messages == [
+            .permissions(id: "g-1", state: PermissionState(microphone: .undetermined, accessibility: false)),
+            .permissions(id: "r-1", state: PermissionState(microphone: .granted, accessibility: false)),
+        ])
     }
 
     @Test func listsApps() async {

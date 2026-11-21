@@ -1,5 +1,5 @@
 import { join, resolve } from 'node:path';
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { IPC } from '../shared/status.ts';
 import { StatusHub } from './StatusHub.ts';
 import { loadConfig } from './config/env.ts';
@@ -16,7 +16,11 @@ import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
 import { resolveHelperPath } from './helper/binaryPath.ts';
 import { claimSingleInstance } from './singleInstance.ts';
+import { HistoryRecorder } from './core/history/HistoryRecorder.ts';
+import { PermissionsMonitor } from './core/permissions/PermissionsMonitor.ts';
 import { PreviewChip } from './core/safety/PreviewChip.ts';
+import { openStorage, type Storage } from './core/storage/index.ts';
+import { createIpcHandlers } from './ipcHandlers.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
 import { Overlay } from './windows/overlay.ts';
 
@@ -28,7 +32,8 @@ for (const stream of [process.stdout, process.stderr]) {
 }
 
 // Keep settings, models and (later) the database under "Sayso", not the package name.
-app.setPath('userData', join(app.getPath('appData'), 'Sayso'));
+// SAYSO_DATA_DIR gives a test copy its own database, models folder and single-instance lock.
+app.setPath('userData', process.env['SAYSO_DATA_DIR'] ?? join(app.getPath('appData'), 'Sayso'));
 
 const config = loadConfig(
   [
@@ -63,6 +68,36 @@ status.update({
 const stt = new HelperWhisperSTT(helper);
 const actions = new HelperActions(helper);
 
+// The local database (history, dictionary, remembered choices). Opened in whenReady, once this
+// copy owns the app. If it cannot be opened, dictation still works without those features.
+let storage: Storage | null = null;
+const warn = (what: string, error: unknown): void => console.warn(`[storage] ${what}`, error);
+
+const historyRecorder = new HistoryRecorder({
+  record: (entry) => {
+    try {
+      storage?.history.record(entry);
+    } catch (error) {
+      warn('could not save history', error);
+    }
+  },
+});
+let deliverStartedAt = Date.now();
+
+const permissions = new PermissionsMonitor({
+  ask: async () => {
+    const reply = await helper.request({ type: 'getPermissions' }, { timeoutMs: 1_500 });
+    if (reply.type !== 'permissions') throw new Error(`expected permissions, got ${reply.type}`);
+    return reply;
+  },
+  onChange: (current) => {
+    console.info(
+      `[permissions] microphone: ${current.microphone}, accessibility: ${current.accessibility}`,
+    );
+    status.update({ permissions: current });
+  },
+});
+
 // Escape presses reported by the helper while the preview chip is showing.
 const escapeListeners = new Set<() => void>();
 let previewSeq = 0;
@@ -78,15 +113,45 @@ const chip = new PreviewChip({
 
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
-  cleanup: new TextCleanup({ provider, level: () => config.cleanupLevel }),
+  cleanup: new TextCleanup({
+    provider,
+    level: () => config.cleanupLevel,
+    dictionary: () => {
+      try {
+        return storage?.dictionary.list() ?? [];
+      } catch (error) {
+        warn('could not read the dictionary', error);
+        return [];
+      }
+    },
+  }),
   actions,
   chip,
   endCommands,
   engine: new CommandEngine(commands),
-  resolver: new AppResolver(() => actions.listApps()),
+  resolver: new AppResolver(() => actions.listApps(), {
+    get: (phrase) => {
+      try {
+        return storage?.resolverMemory.get(phrase) ?? null;
+      } catch (error) {
+        warn('could not read remembered choices', error);
+        return null;
+      }
+    },
+    set: (phrase, targetType, target) => {
+      try {
+        storage?.resolverMemory.set(phrase, targetType, target);
+      } catch (error) {
+        warn('could not save a remembered choice', error);
+      }
+    },
+  }),
   pauseMs: () => config.pauseMs,
   previewMs: () => config.previewMs,
-  onOutcome: ({ mode, segment, context, routing, cleanup, inserted, command }) => {
+  onFailure: (failure) => historyRecorder.recordFailure(failure, Date.now() - deliverStartedAt),
+  onOutcome: (outcome) => {
+    const { mode, segment, context, routing, cleanup, inserted, command } = outcome;
+    historyRecorder.recordOutcome(outcome, Date.now() - deliverStartedAt);
     const ranCommand = command?.result === 'ran' ? command.id : null;
     const app = context.appName ?? 'unknown app';
     if (cleanup) {
@@ -125,12 +190,17 @@ const pipeline = new UtterancePipeline({
 });
 const dictation = new DictationController({
   stt,
-  deliver: (segment, mode) => pipeline.deliver(segment, mode),
+  deliver: (segment, mode) => {
+    deliverStartedAt = Date.now();
+    return pipeline.deliver(segment, mode);
+  },
   log: (msg) => console.info(`[dictation] ${msg}`),
 });
 
 helper.onStatus((helperStatus) => {
   status.update({ helper: helperStatus });
+  if (helperStatus.state === 'connected') void permissions.refresh();
+  else permissions.reset();
   if (helperStatus.state !== 'connected') {
     stt.updateStatus(null);
     dictation.reset(`helper ${helperStatus.state}`);
@@ -201,6 +271,35 @@ app.whenReady().then(async () => {
     return;
   }
 
+  try {
+    storage = openStorage(join(app.getPath('userData'), 'sayso.sqlite'), {
+      historyKeep: () => config.historyKeep,
+    });
+    status.update({ database: { state: 'ok' } });
+  } catch (error) {
+    console.error('[storage] could not open the local database', error);
+    status.update({
+      database: { state: 'error', message: error instanceof Error ? error.message : String(error) },
+    });
+  }
+
+  const handlers = createIpcHandlers({
+    storage: () => storage,
+    requestPermission: async (kind) => {
+      // The microphone prompt waits for the user's answer, so allow plenty of time.
+      const reply = await helper.request(
+        { type: 'requestPermission', kind },
+        { timeoutMs: 120_000 },
+      );
+      if (reply.type === 'permissions') permissions.accept(reply);
+    },
+    openExternal: (url) => shell.openExternal(url),
+  });
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, (_event, raw: unknown) => handler(raw));
+  }
+  permissions.start();
+
   ipcMain.handle(IPC.getStatus, () => status.current);
   status.onChange((current) => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -230,7 +329,15 @@ let shuttingDown = false;
 function shutdown(): void {
   if (shuttingDown) return;
   shuttingDown = true;
-  void helper.stop().finally(() => app.exit(0));
+  permissions.stop();
+  void helper.stop().finally(() => {
+    try {
+      storage?.close();
+    } catch (error) {
+      warn('could not close the database', error);
+    }
+    app.exit(0);
+  });
 }
 
 app.on('before-quit', (event) => {

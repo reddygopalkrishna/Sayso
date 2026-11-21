@@ -19,11 +19,15 @@ apps/desktop/                      Electron app (CommonJS; configs are .mts)
     core/actions/                  HelperActions (insert, keys, Esc capture); sendStrategy.ts: Enter, ⌘⇧D (Mail), ⌘⏎ (Outlook)
     core/commands/                 CommandEngine (whole-utterance matching, args, fuzzy), errors for the pill
     core/resolver/                 AppResolver: "open X" → app, known site, domain, or web search; "switch to X"
+    core/storage/                  SQLite on node:sqlite: db.ts (the only driver code), migrations.ts, History/Dictionary/ResolverMemory repos
+    core/history/                  HistoryRecorder: outcomes and failures → history rows (no text for password-field refusals)
+    core/permissions/              PermissionsMonitor: polls the helper for Microphone/Accessibility
     core/safety/                   SafetyGate (run / preview / confirm / refuse, meeting apps, password fields), PreviewChip
     core/context/HelperContext.ts  frontmost app from the helper
     windows/                       mainWindow.ts, overlay.ts (pill and chip: non-focusable panels), load.ts
+    ipcHandlers.ts                 one handler per renderer request; zod-validated, answers {ok, value|error}; no Electron import (unit-tested)
   src/preload/                     IPC bridge (api.d.ts)
-  src/renderer/src/                React UI; #pill and #chip select the overlays
+  src/renderer/src/                React UI; #pill and #chip select the overlays; main window tabs: Home (+ Onboarding), History, Dictionary
 native/mac-helper/                 Swift package
   Sources/SaysoHelperCore/         protocol, MessageLoop, FnTracker, service protocols (no OS frameworks; unit-tested with fakes)
   Sources/SaysoHelperMac/          thin adapters: FnEventTap, MicRecorder, WhisperTranscriber, PasteInserter, WorkspaceContext, KeyPresser
@@ -56,4 +60,8 @@ CHANGELOG.md                       updated on every commit
 - **Command mode:** hold Fn+Shift (the helper reports a `command` hotkey phase, in either order). `DictationController` passes `mode` to `deliver`; in command mode `UtterancePipeline.deliverCommand` matches the whole utterance with `CommandEngine`, never types, and throws `CommandNotUnderstood` / `CommandRefused` / `CommandFailed` so the pill shows why nothing happened. Dictation mode only knows the end commands (pause rule).
 - **Grammar:** a phrase may end in one `{label}`, `{target}` or `{app}` (validated against the action: `pressElement`, `openTarget`, `switchApp`). Label templates fill from the args. Exact literal phrases beat argument phrases ("press enter" over "press {label}").
 - **Helper requests added in step 6:** `scroll`, `pressElement` (AXPress search, 300 ms / 4000-node budget), `listApps` (reply `apps`), `openApp`, `activateApp`, `openURL` (http/https only). Apps are scanned in the background at startup.
+- **Local database** (`~/Library/Application Support/Sayso/sayso.sqlite`, mode 600): `PRAGMA user_version` migrations (never edit a shipped one; add the next), tables `utterance_history`, `dictionary_entry`, `resolver_memory`. `SAYSO_HISTORY_KEEP` (default 50, 0 = history off). Opened in `whenReady`; if it fails the app still dictates and Home shows why. Anything refused in a password field is stored with no text. The renderer only reaches it through `ipcHandlers.ts`.
+- **Dictionary:** `applyDictionary` fixes spelling locally (whole words, case-insensitive, "sounds like" → your word) before cleanup, in Light and Full; the terms also go to the AI as exact spellings. **Remembered choices:** "open GitHub app" / "open GitHub website" picks that kind and remembers it for plain "open GitHub".
+- **Onboarding:** the helper answers `getPermissions` and `requestPermission` (Microphone prompt, Accessibility dialog); `PermissionsMonitor` polls (2 s while something is missing, 15 s otherwise) into `AppStatus.permissions`; the Onboarding card hides itself when both are granted. System Settings links are a fixed list in `ipcHandlers.ts`.
+- **Test copy:** `SAYSO_DATA_DIR=/some/dir pnpm dev` runs a second copy with its own database, models folder and single-instance lock (symlink `models` to reuse the speech model).
 - **Esc capture:** `captureEscape` makes the helper swallow Esc and send an `escape` event; it switches itself off after 3 s. Only the preview chip uses it.

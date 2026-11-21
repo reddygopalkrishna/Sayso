@@ -69,7 +69,8 @@ let (loop, fnTap) = MainActor.assumeIsolated {
         escapeCapture: fnTap,
         appControl: apps,
         scroller: ScrollPoster(),
-        elementPresser: AXElementPresser()
+        elementPresser: AXElementPresser(),
+        permissions: SystemPermissions()
     )
     box.loop = loop
     return (loop, fnTap)

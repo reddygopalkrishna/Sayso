@@ -34,6 +34,7 @@ public final class MessageLoop {
     private let appControl: AppControlling
     private let scroller: Scrolling
     private let elementPresser: ElementPressing
+    private let permissions: PermissionControlling
     private var recordingID: String?
 
     public init(
@@ -47,6 +48,7 @@ public final class MessageLoop {
         appControl: AppControlling,
         scroller: Scrolling,
         elementPresser: ElementPressing,
+        permissions: PermissionControlling,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -59,6 +61,7 @@ public final class MessageLoop {
         self.appControl = appControl
         self.scroller = scroller
         self.elementPresser = elementPresser
+        self.permissions = permissions
         self.osDescription = osDescription
     }
 
@@ -107,6 +110,14 @@ public final class MessageLoop {
             return (.keepRunning, nil)
         case let .insertText(id, text):
             return (.keepRunning, Task { await self.insert(id, text) })
+        case let .getPermissions(id):
+            send(.permissions(id: id, state: permissions.status()))
+            return (.keepRunning, nil)
+        case let .requestPermission(id, kind):
+            return (.keepRunning, Task {
+                let state = await self.permissions.request(kind)
+                self.send(.permissions(id: id, state: state))
+            })
         case let .listApps(id):
             send(.apps(id: id, apps: appControl.listApps()))
             return (.keepRunning, nil)

@@ -47,6 +47,15 @@ export interface UtterancePipelineOptions {
   pauseMs: () => number;
   previewMs: () => number;
   onOutcome?: (outcome: UtteranceOutcome) => void;
+  /** Called when delivering failed (refused, not understood, helper error); the error is rethrown. */
+  onFailure?: (failure: PipelineFailure) => void;
+}
+
+export interface PipelineFailure {
+  mode: PipelineMode;
+  segment: TranscriptSegment;
+  context: AppContext;
+  error: unknown;
 }
 
 /**
@@ -62,12 +71,17 @@ export class UtterancePipeline {
   constructor(private readonly opts: UtterancePipelineOptions) {}
 
   async deliver(segment: TranscriptSegment, mode: PipelineMode = 'dictation'): Promise<void> {
-    if (mode === 'command') await this.deliverCommand(segment);
-    else await this.deliverDictation(segment);
+    const context = await this.opts.readContext();
+    try {
+      if (mode === 'command') await this.deliverCommand(segment, context);
+      else await this.deliverDictation(segment, context);
+    } catch (error) {
+      this.opts.onFailure?.({ mode, segment, context, error });
+      throw error;
+    }
   }
 
-  private async deliverDictation(segment: TranscriptSegment): Promise<void> {
-    const context = await this.opts.readContext();
+  private async deliverDictation(segment: TranscriptSegment, context: AppContext): Promise<void> {
     const routing = route(segment, {
       endCommands: this.opts.endCommands,
       pauseMs: this.opts.pauseMs(),
@@ -115,8 +129,7 @@ export class UtterancePipeline {
     });
   }
 
-  private async deliverCommand(segment: TranscriptSegment): Promise<void> {
-    const context = await this.opts.readContext();
+  private async deliverCommand(segment: TranscriptSegment, context: AppContext): Promise<void> {
     const match = this.opts.engine.match(segment.text);
     // Command mode never types: an unrecognised utterance is reported, not inserted.
     if (!match) throw new CommandNotUnderstood(segment.text);

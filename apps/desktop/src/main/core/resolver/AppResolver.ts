@@ -117,7 +117,11 @@ function findSite(name: string, tier: 'exact' | 'fuzzy'): string | null {
  * web search. (When an app and a site both match, the PRD asks once and remembers; that needs the
  * local database, step 7, so the exact app wins for now.)
  */
-export function resolveOpen(target: string, apps: readonly KnownApp[]): OpenResolution {
+export function resolveOpen(
+  target: string,
+  apps: readonly KnownApp[],
+  prefer: 'app' | 'site' | null = null,
+): OpenResolution {
   const domain = asDomain(target);
   if (domain) return { type: 'url', url: `https://${domain}`, kind: 'domain' };
   const name = words(target);
@@ -129,6 +133,14 @@ export function resolveOpen(target: string, apps: readonly KnownApp[]): OpenReso
     const url = findSite(name, tier);
     return url ? { type: 'url', url, kind: 'site' } : null;
   };
+  // "open GitHub app" / "open GitHub website": the user said which one they mean.
+  if (prefer === 'app') {
+    const wanted = app('exact') ?? app('prefix') ?? app('word') ?? app('fuzzy');
+    if (wanted) return wanted;
+  } else if (prefer === 'site') {
+    const wanted = site('exact') ?? site('fuzzy');
+    if (wanted) return wanted;
+  }
   return (
     app('exact') ??
     site('exact') ??
@@ -155,11 +167,68 @@ export function resolveSwitch(name: string, apps: readonly KnownApp[]): KnownApp
   );
 }
 
-export class AppResolver {
-  constructor(private readonly listApps: () => Promise<readonly KnownApp[]>) {}
+const APP_WORD = /\s+(?:app|application)$/;
+const SITE_WORD = /\s+(?:website|web site|site|web page|page)$/;
 
+/** "github app" → { name: "github", prefer: "app" }; "github" → prefer null. */
+export function parseOpenTarget(target: string): { name: string; prefer: 'app' | 'site' | null } {
+  const n = words(target);
+  if (asDomain(target)) return { name: n, prefer: null };
+  if (APP_WORD.test(n)) return { name: n.replace(APP_WORD, ''), prefer: 'app' };
+  if (SITE_WORD.test(n)) return { name: n.replace(SITE_WORD, ''), prefer: 'site' };
+  return { name: n, prefer: null };
+}
+
+/** What "open X" meant last time (the local database; PRD §7.5). */
+export interface ResolverMemory {
+  get(phrase: string): { targetType: 'app' | 'url'; target: string } | null;
+  set(phrase: string, targetType: 'app' | 'url', target: string): void;
+}
+
+function fromMemory(
+  choice: { targetType: 'app' | 'url'; target: string },
+  apps: readonly KnownApp[],
+): OpenResolution | null {
+  if (choice.targetType === 'app') {
+    const app = apps.find((a) => a.bundleId === choice.target);
+    return app ? { type: 'app', bundleId: app.bundleId, name: app.name } : null; // uninstalled: forget
+  }
+  // The database could have been edited by hand: only ever open web links.
+  return /^https?:\/\/\S+$/i.test(choice.target)
+    ? { type: 'url', url: choice.target, kind: 'site' }
+    : null;
+}
+
+export class AppResolver {
+  constructor(
+    private readonly listApps: () => Promise<readonly KnownApp[]>,
+    private readonly memory: ResolverMemory | null = null,
+  ) {}
+
+  /**
+   * Order: a remembered choice; then the normal search (see resolveOpen). Saying "app" or
+   * "website" after the name (open GitHub app) picks that kind and remembers it for next time.
+   */
   async resolveOpen(target: string): Promise<OpenResolution> {
-    return resolveOpen(target, await this.listApps());
+    const apps = await this.listApps();
+    const { name, prefer } = parseOpenTarget(target);
+    if (!prefer && this.memory) {
+      const remembered = this.memory.get(name);
+      const resolved = remembered ? fromMemory(remembered, apps) : null;
+      if (resolved) return resolved;
+    }
+    const resolution = resolveOpen(name, apps, prefer);
+    if (this.memory && prefer === 'app' && resolution.type === 'app') {
+      this.memory.set(name, 'app', resolution.bundleId);
+    } else if (
+      this.memory &&
+      prefer === 'site' &&
+      resolution.type === 'url' &&
+      resolution.kind !== 'search'
+    ) {
+      this.memory.set(name, 'url', resolution.url);
+    }
+    return resolution;
   }
 
   async resolveSwitch(name: string): Promise<KnownApp | null> {

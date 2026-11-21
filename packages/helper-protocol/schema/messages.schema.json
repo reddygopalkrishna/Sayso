@@ -448,6 +448,62 @@
             "url"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "getPermissions"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "requestPermission"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "microphone",
+                "accessibility"
+              ]
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -722,6 +778,44 @@
             "type",
             "id",
             "apps"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "permissions"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "microphone": {
+              "type": "string",
+              "enum": [
+                "granted",
+                "denied",
+                "undetermined",
+                "restricted"
+              ]
+            },
+            "accessibility": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "microphone",
+            "accessibility"
           ],
           "additionalProperties": false
         },

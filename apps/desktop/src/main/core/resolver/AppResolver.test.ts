@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { asDomain, AppResolver, resolveOpen, resolveSwitch, type KnownApp } from './AppResolver.ts';
+import {
+  asDomain,
+  AppResolver,
+  parseOpenTarget,
+  resolveOpen,
+  resolveSwitch,
+  type KnownApp,
+  type ResolverMemory,
+} from './AppResolver.ts';
 
 const app = (name: string, bundleId: string, running = false): KnownApp => ({
   name,
@@ -147,5 +155,100 @@ describe('AppResolver', () => {
     await resolver.resolveOpen('slack');
     await resolver.resolveSwitch('safari');
     expect(calls).toBe(2);
+  });
+});
+
+describe('parseOpenTarget', () => {
+  it.each([
+    ['github', 'github', null],
+    ['GitHub app', 'github', 'app'],
+    ['the github application', 'the github', 'app'],
+    ['github website', 'github', 'site'],
+    ['github web site', 'github', 'site'],
+    ['hacker news page', 'hacker news', 'site'],
+    ['github dot com', 'github dot com', null],
+  ])('%j', (target, name, prefer) => {
+    expect(parseOpenTarget(target)).toEqual({ name, prefer });
+  });
+});
+
+describe('resolveOpen with a stated preference', () => {
+  it('app: picks the app even though a known site has the same name', () => {
+    expect(resolveOpen('github', apps, 'app')).toMatchObject({
+      type: 'app',
+      bundleId: 'com.github.GitHubClient',
+    });
+  });
+  it('site: picks the website even though an app has the same name', () => {
+    const withApp = [...apps, app('GitHub', 'com.example.github')];
+    expect(resolveOpen('github', withApp, 'site')).toMatchObject({ type: 'url', kind: 'site' });
+  });
+  it('falls back to the normal order when the preferred kind does not exist', () => {
+    expect(resolveOpen('youtube', apps, 'app')).toMatchObject({ type: 'url', kind: 'site' });
+    expect(resolveOpen('calculator', apps, 'site')).toMatchObject({
+      type: 'app',
+      bundleId: 'com.apple.calculator',
+    });
+  });
+});
+
+describe('AppResolver with remembered choices', () => {
+  function setup(installed: KnownApp[] = apps) {
+    const store = new Map<string, { targetType: 'app' | 'url'; target: string }>();
+    const memory: ResolverMemory = {
+      get: (p) => store.get(p) ?? null,
+      set: (p, targetType, target) => void store.set(p, { targetType, target }),
+    };
+    return { resolver: new AppResolver(async () => installed, memory), store };
+  }
+
+  it('"open GitHub app" opens the app and teaches "open GitHub"', async () => {
+    const { resolver, store } = setup();
+    expect(await resolver.resolveOpen('github')).toMatchObject({ type: 'url', kind: 'site' }); // default
+    expect(await resolver.resolveOpen('GitHub app')).toMatchObject({
+      type: 'app',
+      bundleId: 'com.github.GitHubClient',
+    });
+    expect(store.get('github')).toEqual({ targetType: 'app', target: 'com.github.GitHubClient' });
+    expect(await resolver.resolveOpen('github')).toMatchObject({
+      type: 'app',
+      bundleId: 'com.github.GitHubClient',
+    });
+  });
+
+  it('"open GitHub website" teaches the other way round', async () => {
+    const { resolver, store } = setup([...apps, app('GitHub', 'com.example.github')]);
+    expect(await resolver.resolveOpen('github')).toMatchObject({ type: 'app' }); // exact app name wins
+    await resolver.resolveOpen('github website');
+    expect(store.get('github')).toEqual({ targetType: 'url', target: 'https://github.com' });
+    expect(await resolver.resolveOpen('github')).toEqual({
+      type: 'url',
+      url: 'https://github.com',
+      kind: 'site',
+    });
+  });
+
+  it('does not remember a preference that could not be satisfied', async () => {
+    const { resolver, store } = setup();
+    await resolver.resolveOpen('flibber app'); // no such app: becomes a web search
+    expect(store.size).toBe(0);
+  });
+
+  it('forgets an app that is no longer installed and falls back to the normal search', async () => {
+    const { resolver, store } = setup([app('Calculator', 'com.apple.calculator')]);
+    store.set('github', { targetType: 'app', target: 'com.github.GitHubClient' });
+    expect(await resolver.resolveOpen('github')).toMatchObject({ type: 'url', kind: 'site' });
+  });
+
+  it('never opens a remembered link that is not http(s)', async () => {
+    const { resolver, store } = setup();
+    store.set('evil', { targetType: 'url', target: 'file:///etc/passwd' });
+    const r = await resolver.resolveOpen('evil');
+    expect(r).toMatchObject({ type: 'url', kind: 'search' });
+  });
+
+  it('works without a database', async () => {
+    const resolver = new AppResolver(async () => apps);
+    expect(await resolver.resolveOpen('github app')).toMatchObject({ type: 'app' });
   });
 });

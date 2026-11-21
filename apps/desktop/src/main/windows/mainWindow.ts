@@ -3,8 +3,8 @@ import { loadView, preloadPath } from './load.ts';
 
 export function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 520,
-    height: 380,
+    width: 680,
+    height: 620,
     title: 'Sayso',
     show: false,
     webPreferences: {

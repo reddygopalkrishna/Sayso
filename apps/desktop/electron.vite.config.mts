@@ -4,7 +4,9 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 // Workspace packages ship TypeScript source, so bundle them instead of externalising.
-const bundleWorkspace = { externalizeDeps: { exclude: ['@sayso/helper-protocol', '@sayso/command-grammar'] } };
+const bundleWorkspace = {
+  externalizeDeps: { exclude: ['@sayso/helper-protocol', '@sayso/command-grammar'] },
+};
 
 export default defineConfig({
   main: { build: bundleWorkspace },

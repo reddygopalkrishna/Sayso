@@ -1,3 +1,4 @@
+import { applyDictionary, type DictionaryTerm } from './dictionary.ts';
 import { lightCleanup } from './light.ts';
 import { toneForApp } from './tone.ts';
 import type { CleanupLevel, LLMProvider, Tone } from './types.ts';
@@ -22,7 +23,8 @@ export interface CleanupResult {
 export interface TextCleanupOptions {
   provider: LLMProvider | null;
   level: () => CleanupLevel;
-  dictionary?: () => readonly string[];
+  /** Your own words: spelled correctly by a local pass, and sent to the AI as exact spellings. */
+  dictionary?: () => readonly DictionaryTerm[];
   toneOverrides?: () => Readonly<Record<string, Tone>>;
   /** Past this the local cleanup is used, so dictation never stalls on the network. */
   timeoutMs?: number;
@@ -55,7 +57,9 @@ export class TextCleanup {
 
     const level = this.opts.level();
     if (level === 'off') return done(input.rawText, 'off');
-    const light = lightCleanup(input.rawText, { literal: tone === 'literal' });
+    const terms = this.opts.dictionary?.() ?? [];
+    const spelled = applyDictionary(input.rawText, terms);
+    const light = lightCleanup(spelled, { literal: tone === 'literal' });
     if (level === 'light' || tone === 'literal' || !this.opts.provider) return done(light, 'light');
     // Nothing left to clean (e.g. the user only said "um").
     if (light === '') return done('', 'light');
@@ -65,14 +69,14 @@ export class TextCleanup {
     try {
       const output = await this.opts.provider.cleanup(
         {
-          rawText: input.rawText,
+          rawText: spelled,
           tone,
-          dictionary: this.opts.dictionary?.() ?? [],
+          dictionary: terms.map((t) => t.phrase),
           appName: input.appName,
         },
         controller.signal,
       );
-      const checked = checkOutput(input.rawText, output);
+      const checked = checkOutput(spelled, output);
       if (!checked.ok) return done(light, 'fallback', checked.reason);
       return done(checked.text, 'llm');
     } catch (error) {

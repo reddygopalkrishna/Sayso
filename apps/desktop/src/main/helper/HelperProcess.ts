@@ -241,6 +241,7 @@ export class HelperProcess implements HelperRequester {
       case 'transcript':
       case 'context':
       case 'apps':
+      case 'permissions':
         this.settle(message.id, message);
         break;
       case 'error':

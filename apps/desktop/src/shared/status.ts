@@ -48,6 +48,15 @@ export interface PreviewStatus {
   ms: number;
 }
 
+/** What macOS lets Sayso do. `unknown` until the helper has answered. */
+export interface PermissionsStatus {
+  microphone: 'granted' | 'denied' | 'undetermined' | 'restricted' | 'unknown';
+  accessibility: 'granted' | 'denied' | 'unknown';
+}
+
+/** The local database (history, dictionary, remembered choices). */
+export type DatabaseStatus = { state: 'unknown' | 'ok' } | { state: 'error'; message: string };
+
 export interface AppStatus {
   helper: HelperStatus;
   stt: SttStatus;
@@ -55,6 +64,8 @@ export interface AppStatus {
   cleanup: CleanupStatus;
   dictation: DictationState;
   preview: PreviewStatus | null;
+  permissions: PermissionsStatus;
+  database: DatabaseStatus;
   last: LastUtterance | null;
 }
 
@@ -65,10 +76,24 @@ export const initialStatus: AppStatus = {
   cleanup: { level: 'full', provider: null },
   dictation: { phase: 'idle' },
   preview: null,
+  permissions: { microphone: 'unknown', accessibility: 'unknown' },
+  database: { state: 'unknown' },
   last: null,
 };
 
 export const IPC = {
   getStatus: 'status:get',
   status: 'status:update',
+  listHistory: 'history:list',
+  clearHistory: 'history:clear',
+  listDictionary: 'dictionary:list',
+  addDictionary: 'dictionary:add',
+  removeDictionary: 'dictionary:remove',
+  listOpenChoices: 'choices:list',
+  removeOpenChoice: 'choices:remove',
+  requestPermission: 'permissions:request',
+  openSettings: 'settings:open',
 } as const;
+
+/** The panes of System Settings the onboarding screen can open. */
+export type SettingsPane = 'microphone' | 'accessibility' | 'keyboard';

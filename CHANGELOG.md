@@ -5,7 +5,7 @@ Each entry names the commit so you can see the exact code with `git show <commit
 
 ## In progress
 
-Nothing in progress. Next: Phase 0 step 7 (local SQLite history and dictionary; Microphone and Accessibility onboarding).
+Nothing in progress. Phase 0 is feature complete; next is real daily use, then Phase 1 (see docs/STATUS.md).
 
 ## Pending (later)
 
@@ -13,11 +13,16 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 - **Adaptive pause:** the pause before "send" is fixed at 600 ms (`SAYSO_PAUSE_MS` to change it). The plan is to learn it per user from cancellations (`adaptive_stats`, step 7).
 - **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
-- **Phase 0 step 7:** local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
 - **Password-field detection in Chrome (still to verify):** "click Submit" works in Chrome (tested for real: it pressed a search suggestion), so Chrome does expose its page. Whether Chrome also reports a *password* box as secure is not yet checked, and other Chromium/Electron apps (Slack, VS Code, Claude) may expose less. Test by hand: focus a password box in Chrome and dictate; expect "Sayso does not type into password fields." If it types, the fix is to switch accessibility on for the frontmost app (a small speed cost in that app, so it needs your OK).
 - **"Delete that" removes the current selection only,** not the last thing you dictated. A reliable "delete my last dictation" needs the length of the last paste (or an undo of it); decide with real use.
-- **Remembered choices for "open X":** when an app and a website both fit ("GitHub" vs GitHub Desktop) the PRD asks once and remembers; for now an exact app name wins, then a known site, then a prefix match. Needs the local database (step 7) and a chip.
+- **Ask-once chip for "open X":** when an app and a website both fit, the PRD asks once with a chip. For now you teach it by voice ("open GitHub app" / "open GitHub website") and it is remembered; the chip itself is not built.
 - **More commands from the PRD:** volume, lock screen, dark mode, screenshot; positional arguments ("open the third email"); "open GitHub in Chrome" (a named browser).
+- **Hand-test the new screens:** Home onboarding buttons ("Allow microphone", "Show the macOS prompt"), the System Settings links (Microphone, Accessibility, Keyboard; the pane addresses are not yet checked on this macOS version), History, Dictionary.
+- **SQLite driver (decision):** the plan says better-sqlite3; the code uses Node's built-in `node:sqlite` because one compiled better-sqlite3 cannot match both Electron's Node 24 and the test runner's Node 26. One file (`core/storage/db.ts`) to change if you prefer better-sqlite3.
+- **Interactive tutorial** ("say send after a pause", PRD onboarding) and a first-run flag; onboarding only shows while a permission is missing.
+- **Dictionary helps Whisper too:** today it only corrects the text after speech-to-text. Passing the words to WhisperKit as prompt tokens could stop the mishearing at the source.
+- **Packaged app permissions:** macOS grants go to Sayso.app, not Terminal; untested until there is a packaged build.
+- **Settings window:** pause length, preview time, cleanup level and history size are still `.env` settings.
 - **Scroll direction:** `scroll down` posts a negative pixel scroll; with "natural scrolling" on some Macs the direction may feel reversed. Verify by hand.
 - **Verify password-field detection by hand in browsers:** Sayso reads the focused field through Accessibility (`AXSecureTextField`). Native apps expose it; Chrome and Safari may only do so when accessibility is on for the page. Test: focus a password box in each browser, dictate, expect the pill to say "Sayso does not type into password fields."
 - **Confirm dialog for Risky actions:** the SafetyGate returns "confirm" for Risky commands, but there is no dialog yet, so they never run. No Risky command exists yet; build the dialog with the first one (delete, git push…).
@@ -32,6 +37,15 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 16:33 · Phase 0 step 7: history, personal dictionary, remembered choices and permission setup
+- **History tab:** the last 50 things you said and what Sayso did (heard text, typed text, app, time, how long it took, done / cancelled / blocked / failed). Stored on this Mac only (`~/Library/Application Support/Sayso/sayso.sqlite`, readable only by you). **Anything said into a password field is never saved.** "Clear history" at any time; `SAYSO_HISTORY_KEEP=0` turns history off.
+- **Dictionary tab:** add names and terms (Kairo, GitHub, Sayso) and, optionally, what Sayso mishears them as ("say so" → Sayso). They are spelled correctly locally before cleanup (Light and Full), and sent to the AI as exact spellings.
+- **Remembered "open" choices:** say "open GitHub app" or "open GitHub website" once and plain "open GitHub" does the same afterwards. The Dictionary tab lists them with a Forget button.
+- **Permission setup on Home:** an orange card with two steps (Microphone, Accessibility), each with the right button (allow, show the macOS prompt, or open the System Settings pane). It refreshes by itself and disappears once both are on. Home also has a short how-to (Fn, Fn+Shift, Esc) and a link to the Keyboard setting.
+- **Under the hood:** SQLite through Node's built-in `node:sqlite` (not better-sqlite3, see Pending: Electron's Node 24 and the test runner's Node 26 cannot share one compiled module). Versioned migrations, each atomic; a database from a newer app is refused. If the database cannot open, dictation still works and Home says why. The UI reaches data only through validated requests, and only fixed System Settings links can be opened.
+- **Test copy:** `SAYSO_DATA_DIR=/some/folder pnpm dev` runs a second copy with its own data (used to boot-test without touching a running one).
+- Tested: 31 storage tests on real databases (privacy mode, atomic migrations, pruning, SQL-injection safety), dictionary replacement, history recording incl. the password rule, remembered choices, permission polling, 15 request handlers (rejecting bad input and foreign URLs), UI states (incl. HTML escaping), 26 Swift tests. Booted a real copy: database created (3 tables, mode 600), permissions read through the helper, closed cleanly.
 
 ### 15:35 · Fix: "open Chrome" opened a web search instead of the app
 - Found in your real test: "Open Chrome" ran a Google search for "chrome" (which opened in Chrome), because app names only matched from their first word and "chrome" is the second word of "Google Chrome".

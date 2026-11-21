@@ -22,6 +22,7 @@ describe('loadConfig', () => {
       cleanupLevel: 'light',
       pauseMs: 600,
       previewMs: 1000,
+      historyKeep: 50,
     });
     expect(loadConfig(paths, { GEMINI_API_KEY: 'env' }).geminiApiKey).toBe('env');
   });
@@ -39,6 +40,7 @@ describe('loadConfig', () => {
       cleanupLevel: 'full',
       pauseMs: 600,
       previewMs: 1000,
+      historyKeep: 50,
     });
   });
 
@@ -58,6 +60,17 @@ describe('loadConfig', () => {
     ['9000', 1000],
   ])('SAYSO_PREVIEW_MS=%s → %i ms', (value, expected) => {
     expect(loadConfig(files(`SAYSO_PREVIEW_MS=${value}`), {}).previewMs).toBe(expected);
+  });
+
+  it.each([
+    ['0', 0], // history off
+    ['200', 200],
+    ['-1', 50],
+    ['2000', 50],
+    ['1.5', 50],
+    ['many', 50],
+  ])('SAYSO_HISTORY_KEEP=%s → %i', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_HISTORY_KEEP=${value}`), {}).historyKeep).toBe(expected);
   });
 
   it('ignores an empty key and an unknown level', () => {

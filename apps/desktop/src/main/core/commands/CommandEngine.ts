@@ -57,7 +57,11 @@ export function normalizeUtterance(text: string): string {
 function cleanArgument(name: string, rest: string): string {
   let arg = rest;
   while (ARTICLE_PREFIX.test(arg)) arg = arg.replace(ARTICLE_PREFIX, '');
-  arg = arg.replace(name === 'label' ? LABEL_SUFFIX : APP_SUFFIX, '').trim();
+  // "open GitHub app" / "open GitHub website" keep their last word: the resolver reads it as a
+  // preference (and remembers it). Only "click ... button" and "switch to ... app" drop theirs.
+  if (name === 'label') arg = arg.replace(LABEL_SUFFIX, '');
+  else if (name === 'app') arg = arg.replace(APP_SUFFIX, '');
+  arg = arg.trim();
   return GENERIC_ARGUMENT.has(arg) ? '' : arg;
 }
 

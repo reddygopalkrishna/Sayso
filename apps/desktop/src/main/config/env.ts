@@ -10,6 +10,8 @@ export interface AppConfig {
   pauseMs: number;
   /** How long the preview chip shows before a Normal-level action runs (Esc cancels). */
   previewMs: number;
+  /** History rows to keep (PRD: the last 50). 0 turns history off. */
+  historyKeep: number;
 }
 
 /**
@@ -29,17 +31,20 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_CLEANUP_LEVEL',
     'SAYSO_PAUSE_MS',
     'SAYSO_PREVIEW_MS',
+    'SAYSO_HISTORY_KEEP',
   ]) {
     if (processEnv[key]) merged[key] = processEnv[key];
   }
   const level = merged['SAYSO_CLEANUP_LEVEL'];
   const pause = Number(merged['SAYSO_PAUSE_MS']);
   const preview = Number(merged['SAYSO_PREVIEW_MS']);
+  const keep = Number(merged['SAYSO_HISTORY_KEEP']);
   return {
     geminiApiKey: merged['GEMINI_API_KEY']?.trim() || null,
     geminiModel: merged['GEMINI_MODEL']?.trim() || undefined,
     cleanupLevel: level === 'off' || level === 'light' || level === 'full' ? level : 'full',
     pauseMs: Number.isFinite(pause) && pause >= 200 && pause <= 3000 ? pause : 600,
     previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,
+    historyKeep: Number.isInteger(keep) && keep >= 0 && keep <= 1000 ? keep : 50,
   };
 }

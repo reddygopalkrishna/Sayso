@@ -22,7 +22,7 @@ function cleanup(provider: LLMProvider | null, level: CleanupLevel = 'full') {
   return new TextCleanup({
     provider,
     level: () => level,
-    dictionary: () => ['Sayso'],
+    dictionary: () => [{ phrase: 'Sayso', spokenAs: 'say so' }],
     timeoutMs: 1_000,
   });
 }
@@ -39,6 +39,24 @@ describe('TextCleanup', () => {
     expect(llm.requests).toEqual([
       { rawText: raw, tone: 'casual', dictionary: ['Sayso'], appName: 'Slack' },
     ]);
+  });
+
+  it('spells your words correctly before cleanup, in Light mode too, and tells the AI the exact spellings', async () => {
+    const llm = new FakeLLM(async (r) => r.rawText);
+    const result = await cleanup(llm).clean({ rawText: 'tell say so about it', ...slack });
+    expect(result.text).toBe('tell Sayso about it');
+    expect(llm.requests[0]).toMatchObject({
+      rawText: 'tell Sayso about it',
+      dictionary: ['Sayso'],
+    });
+
+    const light = await cleanup(llm, 'light').clean({ rawText: 'um say so is great', ...slack });
+    expect(light.text).toBe('Sayso is great');
+  });
+
+  it('leaves the raw text alone when cleanup is off', async () => {
+    const result = await cleanup(null, 'off').clean({ rawText: 'say so', ...slack });
+    expect(result.text).toBe('say so');
   });
 
   it('never sends literal apps to the LLM', async () => {

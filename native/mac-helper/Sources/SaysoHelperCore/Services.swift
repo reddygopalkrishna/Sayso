@@ -56,6 +56,14 @@ public protocol AppControlling: AnyObject {
 }
 
 @MainActor
+public protocol PermissionControlling: AnyObject {
+    func status() -> PermissionState
+    /// Asks macOS for the permission and returns the status afterwards. Microphone waits for the
+    /// user's answer to the system prompt; Accessibility shows the system dialog and returns at once.
+    func request(_ kind: PermissionKind) async -> PermissionState
+}
+
+@MainActor
 public protocol Scrolling: AnyObject {
     /// Scrolls the view under the pointer. Throws `ServiceError` (accessibility_denied).
     func scroll(direction: ScrollDirection, amount: Int) throws

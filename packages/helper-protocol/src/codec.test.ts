@@ -52,6 +52,11 @@ describe('decodeHelperLine rejects bad input', () => {
       '{"v":1,"type":"transcript","id":"a","text":"x","words":[{"text":"x","startMs":-1,"endMs":2,"p":1}],"audioMs":1,"sttMs":1,"model":"m"}',
     ],
     ['unknown hotkey phase', '{"v":1,"type":"hotkey","key":"fn","phase":"tap"}'],
+    ['permission kind screen', '{"v":1,"type":"requestPermission","id":"a","kind":"screen"}'],
+    [
+      'microphone status maybe',
+      '{"v":1,"type":"permissions","id":"a","microphone":"maybe","accessibility":true}',
+    ],
     ['openURL with a file: URL', '{"v":1,"type":"openURL","id":"a","url":"file:///etc/passwd"}'],
     [
       'openURL with a custom scheme',

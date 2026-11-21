@@ -50,6 +50,25 @@ private func bundleID(_ data: Data) throws -> String {
     return id
 }
 
+public enum PermissionKind: String, Codable, Sendable {
+    case microphone, accessibility
+}
+
+public enum MicrophoneAccess: String, Codable, Sendable {
+    case granted, denied, undetermined, restricted
+}
+
+/// What macOS lets Sayso do right now.
+public struct PermissionState: Equatable, Sendable {
+    public var microphone: MicrophoneAccess
+    public var accessibility: Bool
+
+    public init(microphone: MicrophoneAccess, accessibility: Bool) {
+        self.microphone = microphone
+        self.accessibility = accessibility
+    }
+}
+
 public enum ScrollDirection: String, Codable, Sendable {
     case up, down
 }
@@ -84,6 +103,8 @@ public enum AppMessage: Equatable, Sendable {
     case openApp(id: String, bundleId: String)
     case activateApp(id: String, bundleId: String)
     case openURL(id: String, url: String)
+    case getPermissions(id: String)
+    case requestPermission(id: String, kind: PermissionKind)
 
     public static func decode(_ line: String) throws -> AppMessage {
         let data = Data(line.utf8)
@@ -117,6 +138,10 @@ public enum AppMessage: Equatable, Sendable {
             let url = try field(U.self, data).url
             guard !url.isEmpty, url.count <= 2048 else { throw ProtocolError.invalidJSON }
             return .openURL(id: try requestID(data), url: url)
+        case "getPermissions": return .getPermissions(id: try requestID(data))
+        case "requestPermission":
+            struct R: Decodable { let kind: PermissionKind }
+            return .requestPermission(id: try requestID(data), kind: try field(R.self, data).kind)
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
@@ -204,6 +229,7 @@ public enum HelperMessage: Equatable, Sendable {
     case transcript(id: String, transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
     case context(id: String, context: AppContext)
     case apps(id: String, apps: [AppInfo])
+    case permissions(id: String, state: PermissionState)
     case hotkey(phase: HotkeyPhase)
     case escape
     case fnListener(state: FnListenerState)
@@ -257,6 +283,11 @@ public enum HelperMessage: Equatable, Sendable {
                     "running": .bool($0.running),
                 ])
             })
+        case let .permissions(id, state):
+            f["type"] = "permissions"
+            f["id"] = .string(id)
+            f["microphone"] = .string(state.microphone.rawValue)
+            f["accessibility"] = .bool(state.accessibility)
         case .escape:
             f["type"] = "escape"
         case let .hotkey(phase):
@@ -322,6 +353,11 @@ public enum HelperMessage: Equatable, Sendable {
             struct A: Decodable { let id: String; let apps: [AppInfo] }
             let a = try field(A.self, data)
             return .apps(id: a.id, apps: a.apps)
+        case "permissions":
+            struct P: Decodable { let id: String; let microphone: MicrophoneAccess; let accessibility: Bool }
+            let p = try field(P.self, data)
+            return .permissions(
+                id: p.id, state: PermissionState(microphone: p.microphone, accessibility: p.accessibility))
         case "escape": return .escape
         case "hotkey":
             struct H: Decodable { let key: String; let phase: HotkeyPhase }

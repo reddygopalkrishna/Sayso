@@ -24,7 +24,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 15)
+        #expect(names.count == 17)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
@@ -33,7 +33,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 
     @Test func everyHelperFixtureRoundTrips() throws {
         let names = try fixtureNames(prefix: "helper.")
-        #expect(names.count == 16)
+        #expect(names.count == 17)
         for name in names {
             let message = try HelperMessage.decode(fixture(name))
             let line = message.encodedLine()
@@ -63,6 +63,7 @@ func fixtureNames(prefix: String) throws -> [String] {
         ("{\"v\":1,\"type\":\"insertText\",\"id\":\"a\",\"text\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"recordStop\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"captureEscape\",\"id\":\"e\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"requestPermission\",\"id\":\"r\",\"kind\":\"screen\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"down\",\"amount\":10}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"left\",\"amount\":100}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"openApp\",\"id\":\"o\",\"bundleId\":\"\"}", ProtocolError.invalidJSON),

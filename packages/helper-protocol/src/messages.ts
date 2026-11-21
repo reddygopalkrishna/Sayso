@@ -11,7 +11,7 @@
  *   binary data never mixes with JSON lines.
  *
  * Requests (messages with an `id`) are answered with exactly one reply carrying the same `id`:
- * `pong`, `done`, `transcript`, `context`, `apps`, or `error`. Events (`ready`, `hotkey`, `escape`, `fnListener`, `sttStatus`, `log`, and
+ * `pong`, `done`, `transcript`, `context`, `apps`, `permissions`, or `error`. Events (`ready`, `hotkey`, `escape`, `fnListener`, `sttStatus`, `log`, and
  * `error` without an id) are unsolicited. The helper sends `ready` first.
  *
  * The Swift helper mirrors these types (native/mac-helper/Sources/SaysoHelperCore/Message.swift);
@@ -120,6 +120,20 @@ export const OpenUrlSchema = z
   })
   .strict();
 
+export const PermissionKindSchema = z.enum(['microphone', 'accessibility']);
+export const MicrophoneAccessSchema = z.enum(['granted', 'denied', 'undetermined', 'restricted']);
+
+/** Current Microphone and Accessibility status, for the onboarding screen. Answered with `permissions`. */
+export const GetPermissionsSchema = z.object({ v, type: z.literal('getPermissions'), id }).strict();
+/**
+ * Ask macOS for a permission. Microphone shows the system prompt and waits for the answer;
+ * Accessibility shows the system dialog that points to System Settings and answers at once.
+ * Answered with `permissions` (the status afterwards).
+ */
+export const RequestPermissionSchema = z
+  .object({ v, type: z.literal('requestPermission'), id, kind: PermissionKindSchema })
+  .strict();
+
 /** Read the frontmost app and the focused element. Answered with `context`. */
 export const GetContextSchema = z.object({ v, type: z.literal('getContext'), id }).strict();
 
@@ -139,6 +153,8 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   OpenAppSchema,
   ActivateAppSchema,
   OpenUrlSchema,
+  GetPermissionsSchema,
+  RequestPermissionSchema,
 ]);
 
 // Helper → app
@@ -187,6 +203,16 @@ export const ContextSchema = z
     focusRole: z.string().min(1).nullable(),
     /** True when the focused element is a password field (AXSecureTextField). */
     secureField: z.boolean(),
+  })
+  .strict();
+
+export const PermissionsSchema = z
+  .object({
+    v,
+    type: z.literal('permissions'),
+    id,
+    microphone: MicrophoneAccessSchema,
+    accessibility: z.boolean(),
   })
   .strict();
 
@@ -251,6 +277,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   TranscriptSchema,
   ContextSchema,
   AppsSchema,
+  PermissionsSchema,
   EscapeSchema,
   HotkeySchema,
   FnListenerSchema,
@@ -267,6 +294,9 @@ export type WordTiming = z.infer<typeof WordTimingSchema>;
 export type HotkeyMessage = z.infer<typeof HotkeySchema>;
 export type ContextMessage = z.infer<typeof ContextSchema>;
 export type AppInfo = z.infer<typeof AppInfoSchema>;
+export type PermissionKind = z.infer<typeof PermissionKindSchema>;
+export type MicrophoneAccess = z.infer<typeof MicrophoneAccessSchema>;
+export type PermissionsMessage = z.infer<typeof PermissionsSchema>;
 export type Key = z.infer<typeof KeySchema>;
 export type Modifier = z.infer<typeof ModifierSchema>;
 export type SttStatusMessage = z.infer<typeof SttStatusSchema>;
@@ -279,7 +309,7 @@ export type RequestBody = DistributiveOmit<RequestMessage, 'v' | 'id'>;
 /** Helper messages that answer a request. */
 export type ReplyMessage = Extract<
   HelperMessage,
-  { type: 'pong' | 'done' | 'transcript' | 'context' | 'apps' | 'error' }
+  { type: 'pong' | 'done' | 'transcript' | 'context' | 'apps' | 'permissions' | 'error' }
 >;
 
 /** Error codes the helper sends. */
