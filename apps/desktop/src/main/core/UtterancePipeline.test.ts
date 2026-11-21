@@ -75,6 +75,7 @@ function setup({
   confirmMs?: number;
   settleMs?: number;
   pageWaitMs?: number;
+  appReadyMs?: number;
   snippets?: Record<string, string>;
   styles?: Record<string, 'default' | 'chill'>;
   interpret?: (utterance: string) => Plan | null | Promise<Plan | null>;
