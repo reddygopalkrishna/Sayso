@@ -1,3 +1,5 @@
+import { formatLists } from './lists.ts';
+
 // Local cleanup with no AI: used for Light level, literal apps, and as the fallback when the LLM
 // fails or is too slow. Conservative on purpose: it only removes what is never meant to be typed.
 
@@ -25,5 +27,5 @@ export function lightCleanup(text: string, options: LightOptions = {}): string {
     .replace(/\s{2,}/g, ' ')
     .trim();
   if (!options.literal && out.length > 0) out = out.charAt(0).toUpperCase() + out.slice(1);
-  return out;
+  return options.literal ? out : formatLists(out);
 }

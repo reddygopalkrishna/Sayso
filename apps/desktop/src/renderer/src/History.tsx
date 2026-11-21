@@ -64,7 +64,7 @@ export function HistoryRow({ entry }: { entry: HistoryEntry }): React.JSX.Elemen
         </p>
       )}
       {entry.finalText && (
-        <p className="mt-1 text-sm">
+        <p className="mt-1 whitespace-pre-line text-sm">
           <span className="text-xs text-neutral-500">Typed: </span>
           {entry.finalText}
         </p>

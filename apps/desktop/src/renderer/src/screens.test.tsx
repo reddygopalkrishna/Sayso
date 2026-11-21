@@ -105,6 +105,14 @@ describe('HistoryRow', () => {
     expect(out).toContain('Cancelled “click”');
   });
 
+  it('keeps the line breaks of a typed list readable', () => {
+    const out = html(
+      <HistoryRow entry={entry({ finalText: '1. First thing.\n2. Second thing.' })} />,
+    );
+    expect(out).toContain('whitespace-pre-line');
+    expect(out).toContain('1. First thing.\n2. Second thing.');
+  });
+
   it('turns underscores in command names into spaces', () => {
     const out = html(
       <HistoryRow

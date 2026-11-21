@@ -47,6 +47,32 @@ Say the name of anything you can see and it presses it: buttons ("Reply", "Compo
 ### AI cleanup ("Tami 1")
 Their **own small AI model** that runs on the laptop. Removes "um", follows changes of mind, adds punctuation, makes lists. They claim 83/100 sentences cleaned correctly vs 51 for Gemma 3 1B and Llama 3.2 1B.
 
+### What the screen recordings added (14 Nov 2026, our own walkthrough of the app; the recordings have no audio)
+Seen in Infina's real app, not on their website:
+- **Onboarding in five screens:** "Two quick yeses" (Microphone + Accessibility, one Allow button each, Continue stays greyed until both are on) → "Turn on hands-free" (a Start listening button) → "Meet the pill" (say "type") → "Hold a key and talk" with a **key picker: Fn, Left Option, Right Option, Right Command, Caps Lock** → "Two ways to talk" (hands-free vs hold-a-key, with a "where hands-free works best" guide). The Home screen says to hold **right ⌘**, so their default hold key is not Fn.
+- **Sidebar:** Home, Activity (history), Insights, Hands-free, Commands, Remote, Words, Style, Settings (General with microphone choice, AI cleanup, Billing, Team, Profile), Support.
+- **Hands-free page:** double-tap ⌘ toggles it. Only "type …", "send it" / "enter" and "open …" work with no wake word; everything else needs "Infina" first. Settings: *pause that ends your sentence* 0.8 / **1 s** / 1.2 / 1.4 s, *thinking pauses* (after 8 s of talking allow a 2.5 s pause), *stays awake for follow-ups* 30 s / **1 min** / 2 / 5 min. A privacy line: while napping it listens on the Mac only for "Infina", "type", "send it" and "open"; nothing else is recorded, saved or sent.
+- **Remote (press by name):** "Reply", "Allow", "Rename", the first 2–3 words of a link ("Fix my resume"), "open the second email", an email by sender or first words, and natural phrasing ("can you open the second email").
+- **Commands page:** open apps (about 22 listed: Notes, Messages, Mail, Calendar, Reminders, Safari, Chrome, Slack, WhatsApp, Telegram, Discord, Zoom, Notion, Figma, Linear, Spotify, ChatGPT, Claude, Perplexity, Cursor, Terminal, FaceTime), websites (Gmail, YouTube, Docs, Sheets, Drive, Meet, Gemini, X, LinkedIn…), tabs (new / close), page (scroll down, go back), chats (new / previous), windows (switch / next / close this). "open Slack" opens the app **or switches to it**.
+- **Style:** two looks, set everywhere or **per app** (Slack, Gmail, Notes, ChatGPT, WhatsApp, Messages, Telegram, Outlook, LinkedIn, Google Docs, Notion…): **Default** (capitals + full punctuation) and **Chill** (no capitals + minimal punctuation).
+- **Words:** *Snippets* (say a trigger such as "calendly", it types the whole text) and a *Dictionary* of words to spell right.
+- **AI cleanup (Tami 1):** removes fillers and repeats, fixes grammar, punctuation and capitals, **formats lists, new lines, emails, numbers and dates**, and keeps only what you meant after a correction. It "adds about 0.2–0.25 seconds to a typical sentence", with a per-mode on/off switch.
+
+| | Infina | Sayso today |
+|---|---|---|
+| Speech | cloud or on-device unknown | on-device WhisperKit, 0.5–1.3 s |
+| AI cleanup speed | +0.2–0.25 s (own small model) | +0.8–2 s (Gemini over the internet): **the biggest felt gap** |
+| Lists, new lines, emails | yes | yes since 14 Nov (AI) and a local list rule for numbered speech |
+| Hold key | choose Fn / Option / ⌘ / Caps Lock | Fn only (clashes with other dictation apps) |
+| Hands-free + wake word | yes (paid) | not yet (Phase 1) |
+| Press by name | yes, with "yes?" before risky | yes; risky buttons refused until a confirm dialog exists |
+| Position and first-words ("open the second email") | yes | not yet (Phase 1) |
+| Go back, windows, chats | yes | not yet |
+| Per-app style | Default / Chill per app | automatic tone per app, no setting |
+| Snippets | yes | not yet (table is planned) |
+| Safety (password fields, per-app blocks, preview chip) | "yes?" before risky buttons | stricter: matrix per command and app, Esc to cancel |
+| Local history, dictionary | yes | yes, plus remembered "open" choices |
+
 ## 3. Technology choices we can see
 
 | Area | Their choice | Why it matters |

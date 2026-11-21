@@ -40,6 +40,11 @@ describe('GeminiProvider', () => {
     const system = body.systemInstruction.parts[0]?.text ?? '';
     expect(system).toContain('spelled exactly like this when the speaker says them: Sayso.');
     expect(system).toContain('Never replace a different, ordinary word');
+    // Formatting rules: lists only when enumerated, no invented lead-in, spoken line breaks, emails.
+    expect(system).toContain('numbered list');
+    expect(system).toContain('never invent a lead-in');
+    expect(system).toContain('"new paragraph" means a blank line');
+    expect(system).toContain('john@example.com');
     // The list must not be called a dictionary: the model then swapped the spoken word "dictionary" for a term.
     expect(system).not.toMatch(/dictionary/i);
     expect(body.systemInstruction.parts[0]?.text).toContain('Slack');

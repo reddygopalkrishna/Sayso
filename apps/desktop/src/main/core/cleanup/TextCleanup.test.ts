@@ -88,6 +88,40 @@ describe('TextCleanup', () => {
     expect(result).toMatchObject({ method: 'llm', text: 'Open the dictionary tab and ask Sayso.' });
   });
 
+  it('accepts a multi-line list from the AI and keeps the line breaks', async () => {
+    const llm = new FakeLLM(async () => "1. It's in history.\n2. I added it.\n3. It works.");
+    const result = await cleanup(llm).clean({
+      rawText: "first one it's in history second one I added it third one it works",
+      ...slack,
+    });
+    expect(result).toMatchObject({
+      method: 'llm',
+      text: "1. It's in history.\n2. I added it.\n3. It works.",
+    });
+  });
+
+  it('without the AI, clearly numbered speech is still listed', async () => {
+    const result = await cleanup(null).clean({
+      rawText: "First one. It's in history. Second one. I added it.",
+      ...slack,
+    });
+    expect(result).toMatchObject({ method: 'light', text: "1. It's in history.\n2. I added it." });
+  });
+
+  it('the fallback after an AI failure also lists numbered speech', async () => {
+    const llm = new FakeLLM(async () => {
+      throw new Error('Gemini 429: quota');
+    });
+    const result = await cleanup(llm).clean({
+      rawText: 'First, check the logs. Second, restart the server.',
+      ...slack,
+    });
+    expect(result).toMatchObject({
+      method: 'fallback',
+      text: '1. Check the logs.\n2. Restart the server.',
+    });
+  });
+
   it('never sends literal apps to the LLM', async () => {
     const llm = new FakeLLM(async () => 'should not be used');
     const result = await cleanup(llm).clean({
