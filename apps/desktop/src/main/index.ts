@@ -9,6 +9,7 @@ import { HelperActions } from './core/actions/HelperActions.ts';
 import { TextCleanup } from './core/cleanup/TextCleanup.ts';
 import type { DictionaryTerm } from './core/cleanup/dictionary.ts';
 import { buildProvider } from './core/cleanup/providers.ts';
+import { BUILT_IN_TERMS } from './core/cleanup/builtInTerms.ts';
 import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
 import { AppResolver } from './core/resolver/AppResolver.ts';
@@ -142,12 +143,13 @@ const chip = new PreviewChip({
 });
 
 /** Your own words, for spelling fixes in dictation and in spoken commands. Never throws. */
+/** The built-in names (ChatGPT, GitHub…) and then your own words, which win when they overlap. */
 function readDictionary(): DictionaryTerm[] {
   try {
-    return storage?.dictionary.list() ?? [];
+    return [...BUILT_IN_TERMS, ...(storage?.dictionary.list() ?? [])];
   } catch (error) {
     warn('could not read the dictionary', error);
-    return [];
+    return [...BUILT_IN_TERMS];
   }
 }
 

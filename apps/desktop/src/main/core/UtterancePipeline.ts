@@ -3,6 +3,7 @@ import type { CommandActions, KeyPresser, TextInserter } from './actions/HelperA
 import { keyStrokeFor } from './actions/sendStrategy.ts';
 import { applyDictionary, type DictionaryTerm } from './cleanup/dictionary.ts';
 import { applyStyle } from './cleanup/style.ts';
+import { afterTypeWord, fixWebAddresses, typeLiterally } from './cleanup/webAddress.ts';
 import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
@@ -123,6 +124,26 @@ export class UtterancePipeline {
 
   private async deliverDictation(segment: TranscriptSegment, context: AppContext): Promise<void> {
     this.clearPending();
+
+    // "type …" with the hold key: the rest is typed as said, with no AI and no end command.
+    const literal = afterTypeWord(segment.text);
+    if (literal !== null) {
+      this.assertCanInsert(context);
+      const text = typeLiterally(literal, this.opts.dictionary?.() ?? []);
+      if (text !== '') await this.insert(text);
+      this.opts.onOutcome?.({
+        mode: 'dictation',
+        segment,
+        context,
+        routing: null,
+        cleanup: null,
+        inserted: text !== '',
+        insertedText: text,
+        command: null,
+      });
+      return;
+    }
+
     const routing = route(segment, {
       endCommands: this.opts.endCommands,
       pauseMs: this.opts.pauseMs(),
@@ -146,10 +167,12 @@ export class UtterancePipeline {
           bundleId: context.bundleId,
           appName: context.appName,
         });
-        const typed = applyStyle(
-          cleanup.text,
-          this.opts.style?.(context.bundleId) ?? 'default',
-          this.opts.dictionary?.() ?? [],
+        const typed = fixWebAddresses(
+          applyStyle(
+            cleanup.text,
+            this.opts.style?.(context.bundleId) ?? 'default',
+            this.opts.dictionary?.() ?? [],
+          ),
         );
         if (typed !== '') {
           await this.insert(typed);

@@ -94,7 +94,7 @@ export class TextCleanup {
         {
           rawText: spelled,
           tone,
-          dictionary: terms.map((t) => t.phrase),
+          dictionary: [...new Set(terms.map((t) => t.phrase))],
           appName: input.appName,
         },
         controller.signal,

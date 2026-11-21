@@ -204,6 +204,58 @@ describe('UtterancePipeline', () => {
   });
 });
 
+describe('UtterancePipeline: "type …" with the hold key', () => {
+  it('types the rest as said, with no AI', async () => {
+    const { pipeline, log, outcomes } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('type chatgpt.com'));
+    expect(log).toEqual(['insert chatgpt.com']);
+    expect(outcomes[0]?.insertedText).toBe('chatgpt.com');
+    expect(outcomes[0]?.cleanup).toBeNull();
+  });
+
+  it('fixes a misheard name and a spoken web address', async () => {
+    const { pipeline, log } = setup({
+      contexts: [slack],
+      dictionary: [{ phrase: 'ChatGPT', spokenAs: 'chart gpt' }],
+    });
+    await pipeline.deliver(segment('Type chart gpt dot com.'));
+    expect(log).toEqual(['insert chatgpt.com']);
+  });
+
+  it('a trailing "send" is typed as a word, never pressed', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('type see you soon', send));
+    expect(log).toEqual(['insert see you soon send']);
+  });
+
+  it('is never typed into a password field', async () => {
+    const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
+    const { pipeline, log } = setup({ contexts: [password] });
+    await expect(pipeline.deliver(segment('type hunter2'))).rejects.toBeInstanceOf(SafetyRefusal);
+    expect(log).toEqual([]);
+  });
+
+  it('"type" inside a sentence is ordinary dictation', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('I will type it later'));
+    expect(log).toEqual(['llm I will type it later', 'insert I will type it later.']);
+  });
+});
+
+describe('UtterancePipeline: web addresses in dictation', () => {
+  it('a spoken address comes out as an address', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('go to chatgpt dot com'));
+    expect(log).toEqual(['llm go to chatgpt dot com', 'insert Go to chatgpt.com.']);
+  });
+
+  it('an address said alone has no capital and no full stop', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('github dot com'));
+    expect(log).toEqual(['llm github dot com', 'insert github.com']);
+  });
+});
+
 describe('UtterancePipeline: style', () => {
   const styles = { 'com.tinyspeck.slackmacgap': 'chill' } as const;
 
