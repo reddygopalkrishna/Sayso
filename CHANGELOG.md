@@ -39,6 +39,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 12:51 · Hands-free, slice 3a: decide what to act on (`3fe19b7`)
+- **What it acts on with no wake word:** "type …" (the rest is dictated; a trailing "send" after a pause still sends), "send it" / "enter" / "new line" said alone, and "open …". Any other command needs the wake word first ("Sayso, new tab"; set another with `SAYSO_WAKE_WORD`), or follows within a minute of a recognised trigger. Everything else is ignored, never typed, so a conversation in the room cannot end up in the focused field.
+- **No double typing:** speech said while holding the dictation key is also heard by the hands-free microphone, so an utterance that overlaps a held-key dictation is skipped.
+- **Safety:** the same pipeline and checks as a held-key utterance (password fields, meeting apps, preview chip, "yes?"). Failures show in the pill and listening continues. It will not start while the speech model is loading, and stops with a message if the helper restarts.
+- **Not visible yet:** the switch and the indicator come in slice 3b.
+- Tests: 1,038 desktop and 62 protocol tests pass; typecheck and lint clean.
+
 ### 12:47 · Hands-free, slice 2: continuous listening in the helper (`ad5258b`)
 - **What:** two new helper requests, `startListening` and `stopListening`. While listening, the microphone stays on, the speech segmenter cuts the stream into utterances, and each one is transcribed on this Mac, in order, and reported as a `heard` event. Nothing is saved. Stopping still reports the utterance in progress; starting twice is a no-op; a microphone problem comes back as an error.
 - **Also:** a new `StreamingMic` in the helper (the held-key recorder is unchanged), the TypeScript schemas, fixtures and start and stop actions, and a pass-through for `heard` events.
