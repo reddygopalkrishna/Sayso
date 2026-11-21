@@ -148,3 +148,15 @@ describe('typing mode phrases', () => {
     },
   );
 });
+
+describe('"type …" waives the pause before a trailing command', () => {
+  it('marks the typed words so "hit enter" at the end needs no pause', () => {
+    const result = classifyHeard(heard('type AWS hit enter'), { wakeWord: 'sayso', awake: false, isCommand });
+    expect(result.intent?.kind).toBe('dictate');
+    expect(result.intent?.segment.relaxPause).toBe(true);
+  });
+  it('does not mark commands', () => {
+    const result = classifyHeard(heard('new tab'), { wakeWord: 'sayso', awake: false, isCommand });
+    expect(result.intent?.segment.relaxPause).toBeUndefined();
+  });
+});

@@ -192,7 +192,7 @@ export class UtterancePipeline {
 
     const routing = route(segment, {
       endCommands: this.opts.endCommands,
-      pauseMs: this.opts.pauseMs(),
+      pauseMs: segment.relaxPause ? 0 : this.opts.pauseMs(),
       isAllowed: (command) => isExecutable(decideAction(command, context, this.opts.previewMs())),
     });
 

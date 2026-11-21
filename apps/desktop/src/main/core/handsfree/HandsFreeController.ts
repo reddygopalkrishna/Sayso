@@ -168,7 +168,7 @@ export class HandsFreeController {
         `[hands-free] heard ${heardText}: typing (it followed "type"); STT ${Math.round(message.sttMs)} ms`,
       );
       try {
-        await this.deps.deliver(segment, 'dictation');
+        await this.deps.deliver({ ...segment, relaxPause: true }, 'dictation');
       } catch (error) {
         this.deps.onError(this.deps.describeError(error));
       }

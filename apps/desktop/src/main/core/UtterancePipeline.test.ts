@@ -196,6 +196,19 @@ describe('UtterancePipeline', () => {
     expect(inserts.at(-1)).toBe('insert Next message.');
   });
 
+  it('"type … hit enter" in one breath: text typed, then Enter, when the pause is waived', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    const said = segment('aws', { word: 'send', gapMs: 50 });
+    await pipeline.deliver({ ...said, relaxPause: true });
+    expect(log).toEqual(['llm aws', 'insert Aws.', 'chip Send 1000', 'key enter']);
+  });
+
+  it('without the waiver the same words stay text (nothing is sent by accident)', async () => {
+    const { pipeline, log } = setup({ contexts: [slack] });
+    await pipeline.deliver(segment('aws', { word: 'send', gapMs: 50 }));
+    expect(log.some((entry) => entry.startsWith('key'))).toBe(false);
+  });
+
   it('inserts, shows the preview chip, then sends', async () => {
     const { pipeline, log, outcomes } = setup({ contexts: [slack] });
     await pipeline.deliver(segment('see you soon', send));

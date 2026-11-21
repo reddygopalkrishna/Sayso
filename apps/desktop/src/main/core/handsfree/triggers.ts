@@ -80,7 +80,7 @@ export function classifyHeard(segment: TranscriptSegment, options: TriggerOption
     const rest = afterFirstWord(segment);
     return rest.text === ''
       ? { intent: null, triggered: true }
-      : { intent: { kind: 'dictate', segment: rest }, triggered: true };
+      : { intent: { kind: 'dictate', segment: { ...rest, relaxPause: true } }, triggered: true };
   }
 
   // "Sayso, new tab" or "Sayso, log me in" → a command, in the person's own words if need be

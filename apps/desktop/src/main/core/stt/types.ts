@@ -10,6 +10,11 @@ export interface TranscriptSegment {
   audioMs: number;
   sttMs: number;
   model: string;
+  /**
+   * Set for text the person explicitly asked to type ("type AWS hit enter" in hands-free): a command
+   * at the end needs no pause before it, because the words are already known to be intended.
+   */
+  relaxPause?: boolean;
 }
 
 export type SttReadiness =
