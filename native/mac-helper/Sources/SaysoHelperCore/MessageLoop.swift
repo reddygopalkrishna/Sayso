@@ -88,6 +88,7 @@ public final class MessageLoop {
     }
 
     public func send(_ message: HelperMessage) {
+        if case .hotkey(phase: .down) = message { HotkeyClock.shared.markDown() }
         writer.write(message.encodedLine())
     }
 
@@ -120,6 +121,7 @@ public final class MessageLoop {
         case let .recordCancel(id):
             if recordingID == id {
                 recorder.cancel()
+                recorder.prepare()
                 recordingID = nil
             }
             send(.done(id: id))
@@ -290,6 +292,7 @@ public final class MessageLoop {
             // A cancel may have arrived while the mic was starting.
             guard recordingID == id else {
                 recorder.cancel()
+                recorder.prepare()
                 return
             }
             send(.done(id: id))
@@ -306,6 +309,7 @@ public final class MessageLoop {
         }
         recordingID = nil
         let samples = recorder.stop()
+        recorder.prepare()  // ready for the next key press, while this one is transcribed
         let audioMs = Double(samples.count) / sampleRate * 1000
         let clock = ContinuousClock()
         let started = clock.now

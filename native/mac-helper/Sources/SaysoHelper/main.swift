@@ -59,10 +59,12 @@ let (loop, fnTap) = MainActor.assumeIsolated {
     let fnTap = FnEventTap(
         onPhase: { phase in box.loop?.send(.hotkey(phase: phase)) },
         onEscape: { box.loop?.send(.escape) })
+    let preparedMic = MicRecorder()
+    preparedMic.prepare()  // build the engine now; it does not run (no capture, no mic indicator)
     let presser = AXElementPresser()
     let loop = MessageLoop(
         writer: StandardOutputWriter(),
-        recorder: MicRecorder(),
+        recorder: preparedMic,
         transcriber: transcriber,
         inserter: PasteInserter(),
         contextProvider: WorkspaceContext(),

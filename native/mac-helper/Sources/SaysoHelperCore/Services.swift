@@ -22,6 +22,12 @@ public protocol AudioRecording: AnyObject {
     func stop() -> [Float]
     /// Stops capturing and drops the samples.
     func cancel()
+    /// Gets ready for the next start() (builds what can be built without turning the microphone on).
+    func prepare()
+}
+
+public extension AudioRecording {
+    func prepare() {}
 }
 
 public protocol Transcribing: Sendable {
