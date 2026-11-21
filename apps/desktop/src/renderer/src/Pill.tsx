@@ -4,7 +4,9 @@ import { useStatus } from './useStatus.ts';
 function content(state: DictationState): { text: string; dot: string } | null {
   switch (state.phase) {
     case 'listening':
-      return { text: 'Listening…', dot: 'bg-red-500 animate-pulse' };
+      return state.mode === 'command'
+        ? { text: 'Command…', dot: 'bg-violet-400 animate-pulse' }
+        : { text: 'Listening…', dot: 'bg-red-500 animate-pulse' };
     case 'transcribing':
       return { text: 'Transcribing…', dot: 'bg-sky-400 animate-pulse' };
     case 'inserting':

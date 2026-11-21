@@ -17,6 +17,8 @@ apps/desktop/                      Electron app (CommonJS; configs are .mts)
     core/router/IntentRouter.ts    pause rule on raw words (see TECHNICAL_ARCHITECTURE §5.3)
     core/cleanup/                  TextCleanup, tone.ts, gemini.ts, light.ts, prompt.ts, types.ts
     core/actions/                  HelperActions (insert, keys, Esc capture); sendStrategy.ts: Enter, ⌘⇧D (Mail), ⌘⏎ (Outlook)
+    core/commands/                 CommandEngine (whole-utterance matching, args, fuzzy), errors for the pill
+    core/resolver/                 AppResolver: "open X" → app, known site, domain, or web search; "switch to X"
     core/safety/                   SafetyGate (run / preview / confirm / refuse, meeting apps, password fields), PreviewChip
     core/context/HelperContext.ts  frontmost app from the helper
     windows/                       mainWindow.ts, overlay.ts (pill and chip: non-focusable panels), load.ts
@@ -51,4 +53,7 @@ CHANGELOG.md                       updated on every commit
 - **Versions:** TypeScript pinned to `~6.0` (typescript-eslint does not support 7 yet).
 - **Pause rule:** `SAYSO_PAUSE_MS` (600) gap before the first word of the end phrase; punctuation ignored; longest phrase wins; blocked apps keep it as text.
 - **Safety:** `decideAction(command, context)` order: blocked level → `blockedIn` app → meeting app → password field → level (safe runs, normal shows the chip, risky = confirm, which is not executable until a dialog exists). The router only strips a command from the text if it is executable, so refused commands stay typed text. The pipeline reads the context again right before inserting and before pressing a key (focus can move during cleanup or the chip). Context carries `focusRole` and `secureField` from Accessibility (`AXSecureTextField`).
+- **Command mode:** hold Fn+Shift (the helper reports a `command` hotkey phase, in either order). `DictationController` passes `mode` to `deliver`; in command mode `UtterancePipeline.deliverCommand` matches the whole utterance with `CommandEngine`, never types, and throws `CommandNotUnderstood` / `CommandRefused` / `CommandFailed` so the pill shows why nothing happened. Dictation mode only knows the end commands (pause rule).
+- **Grammar:** a phrase may end in one `{label}`, `{target}` or `{app}` (validated against the action: `pressElement`, `openTarget`, `switchApp`). Label templates fill from the args. Exact literal phrases beat argument phrases ("press enter" over "press {label}").
+- **Helper requests added in step 6:** `scroll`, `pressElement` (AXPress search, 300 ms / 4000-node budget), `listApps` (reply `apps`), `openApp`, `activateApp`, `openURL` (http/https only). Apps are scanned in the background at startup.
 - **Esc capture:** `captureEscape` makes the helper swallow Esc and send an `escape` event; it switches itself off after 3 s. Only the preview chip uses it.

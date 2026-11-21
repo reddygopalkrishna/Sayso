@@ -65,6 +65,46 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakeApps: AppControlling {
+    var apps = [
+        AppInfo(name: "Slack", bundleId: "com.tinyspeck.slackmacgap", running: true),
+        AppInfo(name: "Calculator", bundleId: "com.apple.calculator", running: false),
+    ]
+    var error: ServiceError?
+    private(set) var calls: [String] = []
+    func listApps() -> [AppInfo] { apps }
+    func open(bundleId: String) async throws {
+        calls.append("open \(bundleId)")
+        if let error { throw error }
+    }
+    func activate(bundleId: String) async throws {
+        calls.append("activate \(bundleId)")
+        if let error { throw error }
+    }
+    func openURL(_ url: String) throws {
+        calls.append("url \(url)")
+        if let error { throw error }
+    }
+}
+
+@MainActor final class FakeScroller: Scrolling {
+    var error: ServiceError?
+    private(set) var scrolls: [(ScrollDirection, Int)] = []
+    func scroll(direction: ScrollDirection, amount: Int) throws {
+        if let error { throw error }
+        scrolls.append((direction, amount))
+    }
+}
+
+@MainActor final class FakePresser: ElementPressing {
+    var error: ServiceError?
+    private(set) var pressed: [String] = []
+    func press(label: String) async throws {
+        if let error { throw error }
+        pressed.append(label)
+    }
+}
+
 @MainActor final class FakeEscape: EscapeCapturing {
     private(set) var states: [Bool] = []
     func setCapture(_ enabled: Bool) { states.append(enabled) }
@@ -78,12 +118,16 @@ struct Harness {
     let context = FakeContext()
     let keys = FakeKeys()
     let escape = FakeEscape()
+    let apps = FakeApps()
+    let scroller = FakeScroller()
+    let presser = FakePresser()
     let loop: MessageLoop
 
     init(transcriber: FakeTranscriber = FakeTranscriber()) {
         loop = MessageLoop(
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
-            contextProvider: context, keyPresser: keys, escapeCapture: escape, osDescription: "macOS 14.0")
+            contextProvider: context, keyPresser: keys, escapeCapture: escape,
+            appControl: apps, scroller: scroller, elementPresser: presser, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -203,6 +247,50 @@ struct Harness {
         h.keys.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "no AX")
         await h.send(#"{"v":1,"type":"keyPress","id":"k-3","key":"enter","modifiers":[]}"#)
         #expect(h.out.messages.last == .error(id: "k-3", code: HelperErrorCode.accessibilityDenied, msg: "no AX"))
+    }
+
+    @Test func listsApps() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"listApps","id":"l-1"}"#)
+        #expect(h.out.messages == [.apps(id: "l-1", apps: h.apps.apps)])
+    }
+
+    @Test func opensSwitchesAndBrowses() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"openApp","id":"o-1","bundleId":"com.apple.calculator"}"#)
+        await h.send(#"{"v":1,"type":"activateApp","id":"a-1","bundleId":"com.apple.Safari"}"#)
+        await h.send(#"{"v":1,"type":"openURL","id":"u-1","url":"https://github.com"}"#)
+        #expect(h.apps.calls == ["open com.apple.calculator", "activate com.apple.Safari", "url https://github.com"])
+        #expect(h.out.messages == [.done(id: "o-1"), .done(id: "a-1"), .done(id: "u-1")])
+    }
+
+    @Test func reportsAppAndUrlErrors() async {
+        let h = Harness()
+        h.apps.error = ServiceError(code: HelperErrorCode.appNotFound, message: "not running")
+        await h.send(#"{"v":1,"type":"activateApp","id":"a-1","bundleId":"x.y"}"#)
+        #expect(h.out.messages.last == .error(id: "a-1", code: HelperErrorCode.appNotFound, msg: "not running"))
+        h.apps.error = ServiceError(code: HelperErrorCode.badUrl, message: "bad")
+        await h.send(#"{"v":1,"type":"openURL","id":"u-1","url":"https://x.test"}"#)
+        #expect(h.out.messages.last == .error(id: "u-1", code: HelperErrorCode.badUrl, msg: "bad"))
+    }
+
+    @Test func scrolls() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"scroll","id":"s-1","direction":"down","amount":600}"#)
+        #expect(h.scroller.scrolls.map(\.0) == [.down])
+        #expect(h.scroller.scrolls.map(\.1) == [600])
+        h.scroller.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "no AX")
+        await h.send(#"{"v":1,"type":"scroll","id":"s-2","direction":"up","amount":100}"#)
+        #expect(h.out.messages.last == .error(id: "s-2", code: HelperErrorCode.accessibilityDenied, msg: "no AX"))
+    }
+
+    @Test func pressesElements() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"pressElement","id":"p-1","label":"Submit"}"#)
+        #expect(h.presser.pressed == ["Submit"])
+        h.presser.error = ServiceError(code: HelperErrorCode.elementNotFound, message: "nope")
+        await h.send(#"{"v":1,"type":"pressElement","id":"p-2","label":"Nope"}"#)
+        #expect(h.out.messages.last == .error(id: "p-2", code: HelperErrorCode.elementNotFound, msg: "nope"))
     }
 
     @Test func capturesEscapeOnRequestAndReleasesItOnShutdown() async {

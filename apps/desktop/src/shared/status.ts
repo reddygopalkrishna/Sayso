@@ -15,7 +15,7 @@ export type FnListenerStatus = 'unknown' | 'active' | 'unavailable';
 
 export type DictationState =
   | { phase: 'idle' }
-  | { phase: 'listening' }
+  | { phase: 'listening'; mode: 'dictation' | 'command' }
   | { phase: 'transcribing' }
   | { phase: 'inserting' }
   | { phase: 'error'; message: string };
@@ -32,6 +32,8 @@ export interface LastUtterance {
   /** How the text was produced: raw (off), local light cleanup, LLM, or LLM fallback. */
   method: 'off' | 'light' | 'llm' | 'fallback';
   tone: 'casual' | 'professional' | 'literal';
+  /** Hold Fn dictates; hold Fn+Shift gives commands. */
+  mode: 'dictation' | 'command';
   /** End command that ran after the text ("send", "enter", "new_line"), if any. */
   command: string | null;
   sttMs: number;

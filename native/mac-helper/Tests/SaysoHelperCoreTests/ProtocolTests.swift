@@ -24,7 +24,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 9)
+        #expect(names.count == 15)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
@@ -33,7 +33,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 
     @Test func everyHelperFixtureRoundTrips() throws {
         let names = try fixtureNames(prefix: "helper.")
-        #expect(names.count == 14)
+        #expect(names.count == 16)
         for name in names {
             let message = try HelperMessage.decode(fixture(name))
             let line = message.encodedLine()
@@ -63,6 +63,10 @@ func fixtureNames(prefix: String) throws -> [String] {
         ("{\"v\":1,\"type\":\"insertText\",\"id\":\"a\",\"text\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"recordStop\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"captureEscape\",\"id\":\"e\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"down\",\"amount\":10}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"left\",\"amount\":100}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"openApp\",\"id\":\"o\",\"bundleId\":\"\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"pressElement\",\"id\":\"p\",\"label\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"keyPress\",\"id\":\"k\",\"key\":\"F13\",\"modifiers\":[]}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"keyPress\",\"id\":\"k\",\"key\":\"a\",\"modifiers\":[\"hyper\"]}", ProtocolError.invalidJSON),
     ])
@@ -72,7 +76,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 }
 
 @Suite struct FnTrackerBehaviour {
-    enum Input { case fn(Bool), key }
+    enum Input { case fn(Bool), flags(fn: Bool, shift: Bool), key }
 
     @Test(arguments: [
         ([Input.fn(true), .fn(false)], [HotkeyPhase.down, .up]),
@@ -80,17 +84,26 @@ func fixtureNames(prefix: String) throws -> [String] {
         ([.key, .fn(false)], []),
         ([.fn(true), .key, .key, .fn(false)], [.down, .chord, .up]),
         ([.fn(true), .key, .fn(false), .fn(true), .key], [.down, .chord, .up, .down, .chord]),
+        // Shift held with Fn turns the hold into a command, once per hold, in either order.
+        ([.flags(fn: true, shift: false), .flags(fn: true, shift: true), .flags(fn: false, shift: true)],
+         [.down, .command, .up]),
+        ([.flags(fn: true, shift: true), .flags(fn: false, shift: false)], [.down, .command, .up]),
+        ([.flags(fn: true, shift: true), .flags(fn: true, shift: false), .flags(fn: true, shift: true)],
+         [.down, .command]),
+        ([.flags(fn: false, shift: true), .flags(fn: false, shift: false)], []),
+        ([.flags(fn: true, shift: true), .flags(fn: false, shift: false), .flags(fn: true, shift: false)],
+         [.down, .command, .up, .down]),
     ])
     func phases(inputs: [Input], expected: [HotkeyPhase]) {
         var tracker = FnTracker()
         var out: [HotkeyPhase] = []
         for input in inputs {
-            let phase: HotkeyPhase?
             switch input {
-            case let .fn(down): phase = tracker.flagsChanged(fnDown: down)
-            case .key: phase = tracker.keyDown()
+            case let .fn(down): out += tracker.flagsChanged(fnDown: down)
+            case let .flags(fn, shift): out += tracker.flagsChanged(fnDown: fn, shiftDown: shift)
+            case .key:
+                if let phase = tracker.keyDown() { out.append(phase) }
             }
-            if let phase { out.append(phase) }
         }
         #expect(out == expected)
     }
@@ -107,5 +120,24 @@ func fixtureNames(prefix: String) throws -> [String] {
         }
         #expect(KeyMap.code(for: "F13") == nil)
         #expect(KeyMap.code(for: "ab") == nil)
+    }
+}
+
+@Suite struct LabelMatching {
+    @Test(arguments: [
+        ("submit", "Submit", 3),
+        ("Submit", "submit!", 3),
+        ("submit", "Submit form", 2),
+        ("save", "Save and close", 2),
+        ("close", "Save and close", 1),
+        ("submit", "Resubmit", 0),
+        ("sub", "Submit", 0),
+        ("new tab", "New Tab", 3),
+        ("", "Submit", 0),
+        ("submit", "", 0),
+        ("café", "Café", 3),
+    ])
+    func scores(query: String, text: String, expected: Int) {
+        #expect(LabelMatch.score(query: query, text: text) == expected)
     }
 }

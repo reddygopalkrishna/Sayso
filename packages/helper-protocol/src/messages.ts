@@ -11,7 +11,7 @@
  *   binary data never mixes with JSON lines.
  *
  * Requests (messages with an `id`) are answered with exactly one reply carrying the same `id`:
- * `pong`, `done`, `transcript`, `context`, or `error`. Events (`ready`, `hotkey`, `escape`, `fnListener`, `sttStatus`, `log`, and
+ * `pong`, `done`, `transcript`, `context`, `apps`, or `error`. Events (`ready`, `hotkey`, `escape`, `fnListener`, `sttStatus`, `log`, and
  * `error` without an id) are unsolicited. The helper sends `ready` first.
  *
  * The Swift helper mirrors these types (native/mac-helper/Sources/SaysoHelperCore/Message.swift);
@@ -80,6 +80,46 @@ export const CaptureEscapeSchema = z
   .object({ v, type: z.literal('captureEscape'), id, enabled: z.boolean() })
   .strict();
 
+/** Scroll the view under the pointer by `amount` pixels. Answered with `done`. */
+export const ScrollSchema = z
+  .object({
+    v,
+    type: z.literal('scroll'),
+    id,
+    direction: z.enum(['up', 'down']),
+    amount: z.number().int().min(50).max(5000),
+  })
+  .strict();
+/**
+ * Press (AXPress) the button, link or menu item in the frontmost app whose title or description
+ * matches `label`. Answered with `done`, or `error` element_not_found.
+ */
+export const PressElementSchema = z
+  .object({ v, type: z.literal('pressElement'), id, label: z.string().min(1).max(200) })
+  .strict();
+/** Installed and running apps. Answered with `apps`. */
+export const ListAppsSchema = z.object({ v, type: z.literal('listApps'), id }).strict();
+/** Launch an app, or bring it to the front if it is running. Answered with `done`. */
+export const OpenAppSchema = z
+  .object({ v, type: z.literal('openApp'), id, bundleId: z.string().min(1).max(200) })
+  .strict();
+/** Bring a running app to the front. Answered with `done`, or `error` app_not_found. */
+export const ActivateAppSchema = z
+  .object({ v, type: z.literal('activateApp'), id, bundleId: z.string().min(1).max(200) })
+  .strict();
+/** Open an http(s) URL in the default browser. Answered with `done`, or `error` bad_url. */
+export const OpenUrlSchema = z
+  .object({
+    v,
+    type: z.literal('openURL'),
+    id,
+    url: z
+      .string()
+      .max(2048)
+      .regex(/^https?:\/\/\S+$/i),
+  })
+  .strict();
+
 /** Read the frontmost app and the focused element. Answered with `context`. */
 export const GetContextSchema = z.object({ v, type: z.literal('getContext'), id }).strict();
 
@@ -93,6 +133,12 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   GetContextSchema,
   KeyPressSchema,
   CaptureEscapeSchema,
+  ScrollSchema,
+  PressElementSchema,
+  ListAppsSchema,
+  OpenAppSchema,
+  ActivateAppSchema,
+  OpenUrlSchema,
 ]);
 
 // Helper → app
@@ -144,6 +190,13 @@ export const ContextSchema = z
   })
   .strict();
 
+export const AppInfoSchema = z
+  .object({ name: z.string().min(1), bundleId: z.string().min(1), running: z.boolean() })
+  .strict();
+export const AppsSchema = z
+  .object({ v, type: z.literal('apps'), id, apps: z.array(AppInfoSchema) })
+  .strict();
+
 /** Escape was pressed while `captureEscape` was on (the key was swallowed). */
 export const EscapeSchema = z.object({ v, type: z.literal('escape') }).strict();
 
@@ -152,8 +205,11 @@ export const HotkeySchema = z
     v,
     type: z.literal('hotkey'),
     key: z.literal('fn'),
-    /** `chord`: another key was pressed while Fn was held (e.g. Fn+Delete), so it is not a hold. */
-    phase: z.enum(['down', 'up', 'chord']),
+    /**
+     * `chord`: another key was pressed while Fn was held (e.g. Fn+Delete), so it is not a hold.
+     * `command`: Shift was held together with Fn, so this utterance is a command, not dictation.
+     */
+    phase: z.enum(['down', 'up', 'chord', 'command']),
   })
   .strict();
 /** Whether the Fn listener (CGEventTap) is running; `unavailable` means Accessibility is off. */
@@ -194,6 +250,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   DoneSchema,
   TranscriptSchema,
   ContextSchema,
+  AppsSchema,
   EscapeSchema,
   HotkeySchema,
   FnListenerSchema,
@@ -209,6 +266,7 @@ export type TranscriptMessage = z.infer<typeof TranscriptSchema>;
 export type WordTiming = z.infer<typeof WordTimingSchema>;
 export type HotkeyMessage = z.infer<typeof HotkeySchema>;
 export type ContextMessage = z.infer<typeof ContextSchema>;
+export type AppInfo = z.infer<typeof AppInfoSchema>;
 export type Key = z.infer<typeof KeySchema>;
 export type Modifier = z.infer<typeof ModifierSchema>;
 export type SttStatusMessage = z.infer<typeof SttStatusSchema>;
@@ -221,7 +279,7 @@ export type RequestBody = DistributiveOmit<RequestMessage, 'v' | 'id'>;
 /** Helper messages that answer a request. */
 export type ReplyMessage = Extract<
   HelperMessage,
-  { type: 'pong' | 'done' | 'transcript' | 'context' | 'error' }
+  { type: 'pong' | 'done' | 'transcript' | 'context' | 'apps' | 'error' }
 >;
 
 /** Error codes the helper sends. */
@@ -233,4 +291,7 @@ export const HelperErrorCode = {
   alreadyRecording: 'already_recording',
   sttFailed: 'stt_failed',
   accessibilityDenied: 'accessibility_denied',
+  elementNotFound: 'element_not_found',
+  appNotFound: 'app_not_found',
+  badUrl: 'bad_url',
 } as const;

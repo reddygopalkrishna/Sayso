@@ -44,6 +44,31 @@ public protocol ContextProviding: AnyObject {
 }
 
 @MainActor
+public protocol AppControlling: AnyObject {
+    /// Installed and running apps (running ones flagged).
+    func listApps() -> [AppInfo]
+    /// Launches the app, or brings it to the front if it is running. Throws `ServiceError`.
+    func open(bundleId: String) async throws
+    /// Brings a running app to the front. Throws `ServiceError` (app_not_found) if it is not running.
+    func activate(bundleId: String) async throws
+    /// Opens an http(s) URL in the default browser. Throws `ServiceError` (bad_url).
+    func openURL(_ url: String) throws
+}
+
+@MainActor
+public protocol Scrolling: AnyObject {
+    /// Scrolls the view under the pointer. Throws `ServiceError` (accessibility_denied).
+    func scroll(direction: ScrollDirection, amount: Int) throws
+}
+
+@MainActor
+public protocol ElementPressing: AnyObject {
+    /// Presses the button, link or menu item called `label` in the frontmost app.
+    /// Throws `ServiceError` (element_not_found / accessibility_denied).
+    func press(label: String) async throws
+}
+
+@MainActor
 public protocol EscapeCapturing: AnyObject {
     /// While on, the Escape key is swallowed and reported; implementations must switch themselves
     /// off after a few seconds so a crashed app cannot leave Escape disabled.

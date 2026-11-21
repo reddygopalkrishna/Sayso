@@ -31,6 +31,9 @@ public final class MessageLoop {
     private let contextProvider: ContextProviding
     private let keyPresser: KeyPressing
     private let escapeCapture: EscapeCapturing
+    private let appControl: AppControlling
+    private let scroller: Scrolling
+    private let elementPresser: ElementPressing
     private var recordingID: String?
 
     public init(
@@ -41,6 +44,9 @@ public final class MessageLoop {
         contextProvider: ContextProviding,
         keyPresser: KeyPressing,
         escapeCapture: EscapeCapturing,
+        appControl: AppControlling,
+        scroller: Scrolling,
+        elementPresser: ElementPressing,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -50,6 +56,9 @@ public final class MessageLoop {
         self.contextProvider = contextProvider
         self.keyPresser = keyPresser
         self.escapeCapture = escapeCapture
+        self.appControl = appControl
+        self.scroller = scroller
+        self.elementPresser = elementPresser
         self.osDescription = osDescription
     }
 
@@ -98,6 +107,39 @@ public final class MessageLoop {
             return (.keepRunning, nil)
         case let .insertText(id, text):
             return (.keepRunning, Task { await self.insert(id, text) })
+        case let .listApps(id):
+            send(.apps(id: id, apps: appControl.listApps()))
+            return (.keepRunning, nil)
+        case let .openApp(id, bundleId):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.appNotFound) {
+                    try await self.appControl.open(bundleId: bundleId)
+                }
+            })
+        case let .activateApp(id, bundleId):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.appNotFound) {
+                    try await self.appControl.activate(bundleId: bundleId)
+                }
+            })
+        case let .openURL(id, url):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.badUrl) {
+                    try self.appControl.openURL(url)
+                }
+            })
+        case let .scroll(id, direction, amount):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.accessibilityDenied) {
+                    try self.scroller.scroll(direction: direction, amount: amount)
+                }
+            })
+        case let .pressElement(id, label):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.elementNotFound) {
+                    try await self.elementPresser.press(label: label)
+                }
+            })
         case let .captureEscape(id, enabled):
             escapeCapture.setCapture(enabled)
             send(.done(id: id))
@@ -169,6 +211,16 @@ public final class MessageLoop {
             send(.done(id: id))
         } catch {
             sendError(id: id, error, fallbackCode: HelperErrorCode.accessibilityDenied)
+        }
+    }
+
+    /// Runs `work`, then answers `done` or an error for request `id`.
+    private func perform(_ id: String, fallbackCode: String, _ work: () async throws -> Void) async {
+        do {
+            try await work()
+            send(.done(id: id))
+        } catch {
+            sendError(id: id, error, fallbackCode: fallbackCode)
         }
     }
 

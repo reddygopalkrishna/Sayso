@@ -68,13 +68,13 @@ public final class FnEventTap: EscapeCapturing {
     }
 
     /// Returns true when the event must be swallowed.
-    fileprivate func handle(type: CGEventType, fnDown: Bool, keyCode: Int64) -> Bool {
+    fileprivate func handle(type: CGEventType, fnDown: Bool, shiftDown: Bool, keyCode: Int64) -> Bool {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return false
         case .flagsChanged:
-            if let phase = tracker.flagsChanged(fnDown: fnDown) { onPhase(phase) }
+            for phase in tracker.flagsChanged(fnDown: fnDown, shiftDown: shiftDown) { onPhase(phase) }
             return false
         case .keyDown:
             if let phase = tracker.keyDown() { onPhase(phase) }
@@ -107,7 +107,8 @@ private func fnTapCallback(
     // The tap's run loop source is on the main run loop, so this runs on the main thread.
     let owner = Unmanaged<FnEventTap>.fromOpaque(refcon).takeUnretainedValue()
     let fnDown = event.flags.contains(.maskSecondaryFn)
+    let shiftDown = event.flags.contains(.maskShift)
     let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-    let swallow = MainActor.assumeIsolated { owner.handle(type: type, fnDown: fnDown, keyCode: keyCode) }
+    let swallow = MainActor.assumeIsolated { owner.handle(type: type, fnDown: fnDown, shiftDown: shiftDown, keyCode: keyCode) }
     return swallow ? nil : Unmanaged.passUnretained(event)
 }

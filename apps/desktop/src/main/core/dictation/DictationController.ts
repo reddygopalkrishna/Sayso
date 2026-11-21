@@ -2,12 +2,15 @@ import type { DictationState } from '../../../shared/status.ts';
 import type { STTProvider, TranscriptSegment } from '../stt/types.ts';
 import { describeError } from './errors.ts';
 
-export type HotkeyPhase = 'down' | 'up' | 'chord';
+export type HotkeyPhase = 'down' | 'up' | 'chord' | 'command';
 
 export interface DictationOptions {
   stt: STTProvider;
-  /** What to do with a non-empty transcript (step 2: paste it; later: router + cleanup). */
-  deliver: (segment: TranscriptSegment) => Promise<void>;
+  /**
+   * What to do with a non-empty transcript: `dictation` (hold Fn) types it, `command` (hold
+   * Fn+Shift) treats the whole utterance as a command.
+   */
+  deliver: (segment: TranscriptSegment, mode: 'dictation' | 'command') => Promise<void>;
   now?: () => number;
   /** Holds shorter than this are taps, not dictation. */
   minHoldMs?: number;
@@ -20,8 +23,14 @@ export interface DictationOptions {
 
 type Internal =
   | { phase: 'idle' }
-  | { phase: 'starting'; id: string; startedAt: number; then: 'stop' | 'cancel' | null }
-  | { phase: 'recording'; id: string; startedAt: number }
+  | {
+      phase: 'starting';
+      id: string;
+      startedAt: number;
+      then: 'stop' | 'cancel' | null;
+      command: boolean;
+    }
+  | { phase: 'recording'; id: string; startedAt: number; command: boolean }
   | { phase: 'transcribing'; id: string }
   | { phase: 'inserting'; id: string }
   | { phase: 'error'; message: string };
@@ -73,6 +82,10 @@ export class DictationController {
         if (s.phase === 'recording') void this.cancel(s.id, 'Fn shortcut');
         else if (s.phase === 'starting') s.then = 'cancel';
         break;
+      case 'command':
+        // Shift held with Fn (before or after pressing Fn): this utterance is a command.
+        if (s.phase === 'starting' || s.phase === 'recording') this.set({ ...s, command: true });
+        break;
     }
   }
 
@@ -92,7 +105,7 @@ export class DictationController {
     }
     const id = `u-${++this.seq}`;
     const startedAt = this.now();
-    this.set({ phase: 'starting', id, startedAt, then: null });
+    this.set({ phase: 'starting', id, startedAt, then: null, command: false });
     try {
       await this.opts.stt.start(id);
     } catch (error) {
@@ -105,7 +118,7 @@ export class DictationController {
       await this.cancel(id, 'Fn shortcut');
       return;
     }
-    this.set({ phase: 'recording', id, startedAt });
+    this.set({ phase: 'recording', id, startedAt, command: s.command });
     if (s.then === 'stop') {
       await this.finish(id, startedAt);
       return;
@@ -123,6 +136,7 @@ export class DictationController {
       await this.cancel(id, 'tap');
       return;
     }
+    const mode = this.state.phase === 'recording' && this.state.command ? 'command' : 'dictation';
     this.set({ phase: 'transcribing', id });
     let segment: TranscriptSegment;
     try {
@@ -141,7 +155,7 @@ export class DictationController {
     }
     this.set({ phase: 'inserting', id });
     try {
-      await this.opts.deliver(segment);
+      await this.opts.deliver(segment, mode);
     } catch (error) {
       if (this.isCurrent(id)) this.fail(describeError(error));
       return;
@@ -192,7 +206,7 @@ function publicState(s: Internal): DictationState {
   switch (s.phase) {
     case 'starting':
     case 'recording':
-      return { phase: 'listening' };
+      return { phase: 'listening', mode: s.command ? 'command' : 'dictation' };
     case 'error':
       return { phase: 'error', message: s.message };
     default:

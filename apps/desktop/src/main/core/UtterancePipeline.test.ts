@@ -1,9 +1,12 @@
-import { endCommands } from '@sayso/command-grammar';
+import { commands, endCommands } from '@sayso/command-grammar';
 import { describe, expect, it } from 'vitest';
 import { UtterancePipeline, type UtteranceOutcome } from './UtterancePipeline.ts';
 import { TextCleanup } from './cleanup/TextCleanup.ts';
 import type { LLMProvider } from './cleanup/types.ts';
+import { CommandEngine } from './commands/CommandEngine.ts';
+import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import type { AppContext } from './context/HelperContext.ts';
+import { resolveOpen, resolveSwitch, type KnownApp } from './resolver/AppResolver.ts';
 import type { ChipResult } from './safety/PreviewChip.ts';
 import { SafetyRefusal } from './safety/SafetyGate.ts';
 import type { TranscriptSegment, TranscriptWord } from './stt/types.ts';
@@ -43,6 +46,12 @@ interface Setup {
   llm?: (raw: string) => string;
 }
 
+const installedApps: KnownApp[] = [
+  { name: 'Slack', bundleId: 'com.tinyspeck.slackmacgap', running: true },
+  { name: 'Safari', bundleId: 'com.apple.Safari', running: true },
+  { name: 'Calculator', bundleId: 'com.apple.calculator', running: false },
+];
+
 function setup({ contexts, chip = 'proceed', llm }: Setup) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
@@ -61,6 +70,12 @@ function setup({ contexts, chip = 'proceed', llm }: Setup) {
     actions: {
       insertText: async (t) => void log.push(`insert ${t}`),
       pressKey: async (k, m) => void log.push(`key ${[...m, k].join('+')}`),
+      scroll: async (d, a) => void log.push(`scroll ${d} ${a}`),
+      pressElement: async (l) => void log.push(`press ${l}`),
+      listApps: async () => [],
+      openApp: async (id) => void log.push(`openApp ${id}`),
+      activateApp: async (id) => void log.push(`activate ${id}`),
+      openUrl: async (u) => void log.push(`openUrl ${u}`),
     },
     chip: {
       confirm: async (label, ms) => {
@@ -69,6 +84,11 @@ function setup({ contexts, chip = 'proceed', llm }: Setup) {
       },
     },
     endCommands,
+    engine: new CommandEngine(commands),
+    resolver: {
+      resolveOpen: async (t) => resolveOpen(t, installedApps),
+      resolveSwitch: async (n) => resolveSwitch(n, installedApps),
+    },
     pauseMs: () => 600,
     previewMs: () => 1000,
     onOutcome: (o) => outcomes.push(o),
@@ -144,7 +164,7 @@ describe('UtterancePipeline', () => {
     const { pipeline, log, outcomes } = setup({ contexts: [context('com.apple.Terminal')] });
     await pipeline.deliver(segment('git status', { word: 'enter', gapMs: 900 }));
     expect(log).toEqual(['insert git status enter']);
-    expect(outcomes[0]?.routing.keptAsText).toBe('not_allowed');
+    expect(outcomes[0]?.routing?.keptAsText).toBe('not_allowed');
   });
 
   it('actions are off in a meeting app: dictation still works, "send" stays text', async () => {
@@ -200,5 +220,126 @@ describe('UtterancePipeline: the world changes while acting', () => {
     await pipeline.deliver(segment('see you soon', send));
     expect(log).toEqual(['llm see you soon', 'insert See you soon.']);
     expect(outcomes[0]?.command).toEqual({ id: 'send', result: 'skipped', reason: 'blocked_app' });
+  });
+});
+
+/** Command mode (Fn+Shift): the whole utterance is a command; nothing is ever typed. */
+describe('UtterancePipeline: command mode', () => {
+  const said = (text: string) => segment(text);
+  const run = async (text: string, over: Partial<Setup> = {}) => {
+    const t = setup({ contexts: [slack], ...over });
+    await t.pipeline.deliver(said(text), 'command');
+    return t;
+  };
+
+  it.each([
+    ['undo', ['key cmd+z']],
+    ['redo.', ['key cmd+shift+z']],
+    ['select all', ['key cmd+a']],
+    ['copy that', ['key cmd+c']],
+    ['paste', ['key cmd+v']],
+    ['new tab', ['key cmd+t']],
+    ['scroll down', ['scroll down 600']],
+    ['Scroll up.', ['scroll up 600']],
+    ['cancel', []],
+    ['never mind', []],
+  ])('safe command %j runs at once, without the chip', async (text, expected) => {
+    const { log, outcomes } = await run(text);
+    expect(log).toEqual(expected);
+    expect(outcomes[0]?.mode).toBe('command');
+    expect(outcomes[0]?.inserted).toBe(false);
+    expect(outcomes[0]?.command?.result).toBe('ran');
+  });
+
+  it.each([
+    ['delete that', 'Delete selection', ['key delete']],
+    ['close tab', 'Close tab', ['key cmd+w']],
+    ['click Submit', 'Click “submit”', ['press submit']],
+    ['press the Save button', 'Click “save”', ['press save']],
+    ['send', 'Send', ['key enter']],
+  ])('normal command %j shows the chip first', async (text, label, expected) => {
+    const { log } = await run(text);
+    expect(log).toEqual([`chip ${label} 1000`, ...expected]);
+  });
+
+  it('Esc on the chip cancels and types nothing', async () => {
+    const { log, outcomes } = await run('click Submit', { chip: 'cancelled' });
+    expect(log).toEqual(['chip Click “submit” 1000']);
+    expect(outcomes[0]?.command).toEqual({ id: 'click', result: 'cancelled' });
+  });
+
+  it('opens an installed app, a known site, and a spelled-out domain', async () => {
+    expect((await run('open Slack')).log).toEqual(['openApp com.tinyspeck.slackmacgap']);
+    expect((await run('open GitHub')).log).toEqual(['openUrl https://github.com']);
+    expect((await run('open example dot com')).log).toEqual(['openUrl https://example.com']);
+    expect((await run('open flibber jabber')).log).toEqual([
+      'openUrl https://www.google.com/search?q=flibber%20jabber',
+    ]);
+  });
+
+  it('switches to a running app and says so when it is not running', async () => {
+    expect((await run('switch to Safari')).log).toEqual(['activate com.apple.Safari']);
+    await expect(run('switch to Calculator')).rejects.toBeInstanceOf(CommandFailed);
+    await expect(run('switch to Calculator')).rejects.toThrow('calculator is not running.');
+  });
+
+  it('tells you when it did not catch a command, and types nothing', async () => {
+    const t = setup({ contexts: [slack] });
+    const error = await t.pipeline
+      .deliver(said('hello there how are you'), 'command')
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(CommandNotUnderstood);
+    expect(error.message).toBe("Didn't catch a command: “hello there how are you”");
+    expect(t.log).toEqual([]);
+  });
+
+  it('dictation words are never typed in command mode', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('see you soon'), 'command').catch(() => undefined);
+    expect(t.log.some((l) => l.startsWith('insert') || l.startsWith('llm'))).toBe(false);
+  });
+
+  it('refuses risky buttons and says why', async () => {
+    const error = await run('click Delete').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandRefused);
+    expect(error.reason).toBe('risky_label');
+    expect(error.message).toBe('That button needs confirmation, which Sayso cannot ask for yet.');
+  });
+
+  it('refuses in a meeting app, a password field and Terminal (close tab), with the reason', async () => {
+    const zoom = await run('undo', { contexts: [context('us.zoom.xos')] }).catch((e) => e);
+    expect(zoom).toMatchObject({ name: 'CommandRefused', reason: 'meeting_app' });
+
+    const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
+    const pw = await run('copy', { contexts: [password] }).catch((e) => e);
+    expect(pw).toMatchObject({ name: 'CommandRefused', reason: 'password_field' });
+
+    const term = context('com.apple.Terminal');
+    const closeTab = await run('close tab', { contexts: [term] }).catch((e) => e);
+    expect(closeTab).toMatchObject({ name: 'CommandRefused', reason: 'blocked_app' });
+    expect(closeTab.message).toBe('That command is not allowed in App.');
+  });
+
+  it('Terminal still allows safe commands such as paste', async () => {
+    const { log } = await run('paste', { contexts: [context('com.apple.Terminal')] });
+    expect(log).toEqual(['key cmd+v']);
+  });
+
+  it('"cancel" works even where actions are off', async () => {
+    const { log } = await run('cancel', { contexts: [context('us.zoom.xos')] });
+    expect(log).toEqual([]);
+  });
+
+  it('skips the command if the app changes during the chip', async () => {
+    // reads: start, command check, after chip
+    const { log, outcomes } = await run('click Submit', {
+      contexts: [slack, slack, context('com.apple.mail')],
+    });
+    expect(log).toEqual(['chip Click “submit” 1000']);
+    expect(outcomes[0]?.command).toEqual({
+      id: 'click',
+      result: 'skipped',
+      reason: 'context_changed',
+    });
   });
 });

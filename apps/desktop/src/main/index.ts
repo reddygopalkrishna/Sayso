@@ -4,11 +4,13 @@ import { IPC } from '../shared/status.ts';
 import { StatusHub } from './StatusHub.ts';
 import { loadConfig } from './config/env.ts';
 import { UtterancePipeline } from './core/UtterancePipeline.ts';
-import { endCommands } from '@sayso/command-grammar';
+import { commands, endCommands } from '@sayso/command-grammar';
 import { HelperActions } from './core/actions/HelperActions.ts';
 import { TextCleanup } from './core/cleanup/TextCleanup.ts';
 import { GeminiProvider } from './core/cleanup/gemini.ts';
+import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
+import { AppResolver } from './core/resolver/AppResolver.ts';
 import { DictationController } from './core/dictation/DictationController.ts';
 import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
@@ -80,9 +82,11 @@ const pipeline = new UtterancePipeline({
   actions,
   chip,
   endCommands,
+  engine: new CommandEngine(commands),
+  resolver: new AppResolver(() => actions.listApps()),
   pauseMs: () => config.pauseMs,
   previewMs: () => config.previewMs,
-  onOutcome: ({ segment, context, routing, cleanup, inserted, command }) => {
+  onOutcome: ({ mode, segment, context, routing, cleanup, inserted, command }) => {
     const ranCommand = command?.result === 'ran' ? command.id : null;
     const app = context.appName ?? 'unknown app';
     if (cleanup) {
@@ -91,21 +95,25 @@ const pipeline = new UtterancePipeline({
           (cleanup.fallbackReason ? `; fallback: ${cleanup.fallbackReason}` : ''),
       );
     }
-    if (routing.command && command) {
+    const result =
+      command?.result === 'skipped' ? `skipped: ${command.reason}` : (command?.result ?? '');
+    if (mode === 'command' && command) {
+      console.info(`[command] "${segment.text.trim()}" → ${command.id} ${result} in ${app}`);
+    } else if (routing?.command && command) {
       const gap =
         routing.command.gapMs === null
           ? 'said alone'
           : `after ${Math.round(routing.command.gapMs)} ms pause`;
-      const result = command.result === 'skipped' ? `skipped: ${command.reason}` : command.result;
       console.info(`[command] ${command.id} (${gap}) ${result} in ${app}`);
-    } else if (routing.keptAsText) {
+    } else if (routing?.keptAsText) {
       console.info(`[command] trailing command kept as text (${routing.keptAsText}) in ${app}`);
     }
     if (!inserted && !ranCommand) return;
     status.update({
       last: {
-        text: cleanup?.text ?? '',
+        text: mode === 'command' ? segment.text.trim() : (cleanup?.text ?? ''),
         appName: context.appName,
+        mode,
         method: cleanup?.method ?? 'off',
         tone: cleanup?.tone ?? 'casual',
         command: ranCommand,
@@ -117,7 +125,7 @@ const pipeline = new UtterancePipeline({
 });
 const dictation = new DictationController({
   stt,
-  deliver: (segment) => pipeline.deliver(segment),
+  deliver: (segment, mode) => pipeline.deliver(segment, mode),
   log: (msg) => console.info(`[dictation] ${msg}`),
 });
 

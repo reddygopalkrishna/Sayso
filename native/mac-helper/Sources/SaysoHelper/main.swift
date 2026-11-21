@@ -54,6 +54,8 @@ if arguments.count == 3, arguments[1] == "--transcribe" {
 
 let (loop, fnTap) = MainActor.assumeIsolated {
     let box = LoopBox()
+    let apps = WorkspaceApps()
+    apps.warmUp()
     let fnTap = FnEventTap(
         onPhase: { phase in box.loop?.send(.hotkey(phase: phase)) },
         onEscape: { box.loop?.send(.escape) })
@@ -64,7 +66,10 @@ let (loop, fnTap) = MainActor.assumeIsolated {
         inserter: PasteInserter(),
         contextProvider: WorkspaceContext(),
         keyPresser: KeyPresser(),
-        escapeCapture: fnTap
+        escapeCapture: fnTap,
+        appControl: apps,
+        scroller: ScrollPoster(),
+        elementPresser: AXElementPresser()
     )
     box.loop = loop
     return (loop, fnTap)

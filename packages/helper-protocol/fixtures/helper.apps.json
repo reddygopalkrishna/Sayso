@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "type": "apps",
+  "id": "l-1",
+  "apps": [
+    { "name": "Slack", "bundleId": "com.tinyspeck.slackmacgap", "running": true },
+    { "name": "Calculator", "bundleId": "com.apple.calculator", "running": false }
+  ]
+}

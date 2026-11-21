@@ -18,7 +18,10 @@ const SEND_SHORTCUTS: Record<string, KeyStroke> = {
 const ENTER: KeyStroke = { key: 'enter', modifiers: [] };
 
 /** Turns a command action into the key stroke to press in the app that is in front. */
-export function keyStrokeFor(action: CommandAction, bundleId: string | null): KeyStroke {
+export function keyStrokeFor(
+  action: Extract<CommandAction, { type: 'contextual_send' | 'keyPress' }>,
+  bundleId: string | null,
+): KeyStroke {
   switch (action.type) {
     case 'contextual_send':
       return (bundleId && SEND_SHORTCUTS[bundleId]) || ENTER;

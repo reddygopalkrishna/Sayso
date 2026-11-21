@@ -56,8 +56,10 @@ const flush = async (): Promise<void> => {
 function setup() {
   const stt = new FakeSTT();
   const delivered: string[] = [];
-  const deliver = vi.fn(async (s: TranscriptSegment) => {
+  const modes: Array<'dictation' | 'command'> = [];
+  const deliver = vi.fn(async (s: TranscriptSegment, mode: 'dictation' | 'command') => {
     delivered.push(s.text);
+    modes.push(mode);
   });
   const controller = new DictationController({
     stt,
@@ -69,7 +71,7 @@ function setup() {
   });
   const states: DictationState['phase'][] = [];
   controller.onState((s) => states.push(s.phase));
-  return { stt, controller, delivered, deliver, states };
+  return { stt, controller, delivered, deliver, states, modes };
 }
 
 describe('DictationController', () => {
@@ -212,6 +214,61 @@ describe('DictationController', () => {
     controller.handleHotkey('up');
     await hold(controller, 800);
     expect(stt.calls).toEqual(['start u-1', 'stop u-1', 'start u-2', 'stop u-2']);
+  });
+
+  it('delivers as dictation by default and as a command when Shift is held with Fn', async () => {
+    const plain = setup();
+    await hold(plain.controller, 800);
+    expect(plain.deliver).toHaveBeenLastCalledWith(expect.anything(), 'dictation');
+
+    const cmd = setup();
+    cmd.controller.handleHotkey('down');
+    await flush();
+    cmd.controller.handleHotkey('command');
+    vi.advanceTimersByTime(800);
+    cmd.controller.handleHotkey('up');
+    await flush();
+    expect(cmd.deliver).toHaveBeenLastCalledWith(expect.anything(), 'command');
+  });
+
+  it('shows command mode on the pill while listening', async () => {
+    const { controller } = setup();
+    controller.handleHotkey('down');
+    await flush();
+    expect(controller.current).toEqual({ phase: 'listening', mode: 'dictation' });
+    controller.handleHotkey('command');
+    expect(controller.current).toEqual({ phase: 'listening', mode: 'command' });
+  });
+
+  it('counts Shift pressed before the mic finished starting', async () => {
+    const { stt, controller, deliver } = setup();
+    stt.startResult = deferred<undefined>();
+    controller.handleHotkey('down');
+    await flush();
+    controller.handleHotkey('command');
+    vi.advanceTimersByTime(600);
+    controller.handleHotkey('up');
+    stt.startResult.resolve(undefined);
+    await flush();
+    expect(deliver).toHaveBeenLastCalledWith(expect.anything(), 'command');
+  });
+
+  it('the next utterance starts as dictation again', async () => {
+    const { controller, modes } = setup();
+    controller.handleHotkey('down');
+    await flush();
+    controller.handleHotkey('command');
+    vi.advanceTimersByTime(800);
+    controller.handleHotkey('up');
+    await flush();
+    await hold(controller, 800);
+    expect(modes).toEqual(['command', 'dictation']);
+  });
+
+  it('a command before any recording is ignored', async () => {
+    const { controller } = setup();
+    controller.handleHotkey('command');
+    expect(controller.current).toEqual({ phase: 'idle' });
   });
 
   it('reset drops an in-flight utterance', async () => {

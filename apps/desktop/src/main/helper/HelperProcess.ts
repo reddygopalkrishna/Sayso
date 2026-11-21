@@ -240,6 +240,7 @@ export class HelperProcess implements HelperRequester {
       case 'done':
       case 'transcript':
       case 'context':
+      case 'apps':
         this.settle(message.id, message);
         break;
       case 'error':

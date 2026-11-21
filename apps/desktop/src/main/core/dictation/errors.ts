@@ -10,7 +10,7 @@ export function describeError(error: unknown): string {
       case HelperErrorCode.micFailed:
         return 'Could not start the microphone.';
       case HelperErrorCode.accessibilityDenied:
-        return 'Accessibility access is off, so Sayso cannot type.';
+        return 'Accessibility access is off for Sayso.';
       case HelperErrorCode.sttFailed:
         return 'Could not transcribe that. Try again.';
       case 'timeout':

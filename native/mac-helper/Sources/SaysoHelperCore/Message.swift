@@ -43,6 +43,30 @@ private func requestID(_ data: Data) throws -> String {
     return id
 }
 
+private func bundleID(_ data: Data) throws -> String {
+    struct B: Decodable { let bundleId: String }
+    let id = try field(B.self, data).bundleId
+    guard !id.isEmpty, id.count <= 200 else { throw ProtocolError.invalidJSON }
+    return id
+}
+
+public enum ScrollDirection: String, Codable, Sendable {
+    case up, down
+}
+
+/// An installed or running app, for the app resolver in the Electron app.
+public struct AppInfo: Codable, Equatable, Sendable {
+    public var name: String
+    public var bundleId: String
+    public var running: Bool
+
+    public init(name: String, bundleId: String, running: Bool) {
+        self.name = name
+        self.bundleId = bundleId
+        self.running = running
+    }
+}
+
 /// App → helper.
 public enum AppMessage: Equatable, Sendable {
     case ping(id: String)
@@ -54,6 +78,12 @@ public enum AppMessage: Equatable, Sendable {
     case getContext(id: String)
     case keyPress(id: String, key: String, modifiers: [Modifier])
     case captureEscape(id: String, enabled: Bool)
+    case scroll(id: String, direction: ScrollDirection, amount: Int)
+    case pressElement(id: String, label: String)
+    case listApps(id: String)
+    case openApp(id: String, bundleId: String)
+    case activateApp(id: String, bundleId: String)
+    case openURL(id: String, url: String)
 
     public static func decode(_ line: String) throws -> AppMessage {
         let data = Data(line.utf8)
@@ -69,6 +99,24 @@ public enum AppMessage: Equatable, Sendable {
             guard !text.isEmpty else { throw ProtocolError.invalidJSON }
             return .insertText(id: try requestID(data), text: text)
         case "getContext": return .getContext(id: try requestID(data))
+        case "scroll":
+            struct S: Decodable { let direction: ScrollDirection; let amount: Int }
+            let scroll = try field(S.self, data)
+            guard (50...5000).contains(scroll.amount) else { throw ProtocolError.invalidJSON }
+            return .scroll(id: try requestID(data), direction: scroll.direction, amount: scroll.amount)
+        case "pressElement":
+            struct P: Decodable { let label: String }
+            let label = try field(P.self, data).label
+            guard !label.isEmpty, label.count <= 200 else { throw ProtocolError.invalidJSON }
+            return .pressElement(id: try requestID(data), label: label)
+        case "listApps": return .listApps(id: try requestID(data))
+        case "openApp": return .openApp(id: try requestID(data), bundleId: try bundleID(data))
+        case "activateApp": return .activateApp(id: try requestID(data), bundleId: try bundleID(data))
+        case "openURL":
+            struct U: Decodable { let url: String }
+            let url = try field(U.self, data).url
+            guard !url.isEmpty, url.count <= 2048 else { throw ProtocolError.invalidJSON }
+            return .openURL(id: try requestID(data), url: url)
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
@@ -95,6 +143,8 @@ public enum LogLevel: String, Codable, Sendable {
 
 public enum HotkeyPhase: String, Codable, Sendable {
     case down, up, chord
+    /// Shift was held together with Fn: this utterance is a command, not dictation.
+    case command
 }
 
 public enum FnListenerState: String, Codable, Sendable {
@@ -153,6 +203,7 @@ public enum HelperMessage: Equatable, Sendable {
     case done(id: String)
     case transcript(id: String, transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
     case context(id: String, context: AppContext)
+    case apps(id: String, apps: [AppInfo])
     case hotkey(phase: HotkeyPhase)
     case escape
     case fnListener(state: FnListenerState)
@@ -197,6 +248,15 @@ public enum HelperMessage: Equatable, Sendable {
             f["appName"] = context.appName.map(JSONValue.string) ?? .null
             f["focusRole"] = context.focusRole.map(JSONValue.string) ?? .null
             f["secureField"] = .bool(context.secureField)
+        case let .apps(id, apps):
+            f["type"] = "apps"
+            f["id"] = .string(id)
+            f["apps"] = .array(apps.map {
+                .object([
+                    "name": .string($0.name), "bundleId": .string($0.bundleId),
+                    "running": .bool($0.running),
+                ])
+            })
         case .escape:
             f["type"] = "escape"
         case let .hotkey(phase):
@@ -258,6 +318,10 @@ public enum HelperMessage: Equatable, Sendable {
                 context: AppContext(
                     bundleId: c.bundleId, appName: c.appName, focusRole: c.focusRole,
                     secureField: c.secureField))
+        case "apps":
+            struct A: Decodable { let id: String; let apps: [AppInfo] }
+            let a = try field(A.self, data)
+            return .apps(id: a.id, apps: a.apps)
         case "escape": return .escape
         case "hotkey":
             struct H: Decodable { let key: String; let phase: HotkeyPhase }
@@ -294,6 +358,9 @@ public enum HelperErrorCode {
     public static let alreadyRecording = "already_recording"
     public static let sttFailed = "stt_failed"
     public static let accessibilityDenied = "accessibility_denied"
+    public static let elementNotFound = "element_not_found"
+    public static let appNotFound = "app_not_found"
+    public static let badUrl = "bad_url"
 }
 
 indirect enum JSONValue: Encodable, ExpressibleByStringLiteral {

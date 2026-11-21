@@ -57,6 +57,192 @@
         "net.kovidgoyal.kitty",
         "io.alacritty"
       ]
+    },
+    {
+      "id": "undo",
+      "label": "Undo",
+      "phrases": ["undo", "undo that", "undo this", "undo it"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "z",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "redo",
+      "label": "Redo",
+      "phrases": ["redo", "redo that", "redo this", "redo it"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "z",
+        "modifiers": ["cmd", "shift"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "select_all",
+      "label": "Select all",
+      "phrases": ["select all", "select everything"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "a",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "copy",
+      "label": "Copy",
+      "phrases": ["copy", "copy that", "copy this", "copy selection"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "c",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "paste",
+      "label": "Paste",
+      "phrases": ["paste", "paste that", "paste it", "paste here"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "v",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "delete_that",
+      "label": "Delete selection",
+      "phrases": ["delete that", "delete this", "delete selection", "delete the selection"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "delete"
+      },
+      "safety": "normal",
+      "blockedIn": []
+    },
+    {
+      "id": "click",
+      "label": "Click “{label}”",
+      "phrases": [
+        "click {label}",
+        "click on {label}",
+        "press {label}",
+        "tap {label}",
+        "hit {label}"
+      ],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "pressElement"
+      },
+      "safety": "normal",
+      "blockedIn": []
+    },
+    {
+      "id": "open",
+      "label": "Open “{target}”",
+      "phrases": ["open {target}", "launch {target}", "start {target}"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "openTarget"
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "new_tab",
+      "label": "New tab",
+      "phrases": ["new tab", "open new tab", "open a new tab", "open another tab"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "t",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "close_tab",
+      "label": "Close tab",
+      "phrases": ["close tab", "close this tab", "close the tab", "close current tab"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "w",
+        "modifiers": ["cmd"]
+      },
+      "safety": "normal",
+      "blockedIn": [
+        "com.apple.Terminal",
+        "com.googlecode.iterm2",
+        "dev.warp.Warp-Stable",
+        "com.mitchellh.ghostty",
+        "net.kovidgoyal.kitty",
+        "io.alacritty"
+      ]
+    },
+    {
+      "id": "switch_app",
+      "label": "Switch to “{app}”",
+      "phrases": ["switch to {app}", "focus {app}", "go to {app}"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "switchApp"
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "scroll_up",
+      "label": "Scroll up",
+      "phrases": ["scroll up", "scroll up a bit", "page up"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "scroll",
+        "direction": "up",
+        "amount": 600
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "scroll_down",
+      "label": "Scroll down",
+      "phrases": ["scroll down", "scroll down a bit", "page down"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "scroll",
+        "direction": "down",
+        "amount": 600
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "cancel",
+      "label": "Cancel",
+      "phrases": ["cancel", "cancel that", "never mind", "nevermind", "stop"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "cancel"
+      },
+      "safety": "safe",
+      "blockedIn": []
     }
   ]
 }

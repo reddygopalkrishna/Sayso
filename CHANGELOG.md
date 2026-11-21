@@ -5,7 +5,7 @@ Each entry names the commit so you can see the exact code with `git show <commit
 
 ## In progress
 
-Nothing in progress. Next: Phase 0 step 6 (instant commands without AI: undo, copy, paste, new tab, open app, click label, scroll).
+Nothing in progress. Next: Phase 0 step 7 (local SQLite history and dictionary; Microphone and Accessibility onboarding).
 
 ## Pending (later)
 
@@ -13,7 +13,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 - **Adaptive pause:** the pause before "send" is fixed at 600 ms (`SAYSO_PAUSE_MS` to change it). The plan is to learn it per user from cancellations (`adaptive_stats`, step 7).
 - **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
-- **Phase 0 steps 6–7:** instant commands without AI (undo, copy, click *label*, open *app*, new tab, scroll…); local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
+- **Phase 0 step 7:** local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
+- **Chrome, Electron apps and "click X" / password detection (verify, then decide):** Chromium-based apps (Chrome, Slack, VS Code, Claude, Discord) only expose their accessibility tree after an assistive tool turns it on (setting `AXManualAccessibility` on the app). Until then the focused field reads as unknown there, so password-field detection and "click Submit" may not see anything in those apps. Native apps (Safari, Mail, Notes, Finder) are fine. Fix if the hand tests confirm it: switch accessibility on for the frontmost app when its tree looks empty (a small speed cost in that app, so it needs your OK).
+- **"Delete that" removes the current selection only,** not the last thing you dictated. A reliable "delete my last dictation" needs the length of the last paste (or an undo of it); decide with real use.
+- **Remembered choices for "open X":** when an app and a website both fit ("GitHub" vs GitHub Desktop) the PRD asks once and remembers; for now an exact app name wins, then a known site, then a prefix match. Needs the local database (step 7) and a chip.
+- **More commands from the PRD:** volume, lock screen, dark mode, screenshot; positional arguments ("open the third email"); "open GitHub in Chrome" (a named browser).
+- **Scroll direction:** `scroll down` posts a negative pixel scroll; with "natural scrolling" on some Macs the direction may feel reversed. Verify by hand.
 - **Verify password-field detection by hand in browsers:** Sayso reads the focused field through Accessibility (`AXSecureTextField`). Native apps expose it; Chrome and Safari may only do so when accessibility is on for the page. Test: focus a password box in each browser, dictate, expect the pill to say "Sayso does not type into password fields."
 - **Confirm dialog for Risky actions:** the SafetyGate returns "confirm" for Risky commands, but there is no dialog yet, so they never run. No Risky command exists yet; build the dialog with the first one (delete, git push…).
 - **Meeting apps:** actions are off whenever Zoom, Teams, Webex or FaceTime is in front (the PRD says "with the mic active", which the helper cannot see yet). Google Meet in a browser tab is not detected.
@@ -27,6 +32,15 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 12:49 · Phase 0 step 6: instant voice commands (hold Fn+Shift)
+- **Command mode:** hold **Fn + Shift** and speak a command. Everything said in command mode is a command and is never typed; if it is not a command, the pill says what it heard. Plain Fn is still dictation (so "undo" said while dictating is just text). The pill shows "Command…" while you hold.
+- **Commands:** undo, redo, select all, copy, paste, delete that (the selection), new tab, close tab, scroll up / scroll down, cancel (also "never mind", "stop"), plus the earlier send / enter / new line, now also usable as a whole utterance. Natural wording works: "please undo", "copy that", "open a new tab".
+- **Click by label:** "click Submit", "press Save", "click on the Next button". The helper searches the front app's buttons, links and menu items by their visible name (Accessibility, AXPress) within 300 ms. It shows the preview chip first. Buttons that pay, buy, delete, remove, sign out, publish or post are refused (PRD asks "yes?" for those; no confirm dialog yet).
+- **Open:** "open Slack" opens an installed app; "open GitHub" a known website; "open github dot com" a domain you spell out; anything else becomes a web search (PRD §7.5). Only http(s) links open. **Switch:** "switch to Safari" brings a running app forward.
+- **Matching** (`CommandEngine`) is local and takes well under a millisecond, no AI: exact phrases first, then phrases with an argument, then close mis-hearings ("new tap" → new tab, "scroll dawn" → scroll down). Short phrases ("undo") never fuzz; "click the button" with no real name is not a command.
+- **Same safety as before** for every command: Terminal can't close tabs, meeting apps and password fields refuse (and the pill says why), "cancel" always works. Commands are data in `commands.json`; phrases can end in `{label}`, `{target}` or `{app}`.
+- Tested: 17 commands × 9 contexts in the SafetyGate matrix (205 cases), 99 command and resolver cases, command-mode pipeline cases (chip, Esc, refusals, app changes mid-chip), Fn+Shift in either order, and 25 Swift tests. On this Mac: listing apps takes 46 ms cold, 10 ms warm; unsafe links and missing apps are rejected with clear errors.
 
 ### 12:29 · Phase 0 step 5: safety gate, preview chip, no typing into password fields (`060bb67`)
 - **Preview chip:** before "send" or "enter" runs, a small chip above the pill shows "Send · Esc to cancel" with a bar that fills for 1 second (`SAYSO_PREVIEW_MS`). Press **Esc** and the command is cancelled and the word you said is typed instead. "New line" (Safe) runs at once without the chip.

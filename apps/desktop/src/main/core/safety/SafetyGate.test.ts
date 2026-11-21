@@ -4,8 +4,10 @@ import type { AppContext } from '../context/HelperContext.ts';
 import {
   canInsertText,
   decideAction,
+  describeRefusal,
   isExecutable,
   isMeetingApp,
+  isRiskyLabel,
   SafetyRefusal,
 } from './SafetyGate.ts';
 
@@ -72,9 +74,162 @@ const matrix: Array<[id: string, context: keyof typeof contexts, expected: Expec
   ['new_line', 'passwordInBrowser', 'password_field'],
 ];
 
-describe('decideAction: every command × context', () => {
-  it('covers every command in commands.json', () => {
-    expect(new Set(matrix.map(([id]) => id))).toEqual(new Set(commands.map((c) => c.id)));
+// The instant commands (command mode), written out per safety class so the PRD's table is the spec:
+// Safe runs at once, Normal shows the chip; every refusal applies to both; "cancel" always runs.
+const safeInstant = [
+  'undo',
+  'redo',
+  'select_all',
+  'copy',
+  'paste',
+  'new_tab',
+  'scroll_up',
+  'scroll_down',
+  'open',
+  'switch_app',
+];
+const normalInstant = ['delete_that', 'click', 'close_tab'];
+const argsFor: Record<string, Record<string, string>> = {
+  click: { label: 'submit' },
+  open: { target: 'slack' },
+  switch_app: { app: 'safari' },
+};
+const terminalsBlock = ['close_tab']; // Terminals never close tabs by voice
+
+const instantRules: Record<keyof typeof contexts, { safe: Expected; normal: Expected }> = {
+  slack: { safe: 'run', normal: 'preview' },
+  mail: { safe: 'run', normal: 'preview' },
+  terminal: { safe: 'run', normal: 'preview' },
+  iterm: { safe: 'run', normal: 'preview' },
+  zoom: { safe: 'meeting_app', normal: 'meeting_app' },
+  teams: { safe: 'meeting_app', normal: 'meeting_app' },
+  unknown: { safe: 'run', normal: 'preview' },
+  passwordInSlack: { safe: 'password_field', normal: 'password_field' },
+  passwordInBrowser: { safe: 'password_field', normal: 'password_field' },
+};
+
+const instantMatrix: Array<[id: string, context: keyof typeof contexts, expected: Expected]> = [
+  ...safeInstant.flatMap((id) =>
+    Object.entries(instantRules).map(([name, r]): [string, keyof typeof contexts, Expected] => [
+      id,
+      name,
+      r.safe,
+    ]),
+  ),
+  ...normalInstant.flatMap((id) =>
+    Object.entries(instantRules).map(([name, r]): [string, keyof typeof contexts, Expected] => [
+      id,
+      name,
+      terminalsBlock.includes(id) && (name === 'terminal' || name === 'iterm')
+        ? 'blocked_app'
+        : r.normal,
+    ]),
+  ),
+  ...Object.keys(instantRules).map((name): [string, keyof typeof contexts, Expected] => [
+    'cancel',
+    name,
+    'run',
+  ]),
+];
+
+describe('decideAction: instant commands × context', () => {
+  it('covers every instant command exactly once per context', () => {
+    const instant = commands.filter((c) => !c.endOfUtteranceOnly).map((c) => c.id);
+    expect(new Set(instantMatrix.map(([id]) => id))).toEqual(new Set(instant));
+    expect(instantMatrix).toHaveLength(instant.length * Object.keys(contexts).length);
+  });
+
+  it('assigns the safety levels the PRD gives them', () => {
+    for (const id of safeInstant) expect(command(id).safety).toBe('safe');
+    for (const id of [...normalInstant]) expect(command(id).safety).toBe('normal');
+    expect(command('cancel').safety).toBe('safe');
+  });
+
+  it.each(instantMatrix)('%s in %s → %s', (id, name, expected) => {
+    const decision = decideAction(
+      command(id),
+      contexts[name] ?? ctx(null),
+      1000,
+      argsFor[id] ?? {},
+    );
+    if (expected === 'run') expect(decision).toEqual({ kind: 'run' });
+    else if (expected === 'preview') expect(decision).toEqual({ kind: 'preview', ms: 1000 });
+    else expect(decision).toEqual({ kind: 'refuse', reason: expected });
+  });
+});
+
+describe('click: buttons that spend money, delete or sign out are refused', () => {
+  it.each([
+    'pay now',
+    'Buy',
+    'Delete',
+    'delete account',
+    'remove',
+    'Place order',
+    'Sign out',
+    'log out',
+    'send money',
+    'transfer funds',
+    'unsubscribe',
+    'publish',
+    'Post',
+  ])('%s', (label) => {
+    expect(isRiskyLabel(label)).toBe(true);
+    expect(decideAction(command('click'), contexts['slack'] ?? ctx(null), 1000, { label })).toEqual(
+      {
+        kind: 'refuse',
+        reason: 'risky_label',
+      },
+    );
+  });
+
+  it.each([
+    'submit',
+    'Next',
+    'Save',
+    'Sign in',
+    'Reply',
+    'Compose',
+    'postage',
+    'payload',
+    'display',
+  ])('%s is fine', (label) => {
+    expect(isRiskyLabel(label)).toBe(false);
+    expect(decideAction(command('click'), contexts['slack'] ?? ctx(null), 1000, { label })).toEqual(
+      {
+        kind: 'preview',
+        ms: 1000,
+      },
+    );
+  });
+
+  it('the label check applies to click only', () => {
+    expect(
+      decideAction(command('open'), contexts['slack'] ?? ctx(null), 1000, { target: 'delete' }),
+    ).toEqual({ kind: 'run' });
+  });
+});
+
+describe('describeRefusal', () => {
+  it.each([
+    ['blocked_app', 'Terminal', 'That command is not allowed in Terminal.'],
+    ['blocked_app', null, 'That command is not allowed in this app.'],
+    ['meeting_app', null, 'Actions are off while a meeting app is in front.'],
+    ['password_field', null, 'Sayso does not act in password fields.'],
+  ] as const)('%s / %s', (reason, app, message) => {
+    expect(describeRefusal(reason, app)).toBe(message);
+  });
+});
+
+describe('decideAction: end commands × context', () => {
+  it('covers every end command in commands.json', () => {
+    const endIds = commands.filter((c) => c.endOfUtteranceOnly).map((c) => c.id);
+    expect(new Set(matrix.map(([id]) => id))).toEqual(new Set(endIds));
+  });
+
+  it('together with the instant matrix, covers every command in commands.json', () => {
+    const covered = new Set([...matrix, ...instantMatrix].map(([id]) => id));
+    expect(covered).toEqual(new Set(commands.map((c) => c.id)));
   });
 
   it.each(matrix)('%s in %s → %s', (id, name, expected) => {

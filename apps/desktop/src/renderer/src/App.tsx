@@ -119,14 +119,17 @@ export function App(): React.JSX.Element {
           {status.last && (
             <section className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
               <p className="text-xs text-neutral-500">
-                Last inserted{status.last.appName ? ` into ${status.last.appName}` : ''} ·{' '}
-                {methodLabel[status.last.method]} ({status.last.tone}) · STT{' '}
-                {Math.round(status.last.sttMs)} ms · cleanup {Math.round(status.last.cleanupMs)} ms
+                {status.last.mode === 'command' ? 'Command' : 'Last inserted'}
+                {status.last.appName ? ` in ${status.last.appName}` : ''} ·{' '}
+                {status.last.mode === 'command'
+                  ? `STT ${Math.round(status.last.sttMs)} ms`
+                  : `${methodLabel[status.last.method]} (${status.last.tone}) · STT ${Math.round(status.last.sttMs)} ms · cleanup ${Math.round(status.last.cleanupMs)} ms`}
               </p>
               {status.last.text && <p className="mt-1 line-clamp-3 text-sm">{status.last.text}</p>}
               {status.last.command && (
                 <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  then ran “{status.last.command.replace('_', ' ')}”
+                  {status.last.mode === 'command' ? 'ran' : 'then ran'} “
+                  {status.last.command.replace('_', ' ')}”
                 </p>
               )}
             </section>
