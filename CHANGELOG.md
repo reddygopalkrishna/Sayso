@@ -40,6 +40,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 17:06 · Faster microphone start (`451b6b8`)
+- **Why:** short commands arrived clipped because the first syllable was lost while the mic started.
+- **What:** the helper builds the audio engine, converter and formats ahead of time (never started: no capture, no mic indicator until the key goes down; rebuilt after each recording and on a device change) and prints one `[mic]` line per recording: key down → first audio, with setup and first-buffer parts.
+- **Measured live** (helper, 12 starts each, request → first audio, median): **before 247 ms** (setup ~140 ms + a constant ~106 ms wait for the first buffer); **after 139 ms** (setup ~31 ms + the same ~106 ms: the tap hands over its first buffer after about 100 ms whatever size is asked). The key-press-to-request trip (helper → app → helper) is not in these numbers; your dev log's `[mic] key down → first audio` lines show the real total.
+- **Sink-node capture (opt-in, `SAYSO_MIC_SINK=1`):** the first audio came after **41 ms** median in the same test, but a record-and-transcribe check was inconclusive (3.8 s of audio recorded, text "*pain*" from a synthetic voice over speakers), so it is **off by default** until checked against real speech. Try it, say a sentence, and compare.
+- **Pre-roll:** a rolling pre-roll needs the mic running all the time (indicator on), so it is not built. Until the sink path is verified, the tip is to pause about 0.2 s after pressing the key.
+- **Tested in code:** the timing probe (4 Swift tests, 83 pass). **Restart needed:** helper rebuilt.
+
 ### 16:58 · A clipped command word asks for the rest (`d7503cf`)
 - **Why:** in the founder's live log short commands arrive clipped to one word ("Open."), and the pill said "Didn't catch a command".
 - **What:** a lone "open", "launch", "start", "click", "press", "tap", "hit", "switch", "focus", "message" or "tell" (also with a word that names nothing: "open it", "click the button") now says what to say next, for example **"Open what? Say “open Slack”."** and **"Click what? Say “click Sign in”."** Nothing runs, and the interpreter is not asked (no network call for a clipped word). "scroll" and other whole commands are unchanged; any other unknown sentence keeps the old message.
