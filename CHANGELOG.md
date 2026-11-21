@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 03:05 · Voice from further away (`349c898`)
+- **Why:** the founder reported speech was not detected properly unless close to the microphone.
+- **What:** (1) hands-free now counts speech from a lower level (RMS 0.008, was 0.015; still at least 3 times the room's own noise), so a voice about 20 dB quieter than normal speech starts an utterance; (2) before the speech model reads a recording, faint audio is lifted so its loudest sample reaches 0.5, by at most 8 times, loud audio untouched. Applies to the held key and hands-free.
+- **Tested:** unit tests (new gain tests and a quiet-voice segmenter test; 94 helper tests). **Not tried at distance by a person yet.** Restart `pnpm dev`.
+- **Not done (needs the founder):** macOS input volume was at 88%; setting it to 100% in System Settings → Sound → Input helps too. A headset or close microphone is still the safest for the demo. A loud room can now start more utterances; room speech is still ignored unless it is a command.
+
 ### 02:45 · "Type … hit enter" in one breath (`11ec363`)
 - **Why:** the founder's log: "Type AWS, hit enter" (and "send it") typed the words "AWS, hit enter" because the pause rule keeps a trailing command as text unless it follows a pause of 0.6 s or more.
 - **What:** text the person explicitly asked to type in hands-free ("type …", or the words after a lone "type") now waives that pause, so "type AWS hit enter" types AWS and presses Enter (through the same safety gate and preview chip). Typing mode ("start typing") and the held-key dictation keep the pause rule, so a story that happens to end in "send it" is not sent.
