@@ -51,6 +51,7 @@ public enum AppMessage: Equatable, Sendable {
     case recordStop(id: String)
     case recordCancel(id: String)
     case insertText(id: String, text: String)
+    case getContext(id: String)
 
     public static func decode(_ line: String) throws -> AppMessage {
         let data = Data(line.utf8)
@@ -65,6 +66,7 @@ public enum AppMessage: Equatable, Sendable {
             let text = try field(T.self, data).text
             guard !text.isEmpty else { throw ProtocolError.invalidJSON }
             return .insertText(id: try requestID(data), text: text)
+        case "getContext": return .getContext(id: try requestID(data))
         case let other:
             throw ProtocolError.unknownType(other)
         }
@@ -101,6 +103,17 @@ public struct Word: Codable, Equatable, Sendable {
     }
 }
 
+/// The app the user is working in (and, from step 5, the focused element).
+public struct AppContext: Equatable, Sendable {
+    public var bundleId: String?
+    public var appName: String?
+
+    public init(bundleId: String?, appName: String?) {
+        self.bundleId = bundleId
+        self.appName = appName
+    }
+}
+
 public struct Transcription: Equatable, Sendable {
     public var text: String
     public var words: [Word]
@@ -117,6 +130,7 @@ public enum HelperMessage: Equatable, Sendable {
     case pong(id: String)
     case done(id: String)
     case transcript(id: String, transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
+    case context(id: String, context: AppContext)
     case hotkey(phase: HotkeyPhase)
     case fnListener(state: FnListenerState)
     case sttStatus(state: STTState, model: String, msg: String?)
@@ -153,6 +167,11 @@ public enum HelperMessage: Equatable, Sendable {
             f["audioMs"] = .double(audioMs)
             f["sttMs"] = .double(sttMs)
             f["model"] = .string(model)
+        case let .context(id, context):
+            f["type"] = "context"
+            f["id"] = .string(id)
+            f["bundleId"] = context.bundleId.map(JSONValue.string) ?? .null
+            f["appName"] = context.appName.map(JSONValue.string) ?? .null
         case let .hotkey(phase):
             f["type"] = "hotkey"
             f["key"] = "fn"
@@ -201,6 +220,10 @@ public enum HelperMessage: Equatable, Sendable {
             return .transcript(
                 id: t.id, transcription: Transcription(text: t.text, words: t.words),
                 audioMs: t.audioMs, sttMs: t.sttMs, model: t.model)
+        case "context":
+            struct C: Decodable { let id: String; let bundleId: String?; let appName: String? }
+            let c = try field(C.self, data)
+            return .context(id: c.id, context: AppContext(bundleId: c.bundleId, appName: c.appName))
         case "hotkey":
             struct H: Decodable { let key: String; let phase: HotkeyPhase }
             let h = try field(H.self, data)
@@ -244,6 +267,7 @@ indirect enum JSONValue: Encodable, ExpressibleByStringLiteral {
     case double(Double)
     case array([JSONValue])
     case object([String: JSONValue])
+    case null
 
     init(stringLiteral value: String) {
         self = .string(value)
@@ -257,6 +281,7 @@ indirect enum JSONValue: Encodable, ExpressibleByStringLiteral {
         case let .double(value): try container.encode(value.isFinite ? value : 0)
         case let .array(value): try container.encode(value)
         case let .object(value): try container.encode(value)
+        case .null: try container.encodeNil()
         }
     }
 }

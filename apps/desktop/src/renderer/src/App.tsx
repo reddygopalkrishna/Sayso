@@ -1,4 +1,10 @@
-import type { AppStatus, HelperStatus, SttStatus } from '../../shared/status.ts';
+import type {
+  AppStatus,
+  CleanupStatus,
+  HelperStatus,
+  LastUtterance,
+  SttStatus,
+} from '../../shared/status.ts';
 import { useStatus } from './useStatus.ts';
 
 type Row = { label: string; detail: string; tone: 'ok' | 'warn' | 'bad' | 'idle' };
@@ -65,6 +71,26 @@ function fnRow(status: AppStatus): Row {
   }
 }
 
+function cleanupRow(c: CleanupStatus): Row {
+  if (c.level === 'off')
+    return { label: 'Cleanup off', detail: 'Raw transcript is typed.', tone: 'ok' };
+  if (c.level === 'light')
+    return { label: 'Light cleanup', detail: 'Fillers removed locally.', tone: 'ok' };
+  if (c.provider) return { label: 'AI cleanup on', detail: c.provider, tone: 'ok' };
+  return {
+    label: 'AI cleanup unavailable',
+    detail: 'Add GEMINI_API_KEY to .env; using local light cleanup.',
+    tone: 'warn',
+  };
+}
+
+const methodLabel: Record<LastUtterance['method'], string> = {
+  off: 'raw',
+  light: 'light cleanup',
+  llm: 'AI cleanup',
+  fallback: 'light cleanup (AI fallback)',
+};
+
 function StatusRow({ row }: { row: Row }): React.JSX.Element {
   return (
     <li className="flex items-start gap-3">
@@ -88,11 +114,16 @@ export function App(): React.JSX.Element {
             <StatusRow row={helperRow(status.helper)} />
             <StatusRow row={sttRow(status.stt)} />
             <StatusRow row={fnRow(status)} />
+            <StatusRow row={cleanupRow(status.cleanup)} />
           </ul>
-          {status.lastText && (
+          {status.last && (
             <section className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
-              <p className="text-xs text-neutral-500">Last inserted</p>
-              <p className="mt-1 line-clamp-3 text-sm">{status.lastText}</p>
+              <p className="text-xs text-neutral-500">
+                Last inserted{status.last.appName ? ` into ${status.last.appName}` : ''} ·{' '}
+                {methodLabel[status.last.method]} ({status.last.tone}) · STT{' '}
+                {Math.round(status.last.sttMs)} ms · cleanup {Math.round(status.last.cleanupMs)} ms
+              </p>
+              <p className="mt-1 line-clamp-3 text-sm">{status.last.text}</p>
             </section>
           )}
         </>

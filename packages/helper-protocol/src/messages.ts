@@ -11,7 +11,7 @@
  *   binary data never mixes with JSON lines.
  *
  * Requests (messages with an `id`) are answered with exactly one reply carrying the same `id`:
- * `pong`, `done`, `transcript`, or `error`. Events (`ready`, `hotkey`, `fnListener`, `sttStatus`, `log`, and
+ * `pong`, `done`, `transcript`, `context`, or `error`. Events (`ready`, `hotkey`, `fnListener`, `sttStatus`, `log`, and
  * `error` without an id) are unsolicited. The helper sends `ready` first.
  *
  * The Swift helper mirrors these types (native/mac-helper/Sources/SaysoHelperCore/Message.swift);
@@ -39,6 +39,9 @@ export const InsertTextSchema = z
   .object({ v, type: z.literal('insertText'), id, text: z.string().min(1).max(100_000) })
   .strict();
 
+/** Read the frontmost app (and, later, the focused element). Answered with `context`. */
+export const GetContextSchema = z.object({ v, type: z.literal('getContext'), id }).strict();
+
 export const AppMessageSchema = z.discriminatedUnion('type', [
   PingSchema,
   ShutdownSchema,
@@ -46,6 +49,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   RecordStopSchema,
   RecordCancelSchema,
   InsertTextSchema,
+  GetContextSchema,
 ]);
 
 // Helper → app
@@ -79,6 +83,17 @@ export const TranscriptSchema = z
     audioMs: z.number().nonnegative(),
     sttMs: z.number().nonnegative(),
     model: z.string().min(1),
+  })
+  .strict();
+
+export const ContextSchema = z
+  .object({
+    v,
+    type: z.literal('context'),
+    id,
+    /** Frontmost app; null when there is none (e.g. the login window). */
+    bundleId: z.string().min(1).nullable(),
+    appName: z.string().min(1).nullable(),
   })
   .strict();
 
@@ -128,6 +143,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   PongSchema,
   DoneSchema,
   TranscriptSchema,
+  ContextSchema,
   HotkeySchema,
   FnListenerSchema,
   SttStatusSchema,
@@ -141,6 +157,7 @@ export type ReadyMessage = z.infer<typeof ReadySchema>;
 export type TranscriptMessage = z.infer<typeof TranscriptSchema>;
 export type WordTiming = z.infer<typeof WordTimingSchema>;
 export type HotkeyMessage = z.infer<typeof HotkeySchema>;
+export type ContextMessage = z.infer<typeof ContextSchema>;
 export type SttStatusMessage = z.infer<typeof SttStatusSchema>;
 export type FnListenerMessage = z.infer<typeof FnListenerSchema>;
 
@@ -151,7 +168,7 @@ export type RequestBody = DistributiveOmit<RequestMessage, 'v' | 'id'>;
 /** Helper messages that answer a request. */
 export type ReplyMessage = Extract<
   HelperMessage,
-  { type: 'pong' | 'done' | 'transcript' | 'error' }
+  { type: 'pong' | 'done' | 'transcript' | 'context' | 'error' }
 >;
 
 /** Error codes the helper sends. */

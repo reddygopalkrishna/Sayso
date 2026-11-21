@@ -37,3 +37,8 @@ public protocol TextInserting: AnyObject {
 }
 
 public let sampleRate: Double = 16_000
+
+@MainActor
+public protocol ContextProviding: AnyObject {
+    func current() -> AppContext
+}

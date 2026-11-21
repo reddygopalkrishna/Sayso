@@ -51,17 +51,23 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakeContext: ContextProviding {
+    var value = AppContext(bundleId: "com.tinyspeck.slackmacgap", appName: "Slack")
+    func current() -> AppContext { value }
+}
+
 @MainActor
 struct Harness {
     let out = BufferWriter()
     let recorder = FakeRecorder()
     let inserter = FakeInserter()
+    let context = FakeContext()
     let loop: MessageLoop
 
     init(transcriber: FakeTranscriber = FakeTranscriber()) {
         loop = MessageLoop(
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
-            osDescription: "macOS 14.0")
+            contextProvider: context, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -157,6 +163,17 @@ struct Harness {
         h.inserter.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "no AX")
         await h.send(#"{"v":1,"type":"insertText","id":"i-2","text":"x"}"#)
         #expect(h.out.messages.last == .error(id: "i-2", code: HelperErrorCode.accessibilityDenied, msg: "no AX"))
+    }
+
+    @Test func answersGetContext() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"getContext","id":"c-1"}"#)
+        h.context.value = AppContext(bundleId: nil, appName: nil)
+        await h.send(#"{"v":1,"type":"getContext","id":"c-2"}"#)
+        #expect(h.out.messages == [
+            .context(id: "c-1", context: AppContext(bundleId: "com.tinyspeck.slackmacgap", appName: "Slack")),
+            .context(id: "c-2", context: AppContext(bundleId: nil, appName: nil)),
+        ])
     }
 
     @Test func stopsOnShutdownAndCancelsRecording() async {

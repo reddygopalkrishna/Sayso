@@ -20,21 +20,38 @@ export type DictationState =
   | { phase: 'inserting' }
   | { phase: 'error'; message: string };
 
+export interface CleanupStatus {
+  level: 'off' | 'light' | 'full';
+  /** e.g. "gemini · gemini-flash-latest"; null when Full cleanup has no provider (no API key). */
+  provider: string | null;
+}
+
+export interface LastUtterance {
+  text: string;
+  appName: string | null;
+  /** How the text was produced: raw (off), local light cleanup, LLM, or LLM fallback. */
+  method: 'off' | 'light' | 'llm' | 'fallback';
+  tone: 'casual' | 'professional' | 'literal';
+  sttMs: number;
+  cleanupMs: number;
+}
+
 export interface AppStatus {
   helper: HelperStatus;
   stt: SttStatus;
   fnListener: FnListenerStatus;
+  cleanup: CleanupStatus;
   dictation: DictationState;
-  /** Last inserted text, for the status window. */
-  lastText: string | null;
+  last: LastUtterance | null;
 }
 
 export const initialStatus: AppStatus = {
   helper: { state: 'stopped' },
   stt: { state: 'unknown' },
   fnListener: 'unknown',
+  cleanup: { level: 'full', provider: null },
   dictation: { phase: 'idle' },
-  lastText: null,
+  last: null,
 };
 
 export const IPC = {

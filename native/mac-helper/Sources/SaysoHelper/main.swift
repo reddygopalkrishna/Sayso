@@ -54,7 +54,8 @@ let (loop, fnTap) = MainActor.assumeIsolated {
         writer: StandardOutputWriter(),
         recorder: MicRecorder(),
         transcriber: transcriber,
-        inserter: PasteInserter()
+        inserter: PasteInserter(),
+        contextProvider: WorkspaceContext()
     )
     let fnTap = FnEventTap { phase in loop.send(.hotkey(phase: phase)) }
     return (loop, fnTap)

@@ -1,0 +1,47 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { loadConfig } from './env.ts';
+
+function files(...contents: string[]): string[] {
+  const dir = mkdtempSync(join(tmpdir(), 'sayso-env-'));
+  return contents.map((content, i) => {
+    const path = join(dir, `${i}.env`);
+    writeFileSync(path, content);
+    return path;
+  });
+}
+
+describe('loadConfig', () => {
+  it('reads later files over earlier ones and the real environment over both', () => {
+    const paths = files('GEMINI_API_KEY=repo\nSAYSO_CLEANUP_LEVEL=light', 'GEMINI_API_KEY=user');
+    expect(loadConfig(paths, {})).toEqual({
+      geminiApiKey: 'user',
+      geminiModel: undefined,
+      cleanupLevel: 'light',
+    });
+    expect(loadConfig(paths, { GEMINI_API_KEY: 'env' }).geminiApiKey).toBe('env');
+  });
+
+  it('does not copy keys into process.env', () => {
+    const before = process.env['GEMINI_API_KEY'];
+    loadConfig(files('GEMINI_API_KEY=secret'), {});
+    expect(process.env['GEMINI_API_KEY']).toBe(before);
+  });
+
+  it('defaults to full cleanup with no key when nothing is set', () => {
+    expect(loadConfig(['/does/not/exist'], {})).toEqual({
+      geminiApiKey: null,
+      geminiModel: undefined,
+      cleanupLevel: 'full',
+    });
+  });
+
+  it('ignores an empty key and an unknown level', () => {
+    expect(loadConfig(files('GEMINI_API_KEY=\nSAYSO_CLEANUP_LEVEL=max'), {})).toMatchObject({
+      geminiApiKey: null,
+      cleanupLevel: 'full',
+    });
+  });
+});

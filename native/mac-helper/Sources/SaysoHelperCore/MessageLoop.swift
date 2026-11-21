@@ -28,6 +28,7 @@ public final class MessageLoop {
     private let recorder: AudioRecording
     private let transcriber: Transcribing
     private let inserter: TextInserting
+    private let contextProvider: ContextProviding
     private var recordingID: String?
 
     public init(
@@ -35,12 +36,14 @@ public final class MessageLoop {
         recorder: AudioRecording,
         transcriber: Transcribing,
         inserter: TextInserting,
+        contextProvider: ContextProviding,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
         self.recorder = recorder
         self.transcriber = transcriber
         self.inserter = inserter
+        self.contextProvider = contextProvider
         self.osDescription = osDescription
     }
 
@@ -82,6 +85,9 @@ public final class MessageLoop {
                 recordingID = nil
             }
             send(.done(id: id))
+            return (.keepRunning, nil)
+        case let .getContext(id):
+            send(.context(id: id, context: contextProvider.current()))
             return (.keepRunning, nil)
         case let .insertText(id, text):
             return (.keepRunning, Task { await self.insert(id, text) })
