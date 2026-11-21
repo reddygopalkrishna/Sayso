@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 02:10 · Long dictation in hands-free: typing mode, and spaces between pieces (`3bb0248`)
+- **Why:** the founder could not tell a whole story into the Claude Code or Codex input box: hands-free types only after "type", and a pause of 0.65 s ends an utterance, so everything after the first pause was ignored.
+- **What:** say **"start typing"** (or "start dictation", "dictation mode") and every utterance is typed until you say **"stop typing"** (or "stop dictation", "done typing"); it also ends by itself after 3 quiet minutes or when hands-free is turned off. Dictated pieces told one after another in the same app (within 30 s) are now joined with a space (not before punctuation); a command such as send or new line starts the next piece clean. Messaging recipes and snippets are unchanged.
+- **Tested:** unit tests (1,626 desktop); **not tried live.** The pill does not yet show that typing mode is on; the terminal prints `typing mode on`.
+- **Also:** holding Fn still records one long take (up to 5 minutes) with no pause cut, which is the other way to dictate a long text.
+
 ### 01:50 · Speech right after the double tap, ChatGPT and "new chat" mishearings (`1322303`)
 - **Why:** the founder's log: "Open chat GPT" said just after the double tap was ignored ("said while holding the key"), because the tap that started hands-free counted as a recent hold; ChatGPT was heard as "Charged GPT", "to RGBT", "charge GPT"; "A new chat?" was ignored and "Click/Open New Chart" clicked or searched instead of starting a chat.
 - **What:** a tap (cancelled as too short) no longer counts as a recent hold. "charged gpt", "to rgbt" and a few more are added to the built-in ChatGPT spellings. "new chart" now means "new chat" anywhere in a command, and "a new chat" is accepted.
