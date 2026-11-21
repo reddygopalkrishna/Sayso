@@ -38,6 +38,10 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
+### 23:57 · Plan: fast hosted model measured (Groq), no code changed
+- Tested on your Groq key with the real prompt: **Qwen 3.8 27B with reasoning off answers in about 0.2 s** (0.24 s median on 18 real dictations, slowest 0.4 s), against 0.6–0.95 s warm and 1–2 s in real use for Gemini. Quality matches Gemini on short and medium text; on long rambling dictations it paraphrases more, which a firmer "keep the speaker's wording" rule reduces. The gpt-oss models were slower and less careful.
+- Free-tier limits (about 7,000 input tokens a minute, about 1,000 requests) mean Gemini must stay as the automatic fallback. Details and the recommendation are in `docs/PLAN_FAST_CLEANUP.md`. Waiting for your go-ahead (it sends text to a second company).
+
 ### 23:44 · Faster AI cleanup, step 1 (see docs/PLAN_FAST_CLEANUP.md) (`e296717`)
 - **Connection warm-up:** when you release Fn, Sayso opens the connection to the AI service while speech-to-text is still running (a bare request, no key, no text; at most once every 2 s; never errors). A/B on this Mac: median 0.94 s with it vs 1.13 s without, about 0.2 s saved. It runs on release, not on press, because Node drops an idle connection after about 4 s and your speech is often longer than that. Electron's own network stack (`net.fetch`) was measured and was not faster, so it is not used.
 - **Skip the AI when it cannot help:** a short sentence (12 words or fewer) with no hint of fillers, corrections, numbering, spoken line breaks or "dot" is finished by the local rules, with no AI call at all (the log says `no AI needed: short and clean`; History shows "no AI needed"). Chat apps accept a missing closing full stop; mail and documents need one. On your 19 real dictations it would skip 5 (26%), and all 5 matched what the AI produced. Honest note: most of your dictations are long (14–106 words), so the AI still runs for about three quarters of them. `SAYSO_SKIP_AI=off` in `.env` turns the skipping off.
