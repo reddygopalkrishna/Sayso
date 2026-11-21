@@ -16,6 +16,7 @@ import { GROQ_BASE_URL, OPENAI_BASE_URL, groqRequestExtras } from './core/cleanu
 import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
 import { AppResolver } from './core/resolver/AppResolver.ts';
+import { DoubleTap } from './core/dictation/DoubleTap.ts';
 import { DictationController } from './core/dictation/DictationController.ts';
 import { describeError } from './core/dictation/errors.ts';
 import { applyDictionary } from './core/cleanup/dictionary.ts';
@@ -387,11 +388,24 @@ helper.onStatus((helperStatus) => {
   }
 });
 
+const doubleTap = new DoubleTap();
+
 helper.onMessage((message) => {
   switch (message.type) {
-    case 'hotkey':
-      dictation.handleHotkey(message.phase);
+    case 'hotkey': {
+      // Fn, Fn (two quick taps) turns hands-free on or off; the taps never reach dictation.
+      const tap = doubleTap.handle(message.phase, Date.now());
+      if (tap === 'double') {
+        const on = handsFree.status.state === 'listening' || handsFree.status.state === 'starting';
+        console.info(`[hands-free] double tap: turning ${on ? 'off' : 'on'}`);
+        (on ? handsFree.disable() : handsFree.enable()).catch((error: unknown) =>
+          dictation.showError(error instanceof Error ? error.message : String(error)),
+        );
+      } else if (tap === 'pass') {
+        dictation.handleHotkey(message.phase);
+      }
       break;
+    }
     case 'heard':
       void handsFree.handleHeard(message);
       break;
