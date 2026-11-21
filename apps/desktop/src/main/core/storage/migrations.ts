@@ -73,6 +73,14 @@ export const MIGRATIONS: readonly string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+  // 7: facts about you ("my email", "my address") that Sayso types on request.
+  `
+  CREATE TABLE profile (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 export function schemaVersion(db: Db): number {

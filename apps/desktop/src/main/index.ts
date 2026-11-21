@@ -223,7 +223,8 @@ const pipeline = new UtterancePipeline({
   snippets: {
     find: (spoken) => {
       try {
-        return storage?.snippets.find(spoken) ?? null;
+        // Your own snippets win; then the facts about you ("my email", "my address").
+        return storage?.snippets.find(spoken) ?? storage?.profile.find(spoken) ?? null;
       } catch (error) {
         warn('could not read snippets', error);
         return null;

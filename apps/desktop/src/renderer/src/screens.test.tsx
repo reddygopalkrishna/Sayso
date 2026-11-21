@@ -7,6 +7,7 @@ import type { HistoryStats } from './historyStats.ts';
 import { Onboarding } from './Onboarding.tsx';
 import { HandsFreeCard } from './HandsFree.tsx';
 import { pillContent } from './Pill.tsx';
+import { AboutMeForm } from './AboutMe.tsx';
 import { AppStyleList, SettingsForm } from './Settings.tsx';
 import { initialStatus } from '../../shared/status.ts';
 
@@ -517,5 +518,45 @@ describe('Understand my own words in Settings', () => {
   it('shows whether it is on', () => {
     expect(form(true)).toMatch(/aria-label="Understand my own words"[^>]*checked=""/);
     expect(form(false)).not.toMatch(/aria-label="Understand my own words"[^>]*checked=""/);
+  });
+});
+
+describe('AboutMeForm', () => {
+  const noop = () => undefined;
+  const values = {
+    name: 'Keshav Reddy',
+    email: 'k@example.com',
+    phone: '',
+    address: '12 MG Road',
+    company: '',
+    website: '',
+    linkedin: '',
+    github: '',
+  };
+  const show = (over: Partial<Parameters<typeof AboutMeForm>[0]> = {}) =>
+    html(
+      <AboutMeForm
+        values={values}
+        message={null}
+        saved={false}
+        onChange={noop}
+        onSave={noop}
+        {...over}
+      />,
+    );
+
+  it('lists every fact with the words to say, and says it stays on this Mac', () => {
+    const out = show();
+    for (const text of ['Full name', 'Email address', 'Phone number', 'Address', 'GitHub']) {
+      expect(out).toContain(text);
+    }
+    expect(out).toContain('Say “type my email”');
+    expect(out).toContain('never sent anywhere, not even to the');
+    expect(out).toContain('value="k@example.com"');
+  });
+
+  it('shows Saved. or the problem', () => {
+    expect(show({ saved: true })).toContain('Saved.');
+    expect(show({ message: 'That has characters Sayso cannot type.' })).toContain('cannot type');
   });
 });

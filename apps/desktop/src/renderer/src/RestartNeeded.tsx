@@ -13,6 +13,7 @@ export function hasCurrentApi(api: unknown): boolean {
     'settings',
     'appStyles',
     'handsFree',
+    'profile',
     'openChoices',
     'permissions',
   ].every((key) => typeof a[key] === 'object' && a[key] !== null);

@@ -158,6 +158,13 @@ let appStyles: AppStyle[] = [
   { bundleId: 'com.google.Chrome', appName: 'Google Chrome', style: null },
 ];
 
+let profile: Record<string, string> = {
+  name: 'Keshav Reddy',
+  email: 'keshav@example.com',
+  phone: '+91 98765 43210',
+  company: 'Equal AI',
+};
+
 const later = <T>(value: T): Promise<T> => new Promise((r) => setTimeout(() => r(value), 120));
 
 export const previewApi: SaysoApi = {
@@ -204,6 +211,15 @@ export const previewApi: SaysoApi = {
     set: (bundleId, _appName, style) => {
       appStyles = appStyles.map((a) => (a.bundleId === bundleId ? { ...a, style } : a));
       return later(appStyles);
+    },
+  },
+  profile: {
+    get: () => later(profile),
+    set: (patch) => {
+      profile = Object.fromEntries(
+        Object.entries({ ...profile, ...patch }).filter(([, value]) => value !== ''),
+      );
+      return later(profile);
     },
   },
   handsFree: {

@@ -11,6 +11,7 @@ const current = {
   settings: {},
   appStyles: {},
   handsFree: {},
+  profile: {},
   openChoices: {},
   permissions: {},
 };

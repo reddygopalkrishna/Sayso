@@ -8,6 +8,7 @@ import { DictionaryError, DictionaryRepo, MAX_ENTRIES } from './DictionaryRepo.t
 import { HistoryRepo, type NewHistoryEntry } from './HistoryRepo.ts';
 import { MIGRATIONS, migrate, schemaVersion } from './migrations.ts';
 import { memoryKey, ResolverMemoryRepo } from './ResolverMemoryRepo.ts';
+import { ProfileError, ProfileRepo } from './ProfileRepo.ts';
 import { SettingsRepo } from './SettingsRepo.ts';
 import { MAX_SNIPPETS, normalizeTrigger, SnippetError, SnippetRepo } from './SnippetRepo.ts';
 import { openStorage } from './index.ts';
@@ -53,6 +54,7 @@ describe('migrations', () => {
     expect(tables).toEqual([
       'app_style',
       'dictionary_entry',
+      'profile',
       'resolver_memory',
       'setting',
       'snippet',
@@ -568,5 +570,75 @@ describe('schema upgrade 5 → 6 (app styles)', () => {
     expect(schemaVersion(db)).toBe(MIGRATIONS.length);
     expect(new SettingsRepo(db).get()).toEqual({ pauseMs: 900 });
     expect(new AppStyleRepo(db).list()).toEqual([]);
+  });
+});
+
+describe('ProfileRepo', () => {
+  const repo = () => new ProfileRepo(memoryDb());
+
+  it('starts empty, saves facts, and keeps the others when one changes', () => {
+    const profile = repo();
+    expect(profile.all()).toEqual({});
+    profile.set({ name: 'Keshav Reddy', email: 'k@example.com' });
+    profile.set({ email: 'new@example.com' });
+    expect(profile.all()).toEqual({ name: 'Keshav Reddy', email: 'new@example.com' });
+  });
+
+  it('an empty value clears a fact', () => {
+    const profile = repo();
+    profile.set({ phone: '+91 98765 43210' });
+    profile.set({ phone: '   ' });
+    expect(profile.all()).toEqual({});
+  });
+
+  it('tidies spaces, but keeps line breaks in an address', () => {
+    const profile = repo();
+    profile.set({ name: '  Keshav   Reddy ', address: '12 MG Road\nHyderabad 500001' });
+    expect(profile.all()).toEqual({
+      name: 'Keshav Reddy',
+      address: '12 MG Road\nHyderabad 500001',
+    });
+  });
+
+  it('rejects characters Sayso cannot type', () => {
+    expect(() => repo().set({ name: 'bad\u0000name' })).toThrow(ProfileError);
+  });
+
+  it.each([
+    ['my email', 'k@example.com'],
+    ['My email address.', 'k@example.com'],
+    ['my mail id', 'k@example.com'],
+    ['my phone number', '+91 98765 43210'],
+    ['my mobile', '+91 98765 43210'],
+  ])('finds %j by how it is said', (spoken, expected) => {
+    const profile = repo();
+    profile.set({ email: 'k@example.com', phone: '+91 98765 43210' });
+    expect(profile.find(spoken)).toBe(expected);
+  });
+
+  it.each(['my email and my phone', 'email', 'your email', 'my favourite colour', ''])(
+    'finds nothing for %j',
+    (spoken) => {
+      const profile = repo();
+      profile.set({ email: 'k@example.com' });
+      expect(profile.find(spoken)).toBeNull();
+    },
+  );
+
+  it('finds nothing for a fact that is not saved', () => {
+    expect(repo().find('my address')).toBeNull();
+  });
+});
+
+describe('schema upgrade 6 → 7 (about me)', () => {
+  it('adds the profile table and keeps app styles', () => {
+    const db = openDb(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 6));
+    expect(schemaVersion(db)).toBe(6);
+    new AppStyleRepo(db).set('com.apple.Notes', 'Notes', 'chill');
+    migrate(db);
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length);
+    expect(new AppStyleRepo(db).get('com.apple.Notes')).toBe('chill');
+    expect(new ProfileRepo(db).all()).toEqual({});
   });
 });

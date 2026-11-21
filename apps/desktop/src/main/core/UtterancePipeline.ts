@@ -143,7 +143,9 @@ export class UtterancePipeline {
     const literal = afterTypeWord(segment.text);
     if (literal !== null) {
       this.assertCanInsert(context);
-      const text = typeLiterally(literal, this.opts.dictionary?.() ?? []);
+      // "type my email" / "type calendly": a snippet or a fact about you is typed as saved.
+      const text =
+        this.opts.snippets?.find(literal) ?? typeLiterally(literal, this.opts.dictionary?.() ?? []);
       if (text !== '') await this.insert(text);
       this.opts.onOutcome?.({
         mode: 'dictation',

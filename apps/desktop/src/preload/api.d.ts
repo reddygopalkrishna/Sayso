@@ -5,6 +5,7 @@ import type {
   OpenChoice,
   Snippet,
 } from '../shared/data.ts';
+import type { ProfilePatch, ProfileValues } from '../shared/profile.ts';
 import type { SettingsPatch, Style, UserSettings } from '../shared/settings.ts';
 import type { AppStatus, SettingsPane } from '../shared/status.ts';
 
@@ -20,6 +21,11 @@ export interface SaysoApi {
     list(): Promise<DictionaryEntry[]>;
     add(phrase: string, spokenAs: string | null): Promise<DictionaryEntry>;
     remove(id: string): Promise<void>;
+  };
+  profile: {
+    get(): Promise<ProfileValues>;
+    /** Sets the given fields (an empty value clears one); answers everything saved. */
+    set(patch: ProfilePatch): Promise<ProfileValues>;
   };
   handsFree: {
     /** Turns hands-free on or off; rejects with a plain message when it cannot start. */

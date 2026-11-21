@@ -7,6 +7,7 @@ import {
   type SettingsPatch,
   type UserSettings,
 } from '../shared/settings.ts';
+import { ProfilePatchSchema } from '../shared/profile.ts';
 import { DictionaryError } from './core/storage/DictionaryRepo.ts';
 import type { Storage } from './core/storage/index.ts';
 
@@ -91,6 +92,11 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcHandler> {
       storage().dictionary.upsert(phrase, spokenAs),
     ),
     [IPC.removeDictionary]: define(id, (entryId) => storage().dictionary.remove(entryId)),
+    [IPC.getProfile]: define(nothing, () => storage().profile.all()),
+    [IPC.setProfile]: define(ProfilePatchSchema, (patch) => {
+      storage().profile.set(patch);
+      return storage().profile.all();
+    }),
     [IPC.getSettings]: define(nothing, () => deps.settings.current()),
     [IPC.setSettings]: define(SettingsPatchSchema, (patch) => deps.settings.apply(patch)),
     [IPC.resetSettings]: define(nothing, () => deps.settings.reset()),

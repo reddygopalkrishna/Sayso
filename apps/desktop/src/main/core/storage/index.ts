@@ -1,4 +1,5 @@
 import { openDb, type Db } from './db.ts';
+import { ProfileRepo } from './ProfileRepo.ts';
 import { AppStyleRepo } from './AppStyleRepo.ts';
 import { DictionaryRepo } from './DictionaryRepo.ts';
 import { HistoryRepo } from './HistoryRepo.ts';
@@ -15,6 +16,7 @@ export interface Storage {
   snippets: SnippetRepo;
   settings: SettingsRepo;
   appStyles: AppStyleRepo;
+  profile: ProfileRepo;
   close(): void;
 }
 
@@ -42,6 +44,7 @@ export function openStorage(path: string, options: StorageOptions): Storage {
     snippets: new SnippetRepo(db, now),
     settings: new SettingsRepo(db, now),
     appStyles: new AppStyleRepo(db, now),
+    profile: new ProfileRepo(db, now),
     close: () => db.close(),
   };
 }

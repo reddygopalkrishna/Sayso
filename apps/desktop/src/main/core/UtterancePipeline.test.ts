@@ -364,6 +364,24 @@ describe('UtterancePipeline: "type …" with the hold key', () => {
     expect(log).toEqual(['insert chatgpt.com']);
   });
 
+  it('"type my email" types the saved fact (a snippet or a fact about you)', async () => {
+    const { pipeline, log } = setup({
+      contexts: [slack],
+      snippets: { 'my email': 'keshav@example.com' },
+    });
+    await pipeline.deliver(segment('Type my email.'));
+    expect(log).toEqual(['insert keshav@example.com']);
+  });
+
+  it('"my email" alone is typed the same way (hands-free strips "type")', async () => {
+    const { pipeline, log } = setup({
+      contexts: [slack],
+      snippets: { 'my email': 'keshav@example.com' },
+    });
+    await pipeline.deliver(segment('my email'));
+    expect(log).toEqual(['insert keshav@example.com']);
+  });
+
   it('a trailing "send" is typed as a word, never pressed', async () => {
     const { pipeline, log } = setup({ contexts: [slack] });
     await pipeline.deliver(segment('type see you soon', send));

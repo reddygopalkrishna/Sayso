@@ -29,6 +29,10 @@ const api: SaysoApi = {
   handsFree: {
     set: (on) => call(IPC.setHandsFree, on),
   },
+  profile: {
+    get: () => call(IPC.getProfile),
+    set: (patch) => call(IPC.setProfile, patch),
+  },
   appStyles: {
     list: () => call(IPC.listAppStyles),
     set: (bundleId, appName, style) => call(IPC.setAppStyle, { bundleId, appName, style }),

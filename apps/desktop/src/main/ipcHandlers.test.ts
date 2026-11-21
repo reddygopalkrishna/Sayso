@@ -88,6 +88,41 @@ describe('settings over IPC', () => {
   });
 });
 
+describe('about me over IPC', () => {
+  it('saves facts and answers everything saved', async () => {
+    const { call } = setup();
+    expect(await call(IPC.getProfile)).toEqual({ ok: true, value: {} });
+    expect(await call(IPC.setProfile, { name: 'Keshav', email: 'k@example.com' })).toEqual({
+      ok: true,
+      value: { name: 'Keshav', email: 'k@example.com' },
+    });
+    expect(await call(IPC.setProfile, { email: '' })).toEqual({
+      ok: true,
+      value: { name: 'Keshav' },
+    });
+  });
+
+  it.each([
+    ['an unknown field', { passport: 'X123' }],
+    ['a value that is too long', { name: 'x'.repeat(501) }],
+    ['a value that is not text', { phone: 123 }],
+  ])('refuses %s', async (_label, patch) => {
+    const { call } = setup();
+    expect(await call(IPC.setProfile, patch)).toEqual({
+      ok: false,
+      error: 'That request was not valid.',
+    });
+  });
+
+  it('shows a readable message for characters it cannot type', async () => {
+    const { call } = setup();
+    expect(await call(IPC.setProfile, { name: 'bad\u0000name' })).toEqual({
+      ok: false,
+      error: 'That has characters Sayso cannot type.',
+    });
+  });
+});
+
 describe('hands-free over IPC', () => {
   it('turns it on and off, and shows a readable reason when it cannot start', async () => {
     const { call } = setup();

@@ -106,6 +106,8 @@ export const IPC = {
   listDictionary: 'dictionary:list',
   addDictionary: 'dictionary:add',
   removeDictionary: 'dictionary:remove',
+  getProfile: 'profile:get',
+  setProfile: 'profile:set',
   getSettings: 'settings:get',
   setSettings: 'settings:set',
   resetSettings: 'settings:reset',

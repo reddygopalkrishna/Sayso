@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AboutMe } from './AboutMe.tsx';
 import { Dictionary } from './Dictionary.tsx';
 import { History } from './History.tsx';
 import { Home } from './Home.tsx';
@@ -8,6 +9,7 @@ import { useStatus } from './useStatus.ts';
 const TABS = [
   { id: 'home', label: 'Home' },
   { id: 'history', label: 'History' },
+  { id: 'profile', label: 'About me' },
   { id: 'dictionary', label: 'Dictionary' },
   { id: 'settings', label: 'Settings' },
 ] as const;
@@ -54,6 +56,8 @@ export function App(): React.JSX.Element {
           <Home status={status} />
         ) : tab === 'history' ? (
           <History status={status} />
+        ) : tab === 'profile' ? (
+          <AboutMe />
         ) : tab === 'settings' ? (
           <Settings />
         ) : (
