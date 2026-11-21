@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:59 · README and demo script (`bca898d`)
+- **What:** `README.md` (what Sayso is, what it can do with how each part was tested, privacy, how to run, how it is built, honest limits) and `docs/DEMO_SCRIPT.md` (a 90-second spoken flow: open Chrome, new tab, type, send, open the first result, click Sign in, fill in my details, an unusual sentence for the interpreter, a dictation with an Indian name and a place; setup, fallbacks, and a table of what is certain and what is not).
+- **Event line:** the README says the base dictation app (13 to 16 November) existed before the Builders 2026 event, and lists what was built at it (from 21 November, 10 AM), from this changelog. It also says commit dates were reset to 21 November, so the changelog is the record of when things were built.
+- **Not claimed:** no real accuracy figures (the benchmark ran only on synthetic audio), no end-to-end hands-free by voice, nothing for Windows, accounts or a packaged app. English is the focus; Telugu and Hindi are next.
+- **Not run:** the demo flow has not been rehearsed by voice; the founder should rehearse it and cut what fails.
+
 ### 15:56 · Chained steps wait for a page to load (`3fc65f3`)
 - **What:** in a chain or an interpreted plan ("open Chrome, new tab, search AWS console, open the first result") the next step used to start 300 ms after the last, so "open the first result" fired before the Google page had loaded. Now a step that loads a page makes the next one wait **1.8 s**: Enter or "send" in a browser, a click or "open the Nth" in a browser, and "open" of a website. New tab, scroll, go back and opening an app keep the 300 ms. Nothing waits after the last step. `SAYSO_PAGE_WAIT_MS` sets it (0 turns the extra wait off; 0 to 10000).
 - **Tested in code:** fake-timer tests for each step kind (waits at 1,799 ms and 1,800 ms; 299 ms and 300 ms), a table test of which steps count as loading a page, and the setting's limits.
