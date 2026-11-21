@@ -23,6 +23,7 @@ describe('loadConfig', () => {
       pauseMs: 600,
       previewMs: 1000,
       historyKeep: 50,
+      style: 'default',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -45,6 +46,7 @@ describe('loadConfig', () => {
       pauseMs: 600,
       previewMs: 1000,
       historyKeep: 50,
+      style: 'default',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -129,5 +131,17 @@ describe('loadConfig', () => {
       geminiApiKey: null,
       cleanupLevel: 'full',
     });
+  });
+});
+
+describe('style in the config', () => {
+  it.each([
+    ['chill', 'chill'],
+    ['CHILL', 'chill'],
+    ['default', 'default'],
+    ['loud', 'default'],
+    ['', 'default'],
+  ])('SAYSO_STYLE=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_STYLE=${value}`), {}).style).toBe(expected);
   });
 });

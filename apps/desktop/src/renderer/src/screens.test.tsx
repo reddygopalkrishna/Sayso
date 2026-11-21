@@ -5,7 +5,7 @@ import type { PermissionsStatus } from '../../shared/status.ts';
 import { cleanupLabel, HistoryRow, SpeedSummary } from './History.tsx';
 import type { HistoryStats } from './historyStats.ts';
 import { Onboarding } from './Onboarding.tsx';
-import { SettingsForm } from './Settings.tsx';
+import { AppStyleList, SettingsForm } from './Settings.tsx';
 
 const html = (node: React.JSX.Element): string => renderToStaticMarkup(node);
 
@@ -226,6 +226,7 @@ describe('SettingsForm', () => {
     cleanupLevel: 'full',
     skipAi: true,
     historyKeep: 50,
+    style: 'default',
   } as const;
   const noop = () => undefined;
   const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
@@ -266,5 +267,62 @@ describe('SettingsForm', () => {
     const failed = show({ saved: true, message: 'That request was not valid.' });
     expect(failed).toContain('That request was not valid.');
     expect(failed).not.toContain('Saved.');
+  });
+});
+
+describe('Style in Settings', () => {
+  const noop = () => undefined;
+  const form = (style: 'default' | 'chill') =>
+    html(
+      <SettingsForm
+        values={{
+          pauseMs: 600,
+          previewMs: 1000,
+          cleanupLevel: 'full',
+          skipAi: true,
+          historyKeep: 50,
+          style,
+        }}
+        message={null}
+        saved={false}
+        onChange={noop}
+        onSave={noop}
+        onReset={noop}
+      />,
+    );
+
+  it('offers Default and Chill with an example of each', () => {
+    const out = form('default');
+    expect(out).toContain('Capitals and full punctuation');
+    expect(out).toContain('No capitals, minimal punctuation');
+    expect(out).toContain('Hey, are you free for lunch tomorrow?');
+    expect(out).toContain('hey are you free for lunch tomorrow');
+  });
+
+  it('marks the chosen style', () => {
+    expect(form('chill').match(/checked=""/g)?.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('lists the apps with their style and the everywhere choice', () => {
+    const out = html(
+      <AppStyleList
+        everywhere="chill"
+        onChange={noop}
+        apps={[
+          { bundleId: 'com.tinyspeck.slackmacgap', appName: 'Slack', style: 'default' },
+          { bundleId: 'com.apple.Notes', appName: 'Notes', style: null },
+        ]}
+      />,
+    );
+    expect(out).toContain('Style for Slack');
+    expect(out).toContain('Style for Notes');
+    expect(out).toContain('Chill');
+    expect(out).toContain('<option value="everywhere" selected="">Everywhere</option>');
+  });
+
+  it('says so when there are no apps yet', () => {
+    expect(html(<AppStyleList everywhere="default" onChange={noop} apps={[]} />)).toContain(
+      'No apps yet.',
+    );
   });
 });

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { DEFAULT_FAST_MODEL } from '../core/cleanup/providers.ts';
 import type { CleanupLevel } from '../core/cleanup/types.ts';
+import type { Style } from '../../shared/settings.ts';
 
 export interface AppConfig {
   geminiApiKey: string | null;
@@ -21,6 +22,8 @@ export interface AppConfig {
   skipAi: boolean;
   /** History rows to keep (PRD: the last 50). 0 turns history off. */
   historyKeep: number;
+  /** Default or chill: how dictated text looks, unless an app has its own style. */
+  style: Style;
 }
 
 /**
@@ -42,6 +45,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_PREVIEW_MS',
     'SAYSO_HISTORY_KEEP',
     'SAYSO_SKIP_AI',
+    'SAYSO_STYLE',
     'GROQ_API_KEY',
     'SAYSO_FAST_MODEL',
     'SAYSO_AI_PROVIDER',
@@ -65,6 +69,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     pauseMs: Number.isFinite(pause) && pause >= 200 && pause <= 3000 ? pause : 600,
     previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,
     historyKeep: Number.isInteger(keep) && keep >= 0 && keep <= 1000 ? keep : 50,
+    style: (merged['SAYSO_STYLE'] ?? '').trim().toLowerCase() === 'chill' ? 'chill' : 'default',
     skipAi: !['off', 'false', '0', 'no'].includes(
       (merged['SAYSO_SKIP_AI'] ?? '').trim().toLowerCase(),
     ),

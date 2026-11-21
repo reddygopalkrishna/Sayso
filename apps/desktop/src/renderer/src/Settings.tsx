@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { CLEANUP_LEVELS, SETTING_LIMITS, type UserSettings } from '../../shared/settings.ts';
+import type { AppStyle } from '../../shared/data.ts';
+import {
+  CLEANUP_LEVELS,
+  SETTING_LIMITS,
+  STYLES,
+  type Style,
+  type UserSettings,
+} from '../../shared/settings.ts';
 import { useLoad } from './useLoad.ts';
 
 const field =
@@ -9,6 +16,19 @@ const LEVEL_TEXT: Record<UserSettings['cleanupLevel'], string> = {
   off: 'Off: type exactly what was heard',
   light: 'Light: fix capitals and punctuation on this Mac only',
   full: 'Full: also remove fillers and fix grammar with AI',
+};
+
+const STYLE_CARDS: Record<Style, { title: string; hint: string; example: string }> = {
+  default: {
+    title: 'Default',
+    hint: 'Capitals and full punctuation',
+    example: 'Hey, are you free for lunch tomorrow? Let’s do 12 if that works for you.',
+  },
+  chill: {
+    title: 'Chill',
+    hint: 'No capitals, minimal punctuation',
+    example: 'hey are you free for lunch tomorrow let’s do 12 if that works for you',
+  },
 };
 
 const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)} s`;
@@ -83,6 +103,39 @@ export function SettingsForm({
         />
       </label>
 
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend className="font-medium">Style</legend>
+        <span className="text-xs text-neutral-500">
+          How dictated text looks everywhere. You can give single apps their own style below.
+        </span>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {STYLES.map((style) => (
+            <label
+              key={style}
+              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-3 ${
+                values.style === style
+                  ? 'border-neutral-900 dark:border-white'
+                  : 'border-neutral-200 dark:border-neutral-700'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="style"
+                  checked={values.style === style}
+                  onChange={() => onChange({ style })}
+                />
+                <span className="font-medium">{STYLE_CARDS[style].title}</span>
+                <span className="text-xs text-neutral-500">{STYLE_CARDS[style].hint}</span>
+              </span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-300">
+                {STYLE_CARDS[style].example}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium">Text cleanup</span>
         <select
@@ -152,9 +205,55 @@ export function SettingsForm({
   );
 }
 
+interface AppStyleListProps {
+  apps: AppStyle[];
+  everywhere: Style;
+  onChange: (app: AppStyle, style: Style | null) => void;
+}
+
+/** The apps you have dictated into, each with its own style or "follows everywhere". */
+export function AppStyleList({ apps, everywhere, onChange }: AppStyleListProps): React.JSX.Element {
+  return (
+    <section aria-label="Style per app" className="flex max-w-xl flex-col gap-2">
+      <div>
+        <h2 className="text-base font-semibold">Style per app</h2>
+        <p className="text-xs text-neutral-500">
+          Apps appear here after you dictate into them. “Everywhere” follows the style above (
+          {STYLE_CARDS[everywhere].title}).
+        </p>
+      </div>
+      {apps.length === 0 && <p className="text-sm text-neutral-500">No apps yet.</p>}
+      <ul className="flex flex-col gap-1.5">
+        {apps.map((app) => (
+          <li
+            key={app.bundleId}
+            className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
+          >
+            <span className="min-w-0 truncate font-medium">{app.appName ?? app.bundleId}</span>
+            <select
+              className={`${field} w-40 shrink-0`}
+              aria-label={`Style for ${app.appName ?? app.bundleId}`}
+              value={app.style ?? 'everywhere'}
+              onChange={(e) =>
+                onChange(app, e.target.value === 'everywhere' ? null : (e.target.value as Style))
+              }
+            >
+              <option value="everywhere">Everywhere</option>
+              <option value="default">Default</option>
+              <option value="chill">Chill</option>
+            </select>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Loads the settings, lets you change them, and saves them in the app. */
 export function Settings(): React.JSX.Element {
   const loaded = useLoad(() => window.sayso.settings.get());
+  const appList = useLoad(() => window.sayso.appStyles.list());
+  const [appMessage, setAppMessage] = useState<string | null>(null);
   // What the app confirmed last (after a save or reset), and the changes not saved yet.
   const [confirmed, setConfirmed] = useState<UserSettings | null>(null);
   const [edits, setEdits] = useState<Partial<UserSettings>>({});
@@ -184,17 +283,39 @@ export function Settings(): React.JSX.Element {
     }
   };
 
+  const changeApp = async (app: AppStyle, style: Style | null): Promise<void> => {
+    try {
+      await window.sayso.appStyles.set(app.bundleId, app.appName, style);
+      setAppMessage(null);
+      await appList.reload();
+    } catch (e) {
+      setAppMessage(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
-    <SettingsForm
-      values={draft}
-      message={message}
-      saved={saved}
-      onChange={(patch) => {
-        setEdits({ ...edits, ...patch });
-        setSaved(false);
-      }}
-      onSave={() => void run(() => window.sayso.settings.set(draft))}
-      onReset={() => void run(() => window.sayso.settings.reset())}
-    />
+    <div className="flex flex-col gap-10">
+      <SettingsForm
+        values={draft}
+        message={message}
+        saved={saved}
+        onChange={(patch) => {
+          setEdits({ ...edits, ...patch });
+          setSaved(false);
+        }}
+        onSave={() => void run(() => window.sayso.settings.set(draft))}
+        onReset={() => void run(() => window.sayso.settings.reset())}
+      />
+      <AppStyleList
+        apps={appList.data ?? []}
+        everywhere={draft.style}
+        onChange={(app, style) => void changeApp(app, style)}
+      />
+      {(appMessage ?? appList.error) && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {appMessage ?? appList.error}
+        </p>
+      )}
+    </div>
   );
 }

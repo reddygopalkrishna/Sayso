@@ -2,6 +2,8 @@ import type { CommandAction, CommandSpec } from '@sayso/command-grammar';
 import type { CommandActions, KeyPresser, TextInserter } from './actions/HelperActions.ts';
 import { keyStrokeFor } from './actions/sendStrategy.ts';
 import { applyDictionary, type DictionaryTerm } from './cleanup/dictionary.ts';
+import { applyStyle } from './cleanup/style.ts';
+import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
@@ -54,6 +56,8 @@ export interface UtterancePipelineOptions {
   };
   /** Pause between chained steps, so the screen can update first. Default 300 ms. */
   settleMs?: () => number;
+  /** Default or chill for the app in front. Chill: no capitals, minimal punctuation. */
+  style?: (bundleId: string | null) => Style;
   /** Your snippets: when the whole dictation is a trigger, its text is typed as saved, no AI. */
   snippets?: { find(spoken: string): string | null };
   /** Time a risky action waits for "yes". Default 8 s. */
@@ -127,6 +131,7 @@ export class UtterancePipeline {
 
     let cleanup: CleanupResult | null = null;
     let snippet: string | null = null;
+    let styled: string | null = null;
     let inserted = false;
     if (routing.dictation !== '') {
       // Refuse before cleanup so nothing said into a password field is sent to the AI either.
@@ -141,9 +146,15 @@ export class UtterancePipeline {
           bundleId: context.bundleId,
           appName: context.appName,
         });
-        if (cleanup.text !== '') {
-          await this.insert(cleanup.text);
+        const typed = applyStyle(
+          cleanup.text,
+          this.opts.style?.(context.bundleId) ?? 'default',
+          this.opts.dictionary?.() ?? [],
+        );
+        if (typed !== '') {
+          await this.insert(typed);
           inserted = true;
+          if (typed !== cleanup.text) styled = typed;
         }
       }
     }
@@ -169,7 +180,7 @@ export class UtterancePipeline {
       routing,
       cleanup,
       inserted,
-      ...(snippet !== null ? { insertedText: snippet } : {}),
+      ...((snippet ?? styled) !== null ? { insertedText: snippet ?? styled ?? '' } : {}),
       command,
     });
   }

@@ -99,7 +99,11 @@ export class DictationController {
 
   /** The helper went away: whatever was in flight is lost. */
   reset(reason: string): void {
-    if (this.state.phase === 'idle' || this.state.phase === 'error' || this.state.phase === 'prompt') {
+    if (
+      this.state.phase === 'idle' ||
+      this.state.phase === 'error' ||
+      this.state.phase === 'prompt'
+    ) {
       return;
     }
     this.log(`dictation reset: ${reason}`);

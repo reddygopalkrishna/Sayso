@@ -10,6 +10,7 @@ const defaults: UserSettings = {
   cleanupLevel: 'full',
   skipAi: true,
   historyKeep: 50,
+  style: 'default',
 };
 const settings = {
   current: () => defaults,
@@ -69,6 +70,47 @@ describe('settings over IPC', () => {
   it('resets to the starting values', async () => {
     const { call } = setup();
     expect(await call(IPC.resetSettings)).toEqual({ ok: true, value: defaults });
+  });
+});
+
+describe('app styles over IPC', () => {
+  it('lists, sets and clears an app style', async () => {
+    const { call } = setup();
+    expect(await call(IPC.listAppStyles)).toEqual({ ok: true, value: [] });
+    expect(
+      await call(IPC.setAppStyle, {
+        bundleId: 'com.apple.Notes',
+        appName: 'Notes',
+        style: 'chill',
+      }),
+    ).toEqual({
+      ok: true,
+      value: [{ bundleId: 'com.apple.Notes', appName: 'Notes', style: 'chill' }],
+    });
+    expect(
+      await call(IPC.setAppStyle, { bundleId: 'com.apple.Notes', appName: 'Notes', style: null }),
+    ).toEqual({ ok: true, value: [] });
+  });
+
+  it.each([
+    ['an unknown style', { bundleId: 'a', appName: null, style: 'loud' }],
+    ['no app', { bundleId: '', appName: null, style: 'chill' }],
+    ['an extra field', { bundleId: 'a', appName: null, style: 'chill', admin: true }],
+  ])('refuses %s', async (_label, input) => {
+    const { call } = setup();
+    expect(await call(IPC.setAppStyle, input)).toEqual({
+      ok: false,
+      error: 'That request was not valid.',
+    });
+  });
+
+  it('accepts the everywhere style as a setting', async () => {
+    const { call } = setup();
+    expect(await call(IPC.setSettings, { style: 'chill' })).toMatchObject({ ok: true });
+    expect(await call(IPC.setSettings, { style: 'loud' })).toEqual({
+      ok: false,
+      error: 'That request was not valid.',
+    });
   });
 });
 

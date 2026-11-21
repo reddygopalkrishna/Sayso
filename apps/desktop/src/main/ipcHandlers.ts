@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import type { IpcResult } from '../shared/data.ts';
 import { IPC, type SettingsPane } from '../shared/status.ts';
-import { SettingsPatchSchema, type SettingsPatch, type UserSettings } from '../shared/settings.ts';
+import {
+  SettingsPatchSchema,
+  STYLES,
+  type SettingsPatch,
+  type UserSettings,
+} from '../shared/settings.ts';
 import { DictionaryError } from './core/storage/DictionaryRepo.ts';
 import type { Storage } from './core/storage/index.ts';
 
@@ -31,6 +36,13 @@ export type IpcHandler = (raw: unknown) => Promise<IpcResult<unknown>>;
 const nothing = z.null().or(z.undefined());
 const text = z.string().max(200);
 const addEntry = z.object({ phrase: text, spokenAs: text.nullable() }).strict();
+const appStyle = z
+  .object({
+    bundleId: z.string().min(1).max(200),
+    appName: text.nullable(),
+    style: z.enum(STYLES).nullable(),
+  })
+  .strict();
 const addSnippet = z.object({ trigger: text, body: z.string().max(4_000) }).strict();
 const id = z.string().min(1).max(100);
 const permissionKind = z.enum(['microphone', 'accessibility']);
@@ -76,6 +88,11 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcHandler> {
     [IPC.getSettings]: define(nothing, () => deps.settings.current()),
     [IPC.setSettings]: define(SettingsPatchSchema, (patch) => deps.settings.apply(patch)),
     [IPC.resetSettings]: define(nothing, () => deps.settings.reset()),
+    [IPC.listAppStyles]: define(nothing, () => storage().appStyles.list()),
+    [IPC.setAppStyle]: define(appStyle, ({ bundleId, appName, style }) => {
+      storage().appStyles.set(bundleId, appName, style);
+      return storage().appStyles.list();
+    }),
     [IPC.listSnippets]: define(nothing, () => storage().snippets.list()),
     [IPC.addSnippet]: define(addSnippet, ({ trigger, body }) =>
       storage().snippets.upsert(trigger, body),

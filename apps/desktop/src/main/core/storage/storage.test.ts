@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { AppStyleError, AppStyleRepo } from './AppStyleRepo.ts';
 import { openDb } from './db.ts';
 import { DictionaryError, DictionaryRepo, MAX_ENTRIES } from './DictionaryRepo.ts';
 import { HistoryRepo, type NewHistoryEntry } from './HistoryRepo.ts';
@@ -50,6 +51,7 @@ describe('migrations', () => {
       .all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .map((t) => t.name);
     expect(tables).toEqual([
+      'app_style',
       'dictionary_entry',
       'resolver_memory',
       'setting',
@@ -493,5 +495,78 @@ describe('schema upgrade 4 → 5 (settings)', () => {
     expect(schemaVersion(db)).toBe(MIGRATIONS.length);
     expect(new SnippetRepo(db).find('calendly')).toBe('LINK');
     expect(new SettingsRepo(db).get()).toEqual({});
+  });
+});
+
+describe('AppStyleRepo', () => {
+  const setup = () => {
+    const db = memoryDb();
+    return { db, repo: new AppStyleRepo(db) };
+  };
+
+  it('starts with no style for any app', () => {
+    const { repo } = setup();
+    expect(repo.get('com.tinyspeck.slackmacgap')).toBeNull();
+    expect(repo.get(null)).toBeNull();
+    expect(repo.list()).toEqual([]);
+  });
+
+  it('sets, changes and removes an app style', () => {
+    const { repo } = setup();
+    repo.set('com.tinyspeck.slackmacgap', 'Slack', 'chill');
+    expect(repo.get('com.tinyspeck.slackmacgap')).toBe('chill');
+    repo.set('com.tinyspeck.slackmacgap', 'Slack', 'default');
+    expect(repo.get('com.tinyspeck.slackmacgap')).toBe('default');
+    repo.set('com.tinyspeck.slackmacgap', 'Slack', null);
+    expect(repo.get('com.tinyspeck.slackmacgap')).toBeNull();
+  });
+
+  it('keeps the app name when it is changed without one', () => {
+    const { repo } = setup();
+    repo.set('com.apple.Notes', 'Notes', 'chill');
+    repo.set('com.apple.Notes', null, 'default');
+    expect(repo.list()).toEqual([
+      { bundleId: 'com.apple.Notes', appName: 'Notes', style: 'default' },
+    ]);
+  });
+
+  it('lists the apps seen in the history too, A to Z, with their style or none', () => {
+    const { db, repo } = setup();
+    new HistoryRepo(db, { keep: () => 50 }).record(
+      entry({ appBundleId: 'com.apple.Notes', appName: 'Notes' }),
+    );
+    new HistoryRepo(db, { keep: () => 50 }).record(
+      entry({ appBundleId: 'com.tinyspeck.slackmacgap', appName: 'Slack' }),
+    );
+    repo.set('com.tinyspeck.slackmacgap', 'Slack', 'chill');
+    expect(repo.list()).toEqual([
+      { bundleId: 'com.apple.Notes', appName: 'Notes', style: null },
+      { bundleId: 'com.tinyspeck.slackmacgap', appName: 'Slack', style: 'chill' },
+    ]);
+  });
+
+  it.each(['', '   ', 'x'.repeat(201)])('rejects the app id %j', (id) => {
+    const { repo } = setup();
+    expect(() => repo.set(id, null, 'chill')).toThrow(AppStyleError);
+  });
+
+  it('refuses a style that is not default or chill (the database checks it too)', () => {
+    const { db } = setup();
+    expect(() =>
+      db.run("INSERT INTO app_style (bundle_id, style, updated_at) VALUES ('a', 'loud', 1)"),
+    ).toThrow();
+  });
+});
+
+describe('schema upgrade 5 → 6 (app styles)', () => {
+  it('adds the app_style table and keeps settings', () => {
+    const db = openDb(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 5));
+    expect(schemaVersion(db)).toBe(5);
+    new SettingsRepo(db).set({ pauseMs: 900 });
+    migrate(db);
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length);
+    expect(new SettingsRepo(db).get()).toEqual({ pauseMs: 900 });
+    expect(new AppStyleRepo(db).list()).toEqual([]);
   });
 });

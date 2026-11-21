@@ -9,6 +9,10 @@ export const SETTING_LIMITS = {
 
 export const CLEANUP_LEVELS = ['off', 'light', 'full'] as const;
 
+/** Default: capitals and full punctuation. Chill: no capitals and minimal punctuation. */
+export const STYLES = ['default', 'chill'] as const;
+export type Style = (typeof STYLES)[number];
+
 /** Every setting at once, as shown on screen. */
 export interface UserSettings {
   /** Silence before a trailing "send" / "enter" / "new line" runs as a command. */
@@ -21,6 +25,8 @@ export interface UserSettings {
   skipAi: boolean;
   /** History rows to keep; 0 turns history off. */
   historyKeep: number;
+  /** How dictated text looks everywhere, unless an app has its own style. */
+  style: Style;
 }
 
 /** One or more settings to change. Anything else, or any value out of range, is rejected. */
@@ -30,6 +36,7 @@ export const SettingsPatchSchema = z
     previewMs: z.number().int().min(SETTING_LIMITS.previewMs.min).max(SETTING_LIMITS.previewMs.max),
     cleanupLevel: z.enum(CLEANUP_LEVELS),
     skipAi: z.boolean(),
+    style: z.enum(STYLES),
     historyKeep: z
       .number()
       .int()

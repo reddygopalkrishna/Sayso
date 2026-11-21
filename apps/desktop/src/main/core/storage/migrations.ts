@@ -64,6 +64,15 @@ export const MIGRATIONS: readonly string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+  // 6: a style (default or chill) chosen for one app.
+  `
+  CREATE TABLE app_style (
+    bundle_id  TEXT PRIMARY KEY,
+    app_name   TEXT,
+    style      TEXT NOT NULL CHECK (style IN ('default', 'chill')),
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 export function schemaVersion(db: Db): number {

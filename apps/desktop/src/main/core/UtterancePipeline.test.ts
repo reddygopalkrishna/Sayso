@@ -62,7 +62,12 @@ function setup({
   dictionary,
   confirmMs,
   snippets,
-}: Setup & { confirmMs?: number; snippets?: Record<string, string> }) {
+  styles,
+}: Setup & {
+  confirmMs?: number;
+  snippets?: Record<string, string>;
+  styles?: Record<string, 'default' | 'chill'>;
+}) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
   let reads = 0;
@@ -96,6 +101,7 @@ function setup({
     endCommands,
     engine: new CommandEngine(commands),
     settleMs: () => 0,
+    style: (bundleId) => (bundleId ? styles?.[bundleId] : undefined) ?? 'default',
     snippets: {
       find: (spoken) =>
         snippets?.[
@@ -195,6 +201,45 @@ describe('UtterancePipeline', () => {
     const { pipeline, log } = setup({ contexts: [context('us.zoom.xos')] });
     await pipeline.deliver(segment('see you soon', send));
     expect(log).toEqual(['llm see you soon send', 'insert See you soon send.']);
+  });
+});
+
+describe('UtterancePipeline: style', () => {
+  const styles = { 'com.tinyspeck.slackmacgap': 'chill' } as const;
+
+  it('chill: no capitals and no sentence punctuation in an app set to chill', async () => {
+    const { pipeline, log, outcomes } = setup({ contexts: [slack], styles });
+    await pipeline.deliver(segment('hello there'));
+    expect(log).toEqual(['llm hello there', 'insert hello there']);
+    expect(outcomes[0]?.insertedText).toBe('hello there');
+  });
+
+  it('default: other apps keep capitals and punctuation', async () => {
+    const { pipeline, log, outcomes } = setup({ contexts: [context('com.apple.Notes')], styles });
+    await pipeline.deliver(segment('hello there'));
+    expect(log).toEqual(['llm hello there', 'insert Hello there.']);
+    expect(outcomes[0]?.insertedText).toBeUndefined();
+  });
+
+  it('chill keeps your own words spelled your way', async () => {
+    const { pipeline, log } = setup({
+      contexts: [slack],
+      styles,
+      dictionary: [{ phrase: 'Priya', spokenAs: null }],
+      llm: () => 'Ask Priya about it.',
+    });
+    await pipeline.deliver(segment('ask priya about it'));
+    expect(log).toEqual(['llm ask priya about it', 'insert ask Priya about it']);
+  });
+
+  it('a snippet is typed exactly as saved, even in a chill app', async () => {
+    const { pipeline, log } = setup({
+      contexts: [slack],
+      styles,
+      snippets: { calendly: 'Book a time: https://Calendly.com/Me' },
+    });
+    await pipeline.deliver(segment('calendly'));
+    expect(log).toEqual(['insert Book a time: https://Calendly.com/Me']);
   });
 });
 

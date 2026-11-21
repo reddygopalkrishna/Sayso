@@ -362,10 +362,7 @@ describe('DictationController: the "say yes" prompt', () => {
     controller.showPrompt('Say “yes”', 60_000);
     controller.clearPrompt();
     controller.clearPrompt();
-    expect(seen).toEqual([
-      { phase: 'prompt', message: 'Say “yes”' },
-      { phase: 'idle' },
-    ]);
+    expect(seen).toEqual([{ phase: 'prompt', message: 'Say “yes”' }, { phase: 'idle' }]);
   });
 
   it('the prompt goes away by itself after its time', () => {

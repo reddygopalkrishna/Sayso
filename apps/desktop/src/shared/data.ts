@@ -59,6 +59,13 @@ export interface Snippet {
   updatedAt: number;
 }
 
+/** An app you have dictated into, with the style chosen for it (null: follows the everywhere style). */
+export interface AppStyle {
+  bundleId: string;
+  appName: string | null;
+  style: 'default' | 'chill' | null;
+}
+
 /** What every IPC call from the renderer returns, so errors arrive as plain messages. */
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string };
 

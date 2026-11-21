@@ -9,6 +9,7 @@ const current = {
   dictionary: {},
   snippets: {},
   settings: {},
+  appStyles: {},
   openChoices: {},
   permissions: {},
 };

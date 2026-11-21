@@ -73,6 +73,7 @@ const settingsNow = (): UserSettings => ({
   cleanupLevel: config.cleanupLevel,
   skipAi: config.skipAi,
   historyKeep: config.historyKeep,
+  style: config.style,
 });
 const startingSettings = settingsNow();
 const refreshCleanupStatus = (): void =>
@@ -136,6 +137,14 @@ function readDictionary(): DictionaryTerm[] {
 
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
+  style: (bundleId) => {
+    try {
+      return storage?.appStyles.get(bundleId) ?? config.style;
+    } catch (error) {
+      warn('could not read the app style', error);
+      return config.style;
+    }
+  },
   snippets: {
     find: (spoken) => {
       try {

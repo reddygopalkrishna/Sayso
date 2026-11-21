@@ -94,6 +94,8 @@ export const IPC = {
   getSettings: 'settings:get',
   setSettings: 'settings:set',
   resetSettings: 'settings:reset',
+  listAppStyles: 'styles:list',
+  setAppStyle: 'styles:set',
   listSnippets: 'snippets:list',
   addSnippet: 'snippets:add',
   removeSnippet: 'snippets:remove',
