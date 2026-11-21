@@ -127,6 +127,7 @@ const pipeline = new UtterancePipeline({
   cleanup: new TextCleanup({
     provider,
     level: () => config.cleanupLevel,
+    skipWhenClean: () => config.skipAi,
     dictionary: readDictionary,
   }),
   actions,
@@ -162,7 +163,8 @@ const pipeline = new UtterancePipeline({
     if (cleanup) {
       console.info(
         `[cleanup] ${cleanup.method} (${cleanup.tone}) in ${cleanup.ms} ms for ${app}` +
-          (cleanup.fallbackReason ? `; fallback: ${cleanup.fallbackReason}` : ''),
+          (cleanup.fallbackReason ? `; fallback: ${cleanup.fallbackReason}` : '') +
+          (cleanup.note ? `; no AI needed: ${cleanup.note}` : ''),
       );
     }
     const result =
@@ -195,6 +197,10 @@ const pipeline = new UtterancePipeline({
 });
 const dictation = new DictationController({
   stt,
+  // While speech-to-text runs, open the connection to the AI so the cleanup request does not wait.
+  onRelease: (mode) => {
+    if (mode === 'dictation' && config.cleanupLevel === 'full') provider?.warmUp?.();
+  },
   deliver: (segment, mode) => {
     deliverStartedAt = Date.now();
     return pipeline.deliver(segment, mode);

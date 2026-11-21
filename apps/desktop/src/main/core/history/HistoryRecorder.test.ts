@@ -50,6 +50,7 @@ describe('HistoryRecorder: outcomes', () => {
         action: null,
         outcome: 'done',
         latencyMs: 1500, // STT 400 + 1100
+        cleanup: { method: 'llm', ms: 900 },
       },
     ]);
   });

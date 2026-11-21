@@ -19,6 +19,8 @@ export interface GeminiOptions {
   thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high' | null;
   fetch?: typeof fetch;
   baseUrl?: string;
+  /** For tests. */
+  now?: () => number;
 }
 
 const ResponseSchema = z.object({
@@ -43,6 +45,8 @@ export class GeminiProvider implements LLMProvider {
   private readonly apiKey: string;
   private readonly fetchImpl: typeof fetch;
   private readonly baseUrl: string;
+  private readonly now: () => number;
+  private lastWarmUp = -Infinity;
 
   constructor(options: GeminiOptions) {
     if (!options.apiKey) throw new LLMError('Gemini API key is empty');
@@ -56,6 +60,30 @@ export class GeminiProvider implements LLMProvider {
           : null;
     this.fetchImpl = options.fetch ?? fetch;
     this.baseUrl = options.baseUrl ?? 'https://generativelanguage.googleapis.com/v1beta';
+    this.now = options.now ?? Date.now;
+  }
+
+  /**
+   * Opens the connection (DNS, TCP, TLS) with a bare HEAD request to the service address, so the
+   * real request after speech-to-text reuses it: measured 0.94 s vs 1.13 s median. Node closes an
+   * idle connection after about 4 s, so this runs when you release Fn, not when you press it.
+   * Sends no key and no text, at most once every 2 s, and never throws.
+   */
+  warmUp(): void {
+    const at = this.now();
+    if (at - this.lastWarmUp < 2_000) return;
+    this.lastWarmUp = at;
+    try {
+      void this.fetchImpl(`${new URL(this.baseUrl).origin}/`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3_000),
+      }).then(
+        () => undefined,
+        () => undefined,
+      );
+    } catch {
+      // A failed warm-up only means the real request opens its own connection.
+    }
   }
 
   async cleanup(request: CleanupRequest, signal: AbortSignal): Promise<string> {

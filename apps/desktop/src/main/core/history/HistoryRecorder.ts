@@ -30,6 +30,7 @@ export class HistoryRecorder {
       action,
       outcome: result,
       latencyMs: segment.sttMs + elapsedMs,
+      cleanup: cleanup ? { method: cleanup.method, ms: Math.round(cleanup.ms) } : null,
     });
   }
 
@@ -48,6 +49,7 @@ export class HistoryRecorder {
       action: null,
       outcome: refused ? 'blocked' : 'failed',
       latencyMs: segment.sttMs + elapsedMs,
+      cleanup: null,
     });
   }
 }

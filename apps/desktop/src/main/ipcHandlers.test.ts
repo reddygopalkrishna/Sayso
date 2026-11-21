@@ -70,6 +70,7 @@ describe('history and open choices over IPC', () => {
       action: null,
       outcome: 'done',
       latencyMs: 1,
+      cleanup: null,
     });
     expect(await call(IPC.listHistory)).toMatchObject({ ok: true, value: [{ finalText: 'A.' }] });
     expect(await call(IPC.clearHistory)).toEqual({ ok: true, value: null });

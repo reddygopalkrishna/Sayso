@@ -23,6 +23,7 @@ describe('loadConfig', () => {
       pauseMs: 600,
       previewMs: 1000,
       historyKeep: 50,
+      skipAi: true,
     });
     expect(loadConfig(paths, { GEMINI_API_KEY: 'env' }).geminiApiKey).toBe('env');
   });
@@ -41,6 +42,7 @@ describe('loadConfig', () => {
       pauseMs: 600,
       previewMs: 1000,
       historyKeep: 50,
+      skipAi: true,
     });
   });
 
@@ -71,6 +73,20 @@ describe('loadConfig', () => {
     ['many', 50],
   ])('SAYSO_HISTORY_KEEP=%s → %i', (value, expected) => {
     expect(loadConfig(files(`SAYSO_HISTORY_KEEP=${value}`), {}).historyKeep).toBe(expected);
+  });
+
+  it.each([
+    ['off', false],
+    ['OFF', false],
+    ['false', false],
+    ['0', false],
+    ['no', false],
+    ['on', true],
+    ['yes', true],
+    ['', true],
+    ['maybe', true],
+  ])('SAYSO_SKIP_AI=%s → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_SKIP_AI=${value}`), {}).skipAi).toBe(expected);
   });
 
   it('ignores an empty key and an unknown level', () => {

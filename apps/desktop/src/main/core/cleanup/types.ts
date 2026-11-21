@@ -17,6 +17,11 @@ export interface LLMProvider {
   readonly model: string;
   /** Returns the cleaned text only. Must honour `signal` for timeouts. */
   cleanup(request: CleanupRequest, signal: AbortSignal): Promise<string>;
+  /**
+   * Optional: get ready for a request that is about to come (open the network connection), so
+   * the real one is faster. Must be cheap, must never throw and must not send any text.
+   */
+  warmUp?(): void;
 }
 
 export class LLMError extends Error {

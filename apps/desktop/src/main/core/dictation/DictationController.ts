@@ -12,6 +12,12 @@ export interface DictationOptions {
    */
   deliver: (segment: TranscriptSegment, mode: 'dictation' | 'command') => Promise<void>;
   now?: () => number;
+  /**
+   * Called when a recording ends and will be transcribed (Fn released, not a tap or a cancel):
+   * a moment to get ready for what comes next, such as opening the AI connection while
+   * speech-to-text runs.
+   */
+  onRelease?: (mode: 'dictation' | 'command') => void;
   /** Holds shorter than this are taps, not dictation. */
   minHoldMs?: number;
   /** Recording stops by itself after this long. */
@@ -137,6 +143,11 @@ export class DictationController {
       return;
     }
     const mode = this.state.phase === 'recording' && this.state.command ? 'command' : 'dictation';
+    try {
+      this.opts.onRelease?.(mode);
+    } catch (error) {
+      this.log(`onRelease failed: ${String(error)}`);
+    }
     this.set({ phase: 'transcribing', id });
     let segment: TranscriptSegment;
     try {

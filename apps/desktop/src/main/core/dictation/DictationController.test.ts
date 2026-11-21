@@ -271,6 +271,63 @@ describe('DictationController', () => {
     expect(controller.current).toEqual({ phase: 'idle' });
   });
 
+  describe('onRelease (warm up while speech-to-text runs)', () => {
+    function withRelease() {
+      const modes: string[] = [];
+      const t = setup();
+      const controller = new DictationController({
+        stt: t.stt,
+        deliver: t.deliver,
+        minHoldMs: 250,
+        onRelease: (m) => void modes.push(m),
+      });
+      return { ...t, controller, modes };
+    }
+
+    it('is called once with the mode when a real recording ends', async () => {
+      const { controller, modes } = withRelease();
+      await hold(controller, 800);
+      expect(modes).toEqual(['dictation']);
+    });
+
+    it('says command mode for Fn+Shift', async () => {
+      const { controller, modes } = withRelease();
+      controller.handleHotkey('down');
+      await flush();
+      controller.handleHotkey('command');
+      vi.advanceTimersByTime(800);
+      controller.handleHotkey('up');
+      await flush();
+      expect(modes).toEqual(['command']);
+    });
+
+    it('is not called for a tap or an Fn chord (nothing will be transcribed)', async () => {
+      const { controller, modes } = withRelease();
+      await hold(controller, 100);
+      controller.handleHotkey('down');
+      await flush();
+      controller.handleHotkey('chord');
+      await flush();
+      controller.handleHotkey('up');
+      await flush();
+      expect(modes).toEqual([]);
+    });
+
+    it('a failing callback never stops the dictation', async () => {
+      const t = setup();
+      const controller = new DictationController({
+        stt: t.stt,
+        deliver: t.deliver,
+        minHoldMs: 250,
+        onRelease: () => {
+          throw new Error('boom');
+        },
+      });
+      await hold(controller, 800);
+      expect(t.delivered).toEqual(['hello world']);
+    });
+  });
+
   it('reset drops an in-flight utterance', async () => {
     const { controller, deliver } = setup();
     controller.handleHotkey('down');

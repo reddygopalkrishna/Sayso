@@ -37,6 +37,11 @@ export const MIGRATIONS: readonly string[] = [
     updated_at  INTEGER NOT NULL
   );
   `,
+  // 2: how each dictation was cleaned up and how long that took, to see whether it got faster.
+  `
+  ALTER TABLE utterance_history ADD COLUMN cleanup_method TEXT;
+  ALTER TABLE utterance_history ADD COLUMN cleanup_ms INTEGER;
+  `,
 ];
 
 export function schemaVersion(db: Db): number {

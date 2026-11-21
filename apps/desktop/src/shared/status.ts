@@ -30,7 +30,7 @@ export interface LastUtterance {
   text: string;
   appName: string | null;
   /** How the text was produced: raw (off), local light cleanup, LLM, or LLM fallback. */
-  method: 'off' | 'light' | 'llm' | 'fallback';
+  method: 'off' | 'light' | 'local' | 'llm' | 'fallback';
   tone: 'casual' | 'professional' | 'literal';
   /** Hold Fn dictates; hold Fn+Shift gives commands. */
   mode: 'dictation' | 'command';

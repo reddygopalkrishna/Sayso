@@ -10,6 +10,8 @@ export interface AppConfig {
   pauseMs: number;
   /** How long the preview chip shows before a Normal-level action runs (Esc cancels). */
   previewMs: number;
+  /** Skip the AI for short text the local rules can finish. On by default. */
+  skipAi: boolean;
   /** History rows to keep (PRD: the last 50). 0 turns history off. */
   historyKeep: number;
 }
@@ -32,6 +34,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_PAUSE_MS',
     'SAYSO_PREVIEW_MS',
     'SAYSO_HISTORY_KEEP',
+    'SAYSO_SKIP_AI',
   ]) {
     if (processEnv[key]) merged[key] = processEnv[key];
   }
@@ -46,5 +49,8 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     pauseMs: Number.isFinite(pause) && pause >= 200 && pause <= 3000 ? pause : 600,
     previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,
     historyKeep: Number.isInteger(keep) && keep >= 0 && keep <= 1000 ? keep : 50,
+    skipAi: !['off', 'false', '0', 'no'].includes(
+      (merged['SAYSO_SKIP_AI'] ?? '').trim().toLowerCase(),
+    ),
   };
 }

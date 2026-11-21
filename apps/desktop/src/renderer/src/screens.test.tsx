@@ -2,7 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { HistoryEntry } from '../../shared/data.ts';
 import type { PermissionsStatus } from '../../shared/status.ts';
-import { HistoryRow } from './History.tsx';
+import { cleanupLabel, HistoryRow, SpeedSummary } from './History.tsx';
+import type { HistoryStats } from './historyStats.ts';
 import { Onboarding } from './Onboarding.tsx';
 
 const html = (node: React.JSX.Element): string => renderToStaticMarkup(node);
@@ -67,6 +68,7 @@ describe('HistoryRow', () => {
     action: null,
     outcome: 'done',
     latencyMs: 1500,
+    cleanup: null,
     ...over,
   });
 
@@ -137,5 +139,74 @@ describe('HistoryRow', () => {
     const out = html(<HistoryRow entry={entry({ appName: null, latencyMs: null })} />);
     expect(out).toContain('Dictation');
     expect(out).not.toContain(' s</span>');
+  });
+});
+
+describe('how each row was cleaned up', () => {
+  const entry = (cleanup: HistoryEntry['cleanup']): HistoryEntry => ({
+    id: 'e',
+    createdAt: 1_700_000_000_000,
+    appBundleId: null,
+    appName: null,
+    mode: 'dictation',
+    rawText: 'a',
+    finalText: 'A.',
+    action: null,
+    outcome: 'done',
+    latencyMs: 900,
+    cleanup,
+  });
+
+  it.each([
+    [{ method: 'llm', ms: 940 }, 'AI 0.9 s'],
+    [{ method: 'local', ms: 1 }, 'no AI needed'],
+    [{ method: 'fallback', ms: 2500 }, 'AI unavailable, local rules'],
+    [{ method: 'light', ms: 1 }, 'local rules'],
+    [{ method: 'off', ms: 0 }, 'raw'],
+  ] as const)('%o → %s', (cleanup, label) => {
+    expect(cleanupLabel(cleanup)).toBe(label);
+    expect(renderToStaticMarkup(<HistoryRow entry={entry(cleanup)} />)).toContain(label);
+  });
+
+  it('shows nothing for rows saved before cleanup was recorded', () => {
+    const out = renderToStaticMarkup(<HistoryRow entry={entry(null)} />);
+    expect(out).not.toContain('no AI needed');
+    expect(out).not.toContain('AI ');
+  });
+});
+
+describe('SpeedSummary', () => {
+  const stats = (over: Partial<HistoryStats> = {}): HistoryStats => ({
+    dictations: 10,
+    medianMs: 1100,
+    p95Ms: 2400,
+    aiMedianMs: 900,
+    share: { llm: 0.6, local: 0.3, fallback: 0.1 },
+    withCleanup: 10,
+    ...over,
+  });
+
+  it('shows the median, the slowest 5% and how often the AI was skipped', () => {
+    const out = renderToStaticMarkup(<SpeedSummary stats={stats()} />);
+    expect(out).toContain('last 10 dictations');
+    expect(out).toContain('median 1.1 s');
+    expect(out).toContain('slowest 5% 2.4 s');
+    expect(out).toContain('AI skipped 30%');
+    expect(out).toContain('AI used 60%');
+    expect(out).toContain('median 0.9 s');
+    expect(out).toContain('AI unavailable 10%');
+  });
+
+  it('stays quiet until there are a few dictations to talk about', () => {
+    expect(renderToStaticMarkup(<SpeedSummary stats={stats({ dictations: 2 })} />)).toBe('');
+    expect(renderToStaticMarkup(<SpeedSummary stats={stats({ medianMs: null })} />)).toBe('');
+  });
+
+  it('leaves out the AI line when old rows did not record it', () => {
+    const out = renderToStaticMarkup(
+      <SpeedSummary stats={stats({ withCleanup: 1, share: { llm: 1 } })} />,
+    );
+    expect(out).toContain('median 1.1 s');
+    expect(out).not.toContain('AI skipped');
   });
 });

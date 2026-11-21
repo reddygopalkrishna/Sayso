@@ -34,6 +34,7 @@ const entry = (over: Partial<NewHistoryEntry> = {}): NewHistoryEntry => ({
   action: null,
   outcome: 'done',
   latencyMs: 900,
+  cleanup: null,
   ...over,
 });
 
@@ -142,6 +143,24 @@ describe('db', () => {
   });
 });
 
+describe('schema upgrade 1 → 2 (how each dictation was cleaned up)', () => {
+  it('keeps the rows saved before the upgrade, with no cleanup info', () => {
+    const db = openDb(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 1));
+    expect(schemaVersion(db)).toBe(1);
+    db.run(
+      `INSERT INTO utterance_history (id, created_at, mode, raw_text, final_text, outcome, latency_ms)
+       VALUES ('old', 5, 'dictation', 'um hi', 'Hi.', 'done', 1200)`,
+    );
+    migrate(db);
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length);
+    const history = new HistoryRepo(db, { keep: () => 50 });
+    expect(history.recent()).toMatchObject([
+      { id: 'old', finalText: 'Hi.', latencyMs: 1200, cleanup: null },
+    ]);
+  });
+});
+
 describe('HistoryRepo', () => {
   it('returns newest first, with the action decoded', () => {
     let t = 1000;
@@ -197,6 +216,19 @@ describe('HistoryRepo', () => {
     history.record(entry({ rawText: 'a' }));
     history.record(entry({ rawText: 'b' }));
     expect(history.recent().map((h) => h.rawText)).toEqual(['b', 'a']);
+  });
+
+  it('stores how the text was cleaned up and how long that took', () => {
+    let t = 0;
+    const history = new HistoryRepo(memoryDb(), { keep: () => 50, now: () => t++ });
+    history.record(entry({ cleanup: { method: 'llm', ms: 912.6 } }));
+    history.record(entry({ cleanup: { method: 'local', ms: 2 } }));
+    history.record(entry({ cleanup: null }));
+    expect(history.recent().map((h) => h.cleanup)).toEqual([
+      null,
+      { method: 'local', ms: 2 },
+      { method: 'llm', ms: 913 },
+    ]);
   });
 
   it('can be cleared at any time', () => {

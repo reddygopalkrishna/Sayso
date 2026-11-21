@@ -2,6 +2,10 @@
 
 Written 14 Nov 2026 after reviewing Infina's recordings. **Nothing here is built yet.** Numbers are measured on this Mac (Apple M5, 16 GB, macOS 27.0.1) unless marked *estimate*.
 
+## Status
+- **Step 1 is built (14 Nov 2026):** connection warm-up when Fn is released, and skipping the AI for short clean text (`SAYSO_SKIP_AI=off` turns it off). Results on this Mac: the warm-up saves about 0.2 s (median 0.94 s vs 1.13 s in an A/B of 4 + 4 calls); Electron's own `net.fetch` was **not** better than Node's `fetch` (1.1–1.4 s every call), so Node's stays. The skip rule would have skipped **5 of the 19** real dictations (26%, not the third I first estimated: most of them are long) and all 5 matched the AI's text. Added to measure it: each History row now records how it was cleaned up and how long that took, and the History tab shows median / slowest-5% speed and how often the AI was skipped.
+- Steps 2–4 wait for the decisions at the end of this plan.
+
 ## The problem
 Infina's AI cleanup "adds about 0.2–0.25 seconds to a typical sentence" (their own small model). Ours adds **0.8–2 s** (Gemini over the internet). Cleanup now takes longer than speech-to-text (0.5–1.3 s) and is the slowest step a user feels.
 

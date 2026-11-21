@@ -108,3 +108,54 @@ describe('GeminiProvider', () => {
     expect(() => new GeminiProvider({ apiKey: '' })).toThrow(/empty/);
   });
 });
+
+describe('GeminiProvider.warmUp', () => {
+  const head = () => vi.fn<typeof fetch>(async () => new Response(null, { status: 404 }));
+
+  it('sends a bare HEAD to the service address: no key, no body, no text', () => {
+    const fetchMock = head();
+    new GeminiProvider({ apiKey: 'secret-key', fetch: fetchMock }).warmUp();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toBe('https://generativelanguage.googleapis.com/');
+    expect(init?.method).toBe('HEAD');
+    expect(init?.body).toBeUndefined();
+    expect(JSON.stringify(init)).not.toContain('secret-key');
+    expect(init?.headers).toBeUndefined();
+  });
+
+  it('warms the address of a custom base URL', () => {
+    const fetchMock = head();
+    new GeminiProvider({
+      apiKey: 'k',
+      fetch: fetchMock,
+      baseUrl: 'https://proxy.example.com/v1beta',
+    }).warmUp();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('https://proxy.example.com/');
+  });
+
+  it('is throttled to once every 2 seconds', () => {
+    let t = 1_000;
+    const fetchMock = head();
+    const gemini = new GeminiProvider({ apiKey: 'k', fetch: fetchMock, now: () => t });
+    gemini.warmUp();
+    t += 1_500;
+    gemini.warmUp();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    t += 600;
+    gemini.warmUp();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('never throws, whether the network fails later or fetch itself throws at once', async () => {
+    const rejecting = vi.fn<typeof fetch>(async () => {
+      throw new Error('offline');
+    });
+    expect(() => new GeminiProvider({ apiKey: 'k', fetch: rejecting }).warmUp()).not.toThrow();
+    const throwing = vi.fn<typeof fetch>(() => {
+      throw new Error('boom');
+    });
+    expect(() => new GeminiProvider({ apiKey: 'k', fetch: throwing }).warmUp()).not.toThrow();
+    await Promise.resolve();
+  });
+});

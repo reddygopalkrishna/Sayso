@@ -122,6 +122,70 @@ describe('TextCleanup', () => {
     });
   });
 
+  describe('skipping the AI for short clean text', () => {
+    const skipping = (llm: LLMProvider) =>
+      new TextCleanup({
+        provider: llm,
+        level: () => 'full',
+        skipWhenClean: () => true,
+        timeoutMs: 1_000,
+      });
+
+    it('uses the local text and never calls the AI for a short, clean sentence', async () => {
+      const llm = new FakeLLM(async () => 'unused');
+      const result = await skipping(llm).clean({
+        rawText: 'um can we meet at 6 tomorrow?',
+        ...slack,
+      });
+      expect(result).toMatchObject({
+        method: 'local',
+        text: 'Can we meet at 6 tomorrow?',
+        note: 'short and clean',
+      });
+      expect(llm.requests).toHaveLength(0);
+    });
+
+    it('still calls the AI when there is a cue (a correction) or the text is long', async () => {
+      const llm = new FakeLLM(async () => 'Meet at 6.');
+      expect((await skipping(llm).clean({ rawText: 'meet at 5 no 6.', ...slack })).method).toBe(
+        'llm',
+      );
+      // distinct words: the local stutter rule would collapse a repeated one
+      const long = Array.from({ length: 20 }, (_, i) => `word${i}`).join(' ') + '.';
+      expect((await skipping(llm).clean({ rawText: long, ...slack })).method).toBe('llm');
+      expect(llm.requests).toHaveLength(2);
+    });
+
+    it('needs a closing full stop in mail and documents, not in chat', async () => {
+      const llm = new FakeLLM(async () => 'Thanks, will do.');
+      const chat = await skipping(llm).clean({ rawText: 'thanks will do', ...slack });
+      expect(chat.method).toBe('local');
+      const mail = await skipping(llm).clean({
+        rawText: 'thanks will do',
+        bundleId: 'com.apple.mail',
+        appName: 'Mail',
+      });
+      expect(mail.method).toBe('llm');
+    });
+
+    it('is off unless asked for', async () => {
+      const llm = new FakeLLM(async () => 'Can we meet at 6 tomorrow?');
+      const result = await cleanup(llm).clean({ rawText: 'can we meet at 6 tomorrow?', ...slack });
+      expect(result.method).toBe('llm');
+    });
+
+    it('applies your dictionary first, so a "sounds like" word is still fixed locally', async () => {
+      const llm = new FakeLLM(async () => 'unused');
+      const result = await new TextCleanup({
+        provider: llm,
+        level: () => 'full',
+        skipWhenClean: () => true,
+        dictionary: () => [{ phrase: 'Sayso', spokenAs: 'say so' }],
+      }).clean({ rawText: 'say so is great.', ...slack });
+      expect(result).toMatchObject({ method: 'local', text: 'Sayso is great.' });
+    });
+  });
+
   it('never sends literal apps to the LLM', async () => {
     const llm = new FakeLLM(async () => 'should not be used');
     const result = await cleanup(llm).clean({

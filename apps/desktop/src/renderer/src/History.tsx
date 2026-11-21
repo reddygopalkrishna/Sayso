@@ -1,7 +1,55 @@
 import { useEffect, useState } from 'react';
-import type { HistoryEntry } from '../../shared/data.ts';
+import type { HistoryCleanup, HistoryEntry } from '../../shared/data.ts';
 import type { AppStatus } from '../../shared/status.ts';
+import { summarize, type HistoryStats } from './historyStats.ts';
 import { useLoad } from './useLoad.ts';
+
+const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)} s`;
+
+/** How the text was cleaned up, in words a person understands. */
+export function cleanupLabel(c: HistoryCleanup): string {
+  switch (c.method) {
+    case 'llm':
+      return `AI ${seconds(c.ms)}`;
+    case 'local':
+      return 'no AI needed';
+    case 'fallback':
+      return 'AI unavailable, local rules';
+    case 'light':
+      return 'local rules';
+    case 'off':
+      return 'raw';
+  }
+}
+
+const percent = (share: number | undefined): string => `${Math.round((share ?? 0) * 100)}%`;
+
+/** The speed figures above the list: how fast it feels, and how often the AI was skipped. */
+export function SpeedSummary({ stats }: { stats: HistoryStats }): React.JSX.Element | null {
+  if (stats.dictations < 3 || stats.medianMs === null) return null;
+  return (
+    <section
+      aria-label="Speed"
+      className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-700"
+    >
+      <p>
+        <span className="font-medium">Speed</span>
+        <span className="text-neutral-500"> (last {stats.dictations} dictations): </span>
+        median {seconds(stats.medianMs)}
+        {stats.p95Ms !== null && (
+          <span className="text-neutral-500"> · slowest 5% {seconds(stats.p95Ms)}</span>
+        )}
+      </p>
+      {stats.withCleanup >= 3 && (
+        <p className="mt-1 text-xs text-neutral-500">
+          AI skipped {percent(stats.share.local)} · AI used {percent(stats.share.llm)}
+          {stats.aiMedianMs !== null && ` (median ${seconds(stats.aiMedianMs)})`}
+          {(stats.share.fallback ?? 0) > 0 && ` · AI unavailable ${percent(stats.share.fallback)}`}
+        </p>
+      )}
+    </section>
+  );
+}
 
 const OUTCOME: Record<HistoryEntry['outcome'], { label: string; style: string }> = {
   done: {
@@ -48,6 +96,12 @@ export function HistoryRow({ entry }: { entry: HistoryEntry }): React.JSX.Elemen
           <>
             <span>·</span>
             <span>{(entry.latencyMs / 1000).toFixed(1)} s</span>
+          </>
+        )}
+        {entry.cleanup && (
+          <>
+            <span>·</span>
+            <span>{cleanupLabel(entry.cleanup)}</span>
           </>
         )}
         <span className={`ml-auto rounded-full px-2 py-0.5 font-medium ${outcome.style}`}>
@@ -140,6 +194,7 @@ export function History({ status }: { status: AppStatus }): React.JSX.Element {
       {data && data.length === 0 && !error && (
         <p className="text-sm text-neutral-500">Nothing yet. Hold Fn and say something.</p>
       )}
+      {data && <SpeedSummary stats={summarize(data)} />}
       <ul className="flex flex-col gap-2">
         {data?.map((entry) => (
           <HistoryRow key={entry.id} entry={entry} />

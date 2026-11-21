@@ -4,6 +4,7 @@ import type {
   HistoryEntry,
   HistoryMode,
   HistoryOutcome,
+  CleanupMethodName,
 } from '../../../shared/data.ts';
 import type { Db } from './db.ts';
 
@@ -20,6 +21,8 @@ interface Row {
   actions_json: string | null;
   outcome: string;
   latency_ms: number | null;
+  cleanup_method: string | null;
+  cleanup_ms: number | null;
 }
 
 function parseAction(json: string | null): HistoryAction | null {
@@ -43,6 +46,10 @@ function toEntry(row: Row): HistoryEntry {
     action: parseAction(row.actions_json),
     outcome: row.outcome as HistoryOutcome,
     latencyMs: row.latency_ms === null ? null : Number(row.latency_ms),
+    cleanup:
+      row.cleanup_method === null
+        ? null
+        : { method: row.cleanup_method as CleanupMethodName, ms: Number(row.cleanup_ms ?? 0) },
   };
 }
 
@@ -70,8 +77,9 @@ export class HistoryRepo {
     this.db.transaction(() => {
       this.db.run(
         `INSERT INTO utterance_history
-           (id, created_at, app_bundle_id, app_name, mode, raw_text, final_text, actions_json, outcome, latency_ms)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, created_at, app_bundle_id, app_name, mode, raw_text, final_text, actions_json, outcome, latency_ms,
+            cleanup_method, cleanup_ms)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         saved.id,
         saved.createdAt,
         saved.appBundleId,
@@ -82,6 +90,8 @@ export class HistoryRepo {
         saved.action ? JSON.stringify(saved.action) : null,
         saved.outcome,
         saved.latencyMs === null ? null : Math.round(saved.latencyMs),
+        saved.cleanup ? saved.cleanup.method : null,
+        saved.cleanup ? Math.round(saved.cleanup.ms) : null,
       );
       this.prune(keep);
     });

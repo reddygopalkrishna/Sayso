@@ -10,6 +10,15 @@ export interface HistoryAction {
   args?: Record<string, string>;
 }
 
+/** How the text was produced: raw, local rules, local rules because the AI was not needed, AI, or AI failed. */
+export type CleanupMethodName = 'off' | 'light' | 'local' | 'llm' | 'fallback';
+
+export interface HistoryCleanup {
+  method: CleanupMethodName;
+  /** Time the cleanup step took, in ms. */
+  ms: number;
+}
+
 export interface HistoryEntry {
   id: string;
   createdAt: number;
@@ -24,6 +33,8 @@ export interface HistoryEntry {
   outcome: HistoryOutcome;
   /** End of speech to done, in ms. */
   latencyMs: number | null;
+  /** The cleanup step (dictation only); null for commands and for rows saved before it was recorded. */
+  cleanup: HistoryCleanup | null;
 }
 
 export interface DictionaryEntry {

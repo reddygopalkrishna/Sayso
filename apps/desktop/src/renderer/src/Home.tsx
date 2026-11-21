@@ -87,6 +87,7 @@ function cleanupRow(c: CleanupStatus): Row {
 const methodLabel: Record<LastUtterance['method'], string> = {
   off: 'raw',
   light: 'light cleanup',
+  local: 'local (AI not needed)',
   llm: 'AI cleanup',
   fallback: 'light cleanup (AI fallback)',
 };
