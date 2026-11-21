@@ -1,6 +1,7 @@
 import type { CommandAction, CommandSpec } from '@sayso/command-grammar';
 import type { CommandActions, KeyPresser, TextInserter } from './actions/HelperActions.ts';
 import { keyStrokeFor } from './actions/sendStrategy.ts';
+import { applyDictionary, type DictionaryTerm } from './cleanup/dictionary.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
@@ -40,6 +41,8 @@ export interface UtterancePipelineOptions {
   endCommands: readonly CommandSpec[];
   /** Whole-utterance command matching (command mode). */
   engine: { match(text: string): InstantMatch | null };
+  /** Your own words: "sounds like" entries also fix mis-heard words in spoken commands. */
+  dictionary?: () => readonly DictionaryTerm[];
   resolver: {
     resolveOpen(target: string): Promise<OpenResolution>;
     resolveSwitch(name: string): Promise<KnownApp | null>;
@@ -130,7 +133,9 @@ export class UtterancePipeline {
   }
 
   private async deliverCommand(segment: TranscriptSegment, context: AppContext): Promise<void> {
-    const match = this.opts.engine.match(segment.text);
+    const match = this.opts.engine.match(
+      applyDictionary(segment.text, this.opts.dictionary?.() ?? []),
+    );
     // Command mode never types: an unrecognised utterance is reported, not inserted.
     if (!match) throw new CommandNotUnderstood(segment.text);
     const command = await this.runCommand(match, { failOnRefusal: true });

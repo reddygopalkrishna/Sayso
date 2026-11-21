@@ -59,6 +59,35 @@ describe('TextCleanup', () => {
     expect(result.text).toBe('say so');
   });
 
+  it('does not trust an AI answer that swaps an ordinary word for a dictionary word (real bug: "dictionary tab" became "Sayso tab")', async () => {
+    const llm = new FakeLLM(async () => 'I opened the Sayso tab.');
+    const result = await cleanup(llm).clean({
+      rawText: 'um I opened the dictionary tab',
+      ...slack,
+    });
+    expect(result).toMatchObject({ method: 'fallback', text: 'I opened the dictionary tab' });
+    expect(result.fallbackReason).toContain('Sayso');
+  });
+
+  it('keeps an AI answer that spells a dictionary word the speaker really said', async () => {
+    const llm = new FakeLLM(async () => 'Tell Sayso about it.');
+    expect((await cleanup(llm).clean({ rawText: 'tell say so about it', ...slack })).method).toBe(
+      'llm',
+    );
+    expect((await cleanup(llm).clean({ rawText: 'tell sayso about it', ...slack })).method).toBe(
+      'llm',
+    );
+  });
+
+  it('only ordinary words around a dictionary word are cleaned by the AI', async () => {
+    const llm = new FakeLLM(async () => 'Open the dictionary tab and ask Sayso.');
+    const result = await cleanup(llm).clean({
+      rawText: 'um open the dictionary tab and ask say so',
+      ...slack,
+    });
+    expect(result).toMatchObject({ method: 'llm', text: 'Open the dictionary tab and ask Sayso.' });
+  });
+
   it('never sends literal apps to the LLM', async () => {
     const llm = new FakeLLM(async () => 'should not be used');
     const result = await cleanup(llm).clean({

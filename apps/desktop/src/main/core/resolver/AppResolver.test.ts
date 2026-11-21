@@ -252,3 +252,71 @@ describe('AppResolver with remembered choices', () => {
     expect(await resolver.resolveOpen('github app')).toMatchObject({ type: 'app' });
   });
 });
+
+describe('AppResolver remembers what it opened', () => {
+  function setup(installed: KnownApp[] = apps) {
+    const store = new Map<string, { targetType: 'app' | 'url'; target: string }>();
+    const memory: ResolverMemory = {
+      get: (p) => store.get(p) ?? null,
+      set: (p, targetType, target) => void store.set(p, { targetType, target }),
+    };
+    return { resolver: new AppResolver(async () => installed, memory), store };
+  }
+
+  it('a plain "open GitHub" is remembered (real use: nothing was listed)', async () => {
+    const { resolver, store } = setup();
+    await resolver.resolveOpen('GitHub');
+    expect(store.get('github')).toEqual({ targetType: 'url', target: 'https://github.com' });
+  });
+
+  it('a plain "open Calculator" remembers the app by its id', async () => {
+    const { resolver, store } = setup();
+    await resolver.resolveOpen('calculator');
+    expect(store.get('calculator')).toEqual({ targetType: 'app', target: 'com.apple.calculator' });
+  });
+
+  it('remembers the app a word matched ("open chrome" → Google Chrome)', async () => {
+    const { resolver, store } = setup();
+    await resolver.resolveOpen('chrome');
+    expect(store.get('chrome')).toEqual({ targetType: 'app', target: 'com.google.Chrome' });
+  });
+
+  it('does not remember web searches or typed-out domains', async () => {
+    const { resolver, store } = setup();
+    await resolver.resolveOpen('flibber jabber'); // a web search
+    await resolver.resolveOpen('github dot com'); // a domain
+    await resolver.resolveOpen('example.org');
+    expect(store.size).toBe(0);
+  });
+
+  it('opens the remembered thing next time, even if the normal search would now choose another', async () => {
+    const { resolver, store } = setup();
+    await resolver.resolveOpen('github'); // website, remembered
+    // Later a GitHub app is installed under the exact name, which would normally win.
+    const later = new AppResolver(async () => [...apps, app('GitHub', 'com.example.github')], {
+      get: (p) => store.get(p) ?? null,
+      set: (p, targetType, target) => void store.set(p, { targetType, target }),
+    });
+    expect(await later.resolveOpen('github')).toEqual({
+      type: 'url',
+      url: 'https://github.com',
+      kind: 'site',
+    });
+    // Saying which kind replaces the memory.
+    expect(await later.resolveOpen('github app')).toMatchObject({
+      type: 'app',
+      bundleId: 'com.example.github',
+    });
+    expect(await later.resolveOpen('github')).toMatchObject({
+      type: 'app',
+      bundleId: 'com.example.github',
+    });
+  });
+
+  it('replaces a remembered app that is no longer installed with what it finds now', async () => {
+    const { resolver, store } = setup([app('Calculator', 'com.apple.calculator')]);
+    store.set('github', { targetType: 'app', target: 'com.github.GitHubClient' });
+    await resolver.resolveOpen('github');
+    expect(store.get('github')).toEqual({ targetType: 'url', target: 'https://github.com' });
+  });
+});

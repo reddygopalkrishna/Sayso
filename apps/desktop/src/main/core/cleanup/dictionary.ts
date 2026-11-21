@@ -8,6 +8,12 @@ export interface DictionaryTerm {
 const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const collapse = (text: string): string => text.toLowerCase().replace(/\s+/g, ' ').trim();
 
+/** True when `phrase` appears in `text` as a whole word or phrase, ignoring case. */
+export function containsPhrase(text: string, phrase: string): boolean {
+  const source = escape(collapse(phrase)).replace(/ /g, '\\s+');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${source}(?![\\p{L}\\p{N}])`, 'iu').test(text);
+}
+
 /**
  * Fixes the spelling of your own words: "say so" → "Sayso" (a "heard as" entry) and "github" →
  * "GitHub" (case). Whole words only, ignoring case, in one pass so a replacement is never

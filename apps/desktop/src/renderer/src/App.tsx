@@ -53,7 +53,7 @@ export function App(): React.JSX.Element {
         ) : tab === 'history' ? (
           <History status={status} />
         ) : (
-          <Dictionary />
+          <Dictionary status={status} />
         )}
       </div>
     </main>

@@ -7,6 +7,7 @@ import { UtterancePipeline } from './core/UtterancePipeline.ts';
 import { commands, endCommands } from '@sayso/command-grammar';
 import { HelperActions } from './core/actions/HelperActions.ts';
 import { TextCleanup } from './core/cleanup/TextCleanup.ts';
+import type { DictionaryTerm } from './core/cleanup/dictionary.ts';
 import { GeminiProvider } from './core/cleanup/gemini.ts';
 import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
@@ -111,24 +112,28 @@ const chip = new PreviewChip({
   },
 });
 
+/** Your own words, for spelling fixes in dictation and in spoken commands. Never throws. */
+function readDictionary(): DictionaryTerm[] {
+  try {
+    return storage?.dictionary.list() ?? [];
+  } catch (error) {
+    warn('could not read the dictionary', error);
+    return [];
+  }
+}
+
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
   cleanup: new TextCleanup({
     provider,
     level: () => config.cleanupLevel,
-    dictionary: () => {
-      try {
-        return storage?.dictionary.list() ?? [];
-      } catch (error) {
-        warn('could not read the dictionary', error);
-        return [];
-      }
-    },
+    dictionary: readDictionary,
   }),
   actions,
   chip,
   endCommands,
   engine: new CommandEngine(commands),
+  dictionary: readDictionary,
   resolver: new AppResolver(() => actions.listApps(), {
     get: (phrase) => {
       try {

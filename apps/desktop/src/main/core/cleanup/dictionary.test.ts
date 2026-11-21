@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyDictionary, type DictionaryTerm } from './dictionary.ts';
+import { applyDictionary, containsPhrase, type DictionaryTerm } from './dictionary.ts';
 
 const term = (phrase: string, spokenAs: string | null = null): DictionaryTerm => ({
   phrase,
@@ -45,5 +45,21 @@ describe('applyDictionary', () => {
   it('treats regex characters in terms as plain text', () => {
     expect(applyDictionary('call (555) now', [term('(555)')])).toBe('call (555) now');
     expect(applyDictionary('a.b and axb', [term('A.B')])).toBe('A.B and axb');
+  });
+});
+
+describe('containsPhrase', () => {
+  it.each([
+    ['open the Sayso tab', 'Sayso', true],
+    ['open the sayso tab', 'Sayso', true],
+    ["it is Sayso's tab", 'Sayso', true],
+    ['the get   hub pages', 'get hub', true],
+    ['sayings', 'Sayso', false],
+    ['mysayso', 'Sayso', false],
+    ['the dictionary tab', 'Sayso', false],
+    ['call (555) now', '(555)', true],
+    ['', 'Sayso', false],
+  ])('%j / %j → %s', (text, phrase, expected) => {
+    expect(containsPhrase(text, phrase)).toBe(expected);
   });
 });

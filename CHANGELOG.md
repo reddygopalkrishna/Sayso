@@ -13,11 +13,10 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 - **Adaptive pause:** the pause before "send" is fixed at 600 ms (`SAYSO_PAUSE_MS` to change it). The plan is to learn it per user from cancellations (`adaptive_stats`, step 7).
 - **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
-- **Password-field detection in Chrome (still to verify):** "click Submit" works in Chrome (tested for real: it pressed a search suggestion), so Chrome does expose its page. Whether Chrome also reports a *password* box as secure is not yet checked, and other Chromium/Electron apps (Slack, VS Code, Claude) may expose less. Test by hand: focus a password box in Chrome and dictate; expect "Sayso does not type into password fields." If it types, the fix is to switch accessibility on for the frontmost app (a small speed cost in that app, so it needs your OK).
 - **"Delete that" removes the current selection only,** not the last thing you dictated. A reliable "delete my last dictation" needs the length of the last paste (or an undo of it); decide with real use.
 - **Ask-once chip for "open X":** when an app and a website both fit, the PRD asks once with a chip. For now you teach it by voice ("open GitHub app" / "open GitHub website") and it is remembered; the chip itself is not built.
 - **More commands from the PRD:** volume, lock screen, dark mode, screenshot; positional arguments ("open the third email"); "open GitHub in Chrome" (a named browser).
-- **Hand-test the new screens:** Home onboarding buttons ("Allow microphone", "Show the macOS prompt"), the System Settings links (Microphone, Accessibility, Keyboard; the pane addresses are not yet checked on this macOS version), History, Dictionary.
+- **Hand-test the remaining settings links:** the Microphone and Accessibility panes (Keyboard settings and the History tab are confirmed working; the pane addresses are not yet checked for the other two), and the "Allow microphone" / "Show the macOS prompt" buttons on a Mac where a permission is still off.
 - **SQLite driver (decision):** the plan says better-sqlite3; the code uses Node's built-in `node:sqlite` because one compiled better-sqlite3 cannot match both Electron's Node 24 and the test runner's Node 26. One file (`core/storage/db.ts`) to change if you prefer better-sqlite3.
 - **Interactive tutorial** ("say send after a pause", PRD onboarding) and a first-run flag; onboarding only shows while a permission is missing.
 - **Dictionary helps Whisper too:** today it only corrects the text after speech-to-text. Passing the words to WhisperKit as prompt tokens could stop the mishearing at the source.
@@ -37,6 +36,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 23:16 · Fix: the AI turned the word "dictionary" into "Sayso"; "open X" is now remembered automatically
+- **Bug found in your own History:** you said "I opened dictionary tab" and "listed on dictionary tab" and Sayso typed "…Sayso tab" each time. The cleanup prompt called your word list a "dictionary", so when you said that ordinary word the AI took it as a pointer to the list and swapped it for your word. Reproduced against Gemini (empty list: kept; list with Sayso: replaced), then fixed by wording the prompt without the word "dictionary" and telling the AI never to put one of your names where it was not said. Verified live on your exact sentence and five more.
+- **Safety net:** your spelling fixes ("say so" → Sayso) are made locally before the AI runs, so the AI never needs to add one of your words. If its answer contains one that was not in what you said, the answer is discarded and the local cleanup is used (the log says why).
+- **"Open X" is remembered automatically.** You said "open GitHub", it opened the website, and nothing was listed, because only "open GitHub app/website" taught it. Now whatever "open …" opens (an app or a known website) is remembered and shown on the Dictionary tab at once (the list refreshes live), and the same words open the same thing next time. Web searches and typed-out domains are not remembered. Say "open GitHub app" or "open GitHub website" to change a choice, or Forget it on the tab.
+- **Your dictionary now also fixes spoken commands.** "Open Cloud" (a real mishearing of Claude in your History) opened a web search for "cloud". Add `Claude` with "sounds like" `cloud` and "open Cloud" opens the Claude app. The History keeps the words exactly as heard.
+- **Confirmed by you:** History fills in; a password box in Chrome refuses voice typing (detection works in Chrome); the Keyboard settings link opens.
+- Note: my test calls used up some of your Gemini free-tier quota for a minute; if one dictation fell back to the local cleanup around then, that is why.
 
 ### 16:35 · The window says "Restart Sayso" when it is newer than the program behind it
 - In development the screens hot-reload but the main program does not. After step 7 this left a running copy with the new History / Dictionary / permission screens on the old backend: no database file, no permission log line, and screens that could crash. The window now checks that the backend has the features it needs and, if not, shows a clear "Restart Sayso" message with what to do. Tested with the older API shape.

@@ -16,7 +16,7 @@ Update this file at the end of every step. Keep it under 80 lines.
 - Nothing.
 
 ## Next
-- Hand-test the open items in CHANGELOG "Pending" (password field in Chrome, scroll direction, onboarding buttons, Settings links), then daily use.
+- Hand-test the open items in CHANGELOG "Pending" (scroll direction, the Microphone and Accessibility settings links), then daily use. Confirmed by hand: History, password box in Chrome, Keyboard settings link.
 - Phase 1 (BUILD_PLAN §3): hands-free mode and wake word; press-by-name with a "yes?" check for risky buttons (needs the confirm dialog); position navigation ("open the third email", "go back"); system commands (volume, lock, dark mode, screenshot, music); a real settings window; demo videos.
 
 ## Later steps (from BUILD_PLAN §3)

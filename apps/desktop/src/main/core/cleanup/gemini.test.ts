@@ -37,7 +37,11 @@ describe('GeminiProvider', () => {
       contents: Array<{ parts: Array<{ text: string }> }>;
       generationConfig: { temperature: number };
     };
-    expect(body.systemInstruction.parts[0]?.text).toContain('Dictionary (exact spelling): Sayso');
+    const system = body.systemInstruction.parts[0]?.text ?? '';
+    expect(system).toContain('spelled exactly like this when the speaker says them: Sayso.');
+    expect(system).toContain('Never replace a different, ordinary word');
+    // The list must not be called a dictionary: the model then swapped the spoken word "dictionary" for a term.
+    expect(system).not.toMatch(/dictionary/i);
     expect(body.systemInstruction.parts[0]?.text).toContain('Slack');
     expect(body.contents[0]?.parts[0]?.text).toBe('<transcript>\num hello there\n</transcript>');
     expect(body.generationConfig.temperature).toBe(0);

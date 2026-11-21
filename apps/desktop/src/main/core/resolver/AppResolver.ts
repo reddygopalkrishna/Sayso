@@ -206,8 +206,11 @@ export class AppResolver {
   ) {}
 
   /**
-   * Order: a remembered choice; then the normal search (see resolveOpen). Saying "app" or
-   * "website" after the name (open GitHub app) picks that kind and remembers it for next time.
+   * Order: a remembered choice; then the normal search (see resolveOpen). Whatever it opens is
+   * remembered, so the same words open the same thing next time and the choice shows on the
+   * Dictionary tab, where it can be forgotten. Saying "app" or "website" after the name (open
+   * GitHub app) picks that kind and replaces what was remembered. Web searches and typed-out
+   * domains are not choices and are never remembered.
    */
   async resolveOpen(target: string): Promise<OpenResolution> {
     const apps = await this.listApps();
@@ -218,15 +221,9 @@ export class AppResolver {
       if (resolved) return resolved;
     }
     const resolution = resolveOpen(name, apps, prefer);
-    if (this.memory && prefer === 'app' && resolution.type === 'app') {
-      this.memory.set(name, 'app', resolution.bundleId);
-    } else if (
-      this.memory &&
-      prefer === 'site' &&
-      resolution.type === 'url' &&
-      resolution.kind !== 'search'
-    ) {
-      this.memory.set(name, 'url', resolution.url);
+    if (this.memory) {
+      if (resolution.type === 'app') this.memory.set(name, 'app', resolution.bundleId);
+      else if (resolution.kind === 'site') this.memory.set(name, 'url', resolution.url);
     }
     return resolution;
   }

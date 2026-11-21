@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { AppStatus } from '../../shared/status.ts';
 import { useLoad } from './useLoad.ts';
 
 const input =
   'w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800';
 
 /** Your own words (names, product terms) spelled the way you want, and what "open X" remembered. */
-export function Dictionary(): React.JSX.Element {
+export function Dictionary({ status }: { status: AppStatus }): React.JSX.Element {
   const words = useLoad(() => window.sayso.dictionary.list());
   const choices = useLoad(() => window.sayso.openChoices.list());
   const [phrase, setPhrase] = useState('');
   const [spokenAs, setSpokenAs] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+
+  // Saying "open GitHub" adds a remembered choice: show it without reopening the tab.
+  const signal = `${status.last?.mode ?? ''}|${status.last?.text ?? ''}|${status.last?.sttMs ?? ''}`;
+  const reloadChoices = choices.reload;
+  useEffect(() => {
+    void reloadChoices();
+  }, [signal, reloadChoices]);
 
   const add = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -102,8 +110,8 @@ export function Dictionary(): React.JSX.Element {
         <div>
           <h2 className="text-base font-semibold">Remembered “open” choices</h2>
           <p className="text-xs text-neutral-500">
-            Say “open GitHub app” or “open GitHub website” once, and plain “open GitHub” does the
-            same from then on.
+            Sayso remembers what “open …” opened, so the same words open the same thing next time.
+            Say “open GitHub app” or “open GitHub website” to change it, or forget it here.
           </p>
         </div>
         {choices.error && (

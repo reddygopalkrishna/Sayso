@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { UtterancePipeline, type UtteranceOutcome } from './UtterancePipeline.ts';
 import { TextCleanup } from './cleanup/TextCleanup.ts';
 import type { LLMProvider } from './cleanup/types.ts';
+import type { DictionaryTerm } from './cleanup/dictionary.ts';
 import { CommandEngine } from './commands/CommandEngine.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import type { AppContext } from './context/HelperContext.ts';
@@ -44,15 +45,17 @@ interface Setup {
   contexts: AppContext[];
   chip?: ChipResult;
   llm?: (raw: string) => string;
+  dictionary?: DictionaryTerm[];
 }
 
 const installedApps: KnownApp[] = [
   { name: 'Slack', bundleId: 'com.tinyspeck.slackmacgap', running: true },
   { name: 'Safari', bundleId: 'com.apple.Safari', running: true },
   { name: 'Calculator', bundleId: 'com.apple.calculator', running: false },
+  { name: 'Claude', bundleId: 'com.anthropic.claudefordesktop', running: true },
 ];
 
-function setup({ contexts, chip = 'proceed', llm }: Setup) {
+function setup({ contexts, chip = 'proceed', llm, dictionary }: Setup) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
   let reads = 0;
@@ -85,6 +88,7 @@ function setup({ contexts, chip = 'proceed', llm }: Setup) {
     },
     endCommands,
     engine: new CommandEngine(commands),
+    dictionary: () => dictionary ?? [],
     resolver: {
       resolveOpen: async (t) => resolveOpen(t, installedApps),
       resolveSwitch: async (n) => resolveSwitch(n, installedApps),
@@ -341,5 +345,33 @@ describe('UtterancePipeline: command mode', () => {
       result: 'skipped',
       reason: 'context_changed',
     });
+  });
+});
+
+describe('UtterancePipeline: your dictionary also fixes spoken commands', () => {
+  const claude: DictionaryTerm[] = [{ phrase: 'Claude', spokenAs: 'cloud' }];
+
+  it('"open Cloud" opens the Claude app once the dictionary says Cloud sounds like Claude (a real mishearing)', async () => {
+    const t = setup({ contexts: [slack], dictionary: claude });
+    await t.pipeline.deliver(segment('Open Cloud'), 'command');
+    expect(t.log).toEqual(['openApp com.anthropic.claudefordesktop']);
+  });
+
+  it('without the entry, the mishearing becomes a web search', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(segment('Open Cloud'), 'command');
+    expect(t.log).toEqual(['openUrl https://www.google.com/search?q=cloud']);
+  });
+
+  it('does not change what is typed in the history: the raw words stay as heard', async () => {
+    const t = setup({ contexts: [slack], dictionary: claude });
+    await t.pipeline.deliver(segment('Open Cloud'), 'command');
+    expect(t.outcomes[0]?.segment.text).toBe('Open Cloud');
+  });
+
+  it('a "sounds like" word fixes the command word it replaces, e.g. a name inside a label', async () => {
+    const t = setup({ contexts: [slack], dictionary: [{ phrase: 'Kairo', spokenAs: 'kai row' }] });
+    await t.pipeline.deliver(segment('click kai row'), 'command');
+    expect(t.log).toEqual(['chip Click “kairo” 1000', 'press kairo']);
   });
 });

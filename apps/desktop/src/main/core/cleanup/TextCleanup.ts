@@ -1,4 +1,4 @@
-import { applyDictionary, type DictionaryTerm } from './dictionary.ts';
+import { applyDictionary, containsPhrase, type DictionaryTerm } from './dictionary.ts';
 import { lightCleanup } from './light.ts';
 import { toneForApp } from './tone.ts';
 import type { CleanupLevel, LLMProvider, Tone } from './types.ts';
@@ -78,6 +78,14 @@ export class TextCleanup {
       );
       const checked = checkOutput(spelled, output);
       if (!checked.ok) return done(light, 'fallback', checked.reason);
+      // Spelling fixes ("say so" → Sayso) were already made locally, so the AI never needs to add
+      // one of your words. If it did, it replaced an ordinary word with it: do not trust the answer.
+      const invented = terms.find(
+        (t) => containsPhrase(checked.text, t.phrase) && !containsPhrase(spelled, t.phrase),
+      );
+      if (invented) {
+        return done(light, 'fallback', `the AI added the dictionary word “${invented.phrase}”`);
+      }
       return done(checked.text, 'llm');
     } catch (error) {
       return done(light, 'fallback', error instanceof Error ? error.message : String(error));
