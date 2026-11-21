@@ -5,6 +5,7 @@ import type {
   LastUtterance,
   SttStatus,
 } from '../../shared/status.ts';
+import { Card } from './Card.tsx';
 import { HandsFree } from './HandsFree.tsx';
 import { Onboarding } from './Onboarding.tsx';
 
@@ -138,24 +139,6 @@ const THINGS_TO_SAY: Array<{ title: string; lines: Array<[say: string, does: str
     ],
   },
 ];
-
-function Card({
-  title,
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <section
-      aria-label={title}
-      className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
-    >
-      {title && <h2 className="mb-2 text-sm font-semibold">{title}</h2>}
-      {children}
-    </section>
-  );
-}
 
 /** The key you hold, shown like a keycap, and what happens when you hold it. */
 export function HoldKeyCard({ holdKey }: { holdKey: AppStatus['holdKey'] }): React.JSX.Element {

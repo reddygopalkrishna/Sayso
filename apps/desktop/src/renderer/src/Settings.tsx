@@ -11,10 +11,8 @@ import {
   type Style,
   type UserSettings,
 } from '../../shared/settings.ts';
+import { Card, fieldClass as field, primaryButtonClass } from './Card.tsx';
 import { useLoad } from './useLoad.ts';
-
-const field =
-  'w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800';
 
 const LEVEL_TEXT: Record<UserSettings['cleanupLevel'], string> = {
   off: 'Off: type exactly what was heard',
@@ -84,218 +82,235 @@ export function SettingsForm({
   return (
     <form
       aria-label="Settings"
-      className="flex max-w-xl flex-col gap-6"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         onSave();
       }}
     >
-      <div>
-        <h2 className="text-base font-semibold">Settings</h2>
-        <p className="text-xs text-neutral-500">
-          Changes apply as soon as you save, with no restart. Your settings file (.env) only gives
-          the starting values.
-        </p>
-      </div>
+      <p className="text-xs text-neutral-500">
+        Changes apply as soon as you save, with no restart. Your settings file (.env) only gives the
+        starting values.
+      </p>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">
-          Pause before “send” — <output aria-label="Pause length">{seconds(values.pauseMs)}</output>
-        </span>
-        <span className="text-xs text-neutral-500">
-          Say “send”, “enter” or “new line” after this much silence and it runs as a command; said
-          without a pause, it is typed as a word.
-        </span>
-        <input
-          type="range"
-          min={SETTING_LIMITS.pauseMs.min}
-          max={SETTING_LIMITS.pauseMs.max}
-          step={SETTING_LIMITS.pauseMs.step}
-          value={values.pauseMs}
-          onChange={(e) => onChange({ pauseMs: Number(e.target.value) })}
-        />
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">
-          Preview time — <output aria-label="Preview time">{seconds(values.previewMs)}</output>
-        </span>
-        <span className="text-xs text-neutral-500">
-          How long the preview chip shows before an action runs. Press Esc during it to cancel.
-        </span>
-        <input
-          type="range"
-          min={SETTING_LIMITS.previewMs.min}
-          max={SETTING_LIMITS.previewMs.max}
-          step={SETTING_LIMITS.previewMs.step}
-          value={values.previewMs}
-          onChange={(e) => onChange({ previewMs: Number(e.target.value) })}
-        />
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Key to hold to dictate</span>
-        <span className="text-xs text-neutral-500">
-          Hold it while you speak. Add Shift for commands. Pick a different key if another dictation
-          app already uses Fn, otherwise both type everything you say.
-        </span>
-        <select
-          className={field}
-          aria-label="Key to hold to dictate"
-          value={values.holdKey}
-          onChange={(e) => onChange({ holdKey: e.target.value as HoldKeyName })}
-        >
-          {HOLD_KEYS.map((key) => (
-            <option key={key} value={key}>
-              {HOLD_KEY_TEXT[key]}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Language you speak</span>
-        <span className="text-xs text-neutral-500">
-          Text is typed in this language and its own script. “Detect it each time” suits mixing
-          languages, but is a little less accurate. Voice commands (“send”, “open”, “type”) stay in
-          English.
-        </span>
-        <select
-          className={field}
-          aria-label="Language you speak"
-          value={values.language}
-          onChange={(e) => onChange({ language: e.target.value as Language })}
-        >
-          {LANGUAGES.map((code) => (
-            <option key={code} value={code}>
-              {LANGUAGE_TEXT[code]}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Hands-free wake word</span>
-        <span className="text-xs text-neutral-500">
-          Say it before a command in hands-free mode (“{values.wakeWord}, new tab”). One word,
-          letters and digits, at least two characters.
-        </span>
-        <input
-          className={`${field} w-48`}
-          aria-label="Hands-free wake word"
-          value={values.wakeWord}
-          maxLength={30}
-          onChange={(e) =>
-            onChange({ wakeWord: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') })
-          }
-        />
-      </label>
-
-      <fieldset className="flex flex-col gap-2 text-sm">
-        <legend className="font-medium">Style</legend>
-        <span className="text-xs text-neutral-500">
-          How dictated text looks everywhere. You can give single apps their own style below.
-        </span>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {STYLES.map((style) => (
-            <label
-              key={style}
-              className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-3 ${
-                values.style === style
-                  ? 'border-neutral-900 dark:border-white'
-                  : 'border-neutral-200 dark:border-neutral-700'
-              }`}
+      <Card
+        title="Voice"
+        description="How you start talking: the key, the language and the hands-free word."
+      >
+        <div className="flex flex-col gap-5">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">Key to hold to dictate</span>
+            <span className="text-xs text-neutral-500">
+              Hold it while you speak. Add Shift for commands. Pick a different key if another
+              dictation app already uses Fn, otherwise both type everything you say.
+            </span>
+            <select
+              className={field}
+              aria-label="Key to hold to dictate"
+              value={values.holdKey}
+              onChange={(e) => onChange({ holdKey: e.target.value as HoldKeyName })}
             >
-              <span className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="style"
-                  checked={values.style === style}
-                  onChange={() => onChange({ style })}
-                />
-                <span className="font-medium">{STYLE_CARDS[style].title}</span>
-                <span className="text-xs text-neutral-500">{STYLE_CARDS[style].hint}</span>
-              </span>
-              <span className="text-xs text-neutral-600 dark:text-neutral-300">
-                {STYLE_CARDS[style].example}
-              </span>
-            </label>
-          ))}
+              {HOLD_KEYS.map((key) => (
+                <option key={key} value={key}>
+                  {HOLD_KEY_TEXT[key]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">Language you speak</span>
+            <span className="text-xs text-neutral-500">
+              Text is typed in this language and its own script. “Detect it each time” suits mixing
+              languages, but is a little less accurate. Voice commands (“send”, “open”, “type”) stay
+              in English.
+            </span>
+            <select
+              className={field}
+              aria-label="Language you speak"
+              value={values.language}
+              onChange={(e) => onChange({ language: e.target.value as Language })}
+            >
+              {LANGUAGES.map((code) => (
+                <option key={code} value={code}>
+                  {LANGUAGE_TEXT[code]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">Hands-free wake word</span>
+            <span className="text-xs text-neutral-500">
+              Say it before a command in hands-free mode (“{values.wakeWord}, new tab”). One word,
+              letters and digits, at least two characters.
+            </span>
+            <input
+              className={`${field} w-48`}
+              aria-label="Hands-free wake word"
+              value={values.wakeWord}
+              maxLength={30}
+              onChange={(e) =>
+                onChange({ wakeWord: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') })
+              }
+            />
+          </label>
         </div>
-      </fieldset>
+      </Card>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Text cleanup</span>
-        <select
-          className={field}
-          value={values.cleanupLevel}
-          onChange={(e) =>
-            onChange({ cleanupLevel: e.target.value as UserSettings['cleanupLevel'] })
-          }
-        >
-          {CLEANUP_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              {LEVEL_TEXT[level]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Card title="Text" description="How dictated text looks and is cleaned up.">
+        <div className="flex flex-col gap-5">
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="font-medium">Style</legend>
+            <span className="text-xs text-neutral-500">
+              How dictated text looks everywhere. You can give single apps their own style below.
+            </span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {STYLES.map((style) => (
+                <label
+                  key={style}
+                  className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-3 ${
+                    values.style === style
+                      ? 'border-neutral-900 dark:border-white'
+                      : 'border-neutral-200 dark:border-neutral-700'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="style"
+                      checked={values.style === style}
+                      onChange={() => onChange({ style })}
+                    />
+                    <span className="font-medium">{STYLE_CARDS[style].title}</span>
+                    <span className="text-xs text-neutral-500">{STYLE_CARDS[style].hint}</span>
+                  </span>
+                  <span className="text-xs text-neutral-600 dark:text-neutral-300">
+                    {STYLE_CARDS[style].example}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-1"
-          aria-label="Understand my own words"
-          checked={values.interpret}
-          onChange={(e) => onChange({ interpret: e.target.checked })}
-        />
-        <span>
-          <span className="font-medium">Understand my own words</span>
-          <span className="block text-xs text-neutral-500">
-            When you say something that is not an exact command (“log me in”, “open a fresh tab and
-            search for AWS”), Sayso asks an AI to work out the steps. It sends what you said, the
-            app’s name and the names of the buttons and links on screen (never page text or what you
-            typed), only then, and never in password fields or meetings. Every step still goes
-            through the same safety checks.
-          </span>
-        </span>
-      </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">Text cleanup</span>
+            <select
+              className={field}
+              value={values.cleanupLevel}
+              onChange={(e) =>
+                onChange({ cleanupLevel: e.target.value as UserSettings['cleanupLevel'] })
+              }
+            >
+              {CLEANUP_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {LEVEL_TEXT[level]}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <label className="flex items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="mt-1"
-          checked={values.skipAi}
-          onChange={(e) => onChange({ skipAi: e.target.checked })}
-        />
-        <span>
-          <span className="font-medium">Skip the AI for short, clean text</span>
-          <span className="block text-xs text-neutral-500">
-            Faster, and the text stays on this Mac. Turn off to send everything to the AI.
-          </span>
-        </span>
-      </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={values.skipAi}
+              onChange={(e) => onChange({ skipAi: e.target.checked })}
+            />
+            <span>
+              <span className="font-medium">Skip the AI for short, clean text</span>
+              <span className="block text-xs text-neutral-500">
+                Faster, and the text stays on this Mac. Turn off to send everything to the AI.
+              </span>
+            </span>
+          </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">History kept</span>
-        <span className="text-xs text-neutral-500">
-          How many past dictations to remember. 0 turns history off.
-        </span>
-        <input
-          type="number"
-          className={`${field} w-32`}
-          min={SETTING_LIMITS.historyKeep.min}
-          max={SETTING_LIMITS.historyKeep.max}
-          value={values.historyKeep}
-          onChange={(e) => onChange({ historyKeep: Math.trunc(Number(e.target.value) || 0) })}
-        />
-      </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">
+              Pause before “send” —{' '}
+              <output aria-label="Pause length">{seconds(values.pauseMs)}</output>
+            </span>
+            <span className="text-xs text-neutral-500">
+              Say “send”, “enter” or “new line” after this much silence and it runs as a command;
+              said without a pause, it is typed as a word.
+            </span>
+            <input
+              type="range"
+              min={SETTING_LIMITS.pauseMs.min}
+              max={SETTING_LIMITS.pauseMs.max}
+              step={SETTING_LIMITS.pauseMs.step}
+              value={values.pauseMs}
+              onChange={(e) => onChange({ pauseMs: Number(e.target.value) })}
+            />
+          </label>
+        </div>
+      </Card>
+
+      <Card
+        title="Understanding"
+        description="Free-form sentences, and how long you can stop an action."
+      >
+        <div className="flex flex-col gap-5">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              aria-label="Understand my own words"
+              checked={values.interpret}
+              onChange={(e) => onChange({ interpret: e.target.checked })}
+            />
+            <span>
+              <span className="font-medium">Understand my own words</span>
+              <span className="block text-xs text-neutral-500">
+                When you say something that is not an exact command (“log me in”, “open a fresh tab
+                and search for AWS”), Sayso asks an AI to work out the steps. It sends what you
+                said, the app’s name and the names of the buttons and links on screen (never page
+                text or what you typed), only then, and never in password fields or meetings. Every
+                step still goes through the same safety checks.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">
+              Preview time — <output aria-label="Preview time">{seconds(values.previewMs)}</output>
+            </span>
+            <span className="text-xs text-neutral-500">
+              How long the preview chip shows before an action runs. Press Esc during it to cancel.
+            </span>
+            <input
+              type="range"
+              min={SETTING_LIMITS.previewMs.min}
+              max={SETTING_LIMITS.previewMs.max}
+              step={SETTING_LIMITS.previewMs.step}
+              value={values.previewMs}
+              onChange={(e) => onChange({ previewMs: Number(e.target.value) })}
+            />
+          </label>
+        </div>
+      </Card>
+
+      <Card title="Privacy and history" description="What is remembered on this Mac.">
+        <div className="flex flex-col gap-5">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium">History kept</span>
+            <span className="text-xs text-neutral-500">
+              How many past dictations to remember. 0 turns history off.
+            </span>
+            <input
+              type="number"
+              className={`${field} w-32`}
+              min={SETTING_LIMITS.historyKeep.min}
+              max={SETTING_LIMITS.historyKeep.max}
+              value={values.historyKeep}
+              onChange={(e) => onChange({ historyKeep: Math.trunc(Number(e.target.value) || 0) })}
+            />
+          </label>
+        </div>
+      </Card>
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900"
-        >
+        <button type="submit" className={primaryButtonClass}>
           Save
         </button>
         <button type="button" className="text-sm underline" onClick={onReset}>
@@ -322,20 +337,17 @@ interface AppStyleListProps {
 /** The apps you have dictated into, each with its own style or "follows everywhere". */
 export function AppStyleList({ apps, everywhere, onChange }: AppStyleListProps): React.JSX.Element {
   return (
-    <section aria-label="Style per app" className="flex max-w-xl flex-col gap-2">
-      <div>
-        <h2 className="text-base font-semibold">Style per app</h2>
-        <p className="text-xs text-neutral-500">
-          Apps appear here after you dictate into them. “Everywhere” follows the style above (
-          {STYLE_CARDS[everywhere].title}).
-        </p>
-      </div>
+    <Card
+      label="Style per app"
+      title="Style per app"
+      description={`Apps appear here after you dictate into them. “Everywhere” follows the style above (${STYLE_CARDS[everywhere].title}).`}
+    >
       {apps.length === 0 && <p className="text-sm text-neutral-500">No apps yet.</p>}
       <ul className="flex flex-col gap-1.5">
         {apps.map((app) => (
           <li
             key={app.bundleId}
-            className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
+            className="flex items-center justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 text-sm dark:bg-neutral-800/60"
           >
             <span className="min-w-0 truncate font-medium">{app.appName ?? app.bundleId}</span>
             <select
@@ -353,7 +365,7 @@ export function AppStyleList({ apps, everywhere, onChange }: AppStyleListProps):
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }
 
@@ -402,7 +414,7 @@ export function Settings(): React.JSX.Element {
   };
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-4">
       <SettingsForm
         values={draft}
         message={message}

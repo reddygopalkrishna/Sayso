@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { HistoryCleanup, HistoryEntry } from '../../shared/data.ts';
 import type { AppStatus } from '../../shared/status.ts';
+import { Card, Empty } from './Card.tsx';
 import { summarize, type HistoryStats } from './historyStats.ts';
 import { useLoad } from './useLoad.ts';
 
@@ -32,11 +33,8 @@ const percent = (share: number | undefined): string => `${Math.round((share ?? 0
 export function SpeedSummary({ stats }: { stats: HistoryStats }): React.JSX.Element | null {
   if (stats.dictations < 3 || stats.medianMs === null) return null;
   return (
-    <section
-      aria-label="Speed"
-      className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-neutral-700"
-    >
-      <p>
+    <Card label="Speed">
+      <p className="text-sm">
         <span className="font-medium">Speed</span>
         <span className="text-neutral-500"> (last {stats.dictations} dictations): </span>
         median {seconds(stats.medianMs)}
@@ -53,7 +51,7 @@ export function SpeedSummary({ stats }: { stats: HistoryStats }): React.JSX.Elem
             ` · ${stats.byProvider.map((p) => `${providerName(p.provider)} ${seconds(p.medianMs)} (${p.count})`).join(', ')}`}
         </p>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -87,7 +85,7 @@ function when(ms: number): string {
 export function HistoryRow({ entry }: { entry: HistoryEntry }): React.JSX.Element {
   const outcome = OUTCOME[entry.outcome];
   return (
-    <li className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
+    <li className="rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
         <time dateTime={new Date(entry.createdAt).toISOString()}>{when(entry.createdAt)}</time>
         <span>·</span>
@@ -161,47 +159,51 @@ export function History({ status }: { status: AppStatus }): React.JSX.Element {
   };
 
   return (
-    <section aria-label="History" className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-neutral-500">
-          Kept on this Mac only. The last 50 are stored; anything said into a password field is
-          never saved.
-        </p>
-        {confirming ? (
-          <span className="flex shrink-0 items-center gap-2 text-sm">
-            Clear all?
+    <section aria-label="History" className="flex flex-col gap-4">
+      <Card>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-neutral-500">
+            Kept on this Mac only. The last 50 are stored; anything said into a password field is
+            never saved.
+          </p>
+          {confirming ? (
+            <span className="flex shrink-0 items-center gap-2 text-sm">
+              Clear all?
+              <button
+                type="button"
+                className="font-medium text-red-600 underline"
+                onClick={() => void clear()}
+              >
+                Yes, clear
+              </button>
+              <button type="button" className="underline" onClick={() => setConfirming(false)}>
+                No
+              </button>
+            </span>
+          ) : (
             <button
               type="button"
-              className="font-medium text-red-600 underline"
-              onClick={() => void clear()}
+              className="shrink-0 rounded-lg border border-neutral-300 px-3 py-1 text-sm hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-800"
+              disabled={!data || data.length === 0}
+              onClick={() => setConfirming(true)}
             >
-              Yes, clear
+              Clear history
             </button>
-            <button type="button" className="underline" onClick={() => setConfirming(false)}>
-              No
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="shrink-0 text-sm underline disabled:no-underline disabled:opacity-40"
-            disabled={!data || data.length === 0}
-            onClick={() => setConfirming(true)}
-          >
-            Clear history
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      </Card>
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
       {data && data.length === 0 && !error && (
-        <p className="text-sm text-neutral-500">Nothing yet. Hold Fn and say something.</p>
+        <Card>
+          <Empty>Nothing yet. Hold Fn and say something.</Empty>
+        </Card>
       )}
       {data && <SpeedSummary stats={summarize(data)} />}
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-3">
         {data?.map((entry) => (
           <HistoryRow key={entry.id} entry={entry} />
         ))}

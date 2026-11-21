@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AppStatus } from '../../shared/status.ts';
+import { Card, Empty, fieldClass, primaryButtonClass, rowClass } from './Card.tsx';
 import { useLoad } from './useLoad.ts';
-
-const input =
-  'w-full rounded-md border border-neutral-300 bg-white px-2.5 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-800';
 
 /** Your own words (names, product terms) spelled the way you want, and what "open X" remembered. */
 export function Dictionary({ status }: { status: AppStatus }): React.JSX.Element {
@@ -51,195 +49,180 @@ export function Dictionary({ status }: { status: AppStatus }): React.JSX.Element
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <section aria-label="Dictionary" className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Your words</h2>
-          <p className="text-xs text-neutral-500">
-            Names and terms to spell your way. Add what Sayso tends to hear instead (“sounds like”)
-            to fix words it mishears, such as “say so” → Sayso.
-          </p>
-        </div>
-        <form onSubmit={(e) => void add(e)} className="flex flex-wrap items-end gap-2">
-          <label className="min-w-40 flex-1 text-xs">
-            Word or name
-            <input
-              className={`${input} mt-1`}
-              value={phrase}
-              maxLength={100}
-              placeholder="Sayso"
-              onChange={(e) => setPhrase(e.target.value)}
-            />
-          </label>
-          <label className="min-w-40 flex-1 text-xs">
-            Sounds like (optional)
-            <input
-              className={`${input} mt-1`}
-              value={spokenAs}
-              maxLength={100}
-              placeholder="say so"
-              onChange={(e) => setSpokenAs(e.target.value)}
-            />
-          </label>
-          <button
-            type="submit"
-            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-            disabled={phrase.trim() === ''}
-          >
-            Add
-          </button>
-        </form>
-        <p role="status" className="min-h-4 text-xs text-red-600 dark:text-red-400">
-          {message}
-        </p>
-        {words.error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {words.error}
-          </p>
-        )}
-        {words.data?.length === 0 && <p className="text-sm text-neutral-500">No words yet.</p>}
-        <ul className="flex flex-col gap-1.5">
-          {words.data?.map((entry) => (
-            <li
-              key={entry.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
-            >
-              <span>
-                <span className="font-medium">{entry.phrase}</span>
-                {entry.spokenAs && (
-                  <span className="text-neutral-500"> · sounds like “{entry.spokenAs}”</span>
-                )}
-              </span>
-              <button
-                type="button"
-                className="text-xs underline"
-                aria-label={`Remove ${entry.phrase}`}
-                onClick={() => void window.sayso.dictionary.remove(entry.id).then(words.reload)}
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-label="Snippets" className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Snippets</h2>
-          <p className="text-xs text-neutral-500">
-            Say a short trigger on its own and Sayso types the saved text exactly as written, with
-            no AI. For example, say “calendly” to type your booking link.
-          </p>
-        </div>
-        <form onSubmit={(e) => void addSnippet(e)} className="flex flex-col gap-2">
-          <label className="text-xs">
-            When I say
-            <input
-              className={`${input} mt-1`}
-              value={trigger}
-              maxLength={60}
-              placeholder="calendly"
-              onChange={(e) => setTrigger(e.target.value)}
-            />
-          </label>
-          <label className="text-xs">
-            Type this
-            <textarea
-              className={`${input} mt-1 min-h-20`}
-              value={snippetText}
-              maxLength={2000}
-              placeholder="Book a time here: https://calendly.com/…"
-              onChange={(e) => setSnippetText(e.target.value)}
-            />
-          </label>
-          <div>
-            <button
-              type="submit"
-              className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-              disabled={trigger.trim() === '' || snippetText.trim() === ''}
-            >
-              Add snippet
+    <div className="flex flex-col gap-4">
+      <Card
+        label="Dictionary"
+        title="Your words"
+        description="Names and terms to spell your way. Add what Sayso tends to hear instead (“sounds like”) to fix words it mishears, such as “say so” → Sayso."
+      >
+        <div className="flex flex-col gap-3">
+          <form onSubmit={(e) => void add(e)} className="flex flex-wrap items-end gap-2">
+            <label className="min-w-40 flex-1 text-xs">
+              Word or name
+              <input
+                className={`${fieldClass} mt-1`}
+                value={phrase}
+                maxLength={100}
+                placeholder="Sayso"
+                onChange={(e) => setPhrase(e.target.value)}
+              />
+            </label>
+            <label className="min-w-40 flex-1 text-xs">
+              Sounds like (optional)
+              <input
+                className={`${fieldClass} mt-1`}
+                value={spokenAs}
+                maxLength={100}
+                placeholder="say so"
+                onChange={(e) => setSpokenAs(e.target.value)}
+              />
+            </label>
+            <button type="submit" className={primaryButtonClass} disabled={phrase.trim() === ''}>
+              Add
             </button>
-          </div>
-        </form>
-        <p role="status" className="min-h-4 text-xs text-red-600 dark:text-red-400">
-          {snippetMessage}
-        </p>
-        {snippets.error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {snippets.error}
+          </form>
+          <p role="status" className="min-h-4 text-xs text-red-600 dark:text-red-400">
+            {message}
           </p>
-        )}
-        {snippets.data?.length === 0 && (
-          <p className="text-sm text-neutral-500">No snippets yet.</p>
-        )}
-        <ul className="flex flex-col gap-1.5">
-          {snippets.data?.map((snippet) => (
-            <li
-              key={snippet.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
-            >
-              <span className="min-w-0">
-                <span className="font-medium">“{snippet.trigger}”</span>
-                <span className="block truncate text-neutral-500">{snippet.body}</span>
-              </span>
-              <button
-                type="button"
-                className="shrink-0 text-xs underline"
-                aria-label={`Remove snippet ${snippet.trigger}`}
-                onClick={() => void window.sayso.snippets.remove(snippet.id).then(snippets.reload)}
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-label="Remembered choices" className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Remembered “open” choices</h2>
-          <p className="text-xs text-neutral-500">
-            Sayso remembers what “open …” opened, so the same words open the same thing next time.
-            Say “open GitHub app” or “open GitHub website” to change it, or forget it here.
-          </p>
-        </div>
-        {choices.error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {choices.error}
-          </p>
-        )}
-        {choices.data?.length === 0 && (
-          <p className="text-sm text-neutral-500">Nothing remembered yet.</p>
-        )}
-        <ul className="flex flex-col gap-1.5">
-          {choices.data?.map((choice) => (
-            <li
-              key={choice.phrase}
-              className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
-            >
-              <span className="min-w-0">
-                <span className="font-medium">“open {choice.phrase}”</span>
-                <span className="text-neutral-500">
-                  {' '}
-                  → {choice.targetType === 'app' ? 'the app' : 'the website'}{' '}
-                  <span className="break-all">{choice.target}</span>
+          {words.error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {words.error}
+            </p>
+          )}
+          {words.data?.length === 0 && <Empty>No words yet.</Empty>}
+          <ul className="flex flex-col gap-1.5">
+            {words.data?.map((entry) => (
+              <li key={entry.id} className={`flex items-center justify-between gap-3 ${rowClass}`}>
+                <span>
+                  <span className="font-medium">{entry.phrase}</span>
+                  {entry.spokenAs && (
+                    <span className="text-neutral-500"> · sounds like “{entry.spokenAs}”</span>
+                  )}
                 </span>
-              </span>
+                <button
+                  type="button"
+                  className="text-xs underline"
+                  aria-label={`Remove ${entry.phrase}`}
+                  onClick={() => void window.sayso.dictionary.remove(entry.id).then(words.reload)}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Card>
+
+      <Card
+        label="Snippets"
+        title="Snippets"
+        description="Say a short trigger on its own and Sayso types the saved text exactly as written, with no AI. For example, say “calendly” to type your booking link."
+      >
+        <div className="flex flex-col gap-3">
+          <form onSubmit={(e) => void addSnippet(e)} className="flex flex-col gap-2">
+            <label className="text-xs">
+              When I say
+              <input
+                className={`${fieldClass} mt-1`}
+                value={trigger}
+                maxLength={60}
+                placeholder="calendly"
+                onChange={(e) => setTrigger(e.target.value)}
+              />
+            </label>
+            <label className="text-xs">
+              Type this
+              <textarea
+                className={`${fieldClass} mt-1 min-h-20`}
+                value={snippetText}
+                maxLength={2000}
+                placeholder="Book a time here: https://calendly.com/…"
+                onChange={(e) => setSnippetText(e.target.value)}
+              />
+            </label>
+            <div>
               <button
-                type="button"
-                className="shrink-0 text-xs underline"
-                aria-label={`Forget open ${choice.phrase}`}
-                onClick={() =>
-                  void window.sayso.openChoices.remove(choice.phrase).then(choices.reload)
-                }
+                type="submit"
+                className={primaryButtonClass}
+                disabled={trigger.trim() === '' || snippetText.trim() === ''}
               >
-                Forget
+                Add snippet
               </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+            </div>
+          </form>
+          <p role="status" className="min-h-4 text-xs text-red-600 dark:text-red-400">
+            {snippetMessage}
+          </p>
+          {snippets.error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {snippets.error}
+            </p>
+          )}
+          {snippets.data?.length === 0 && <Empty>No snippets yet.</Empty>}
+          <ul className="flex flex-col gap-1.5">
+            {snippets.data?.map((snippet) => (
+              <li key={snippet.id} className={`flex items-start justify-between gap-3 ${rowClass}`}>
+                <span className="min-w-0">
+                  <span className="font-medium">“{snippet.trigger}”</span>
+                  <span className="block truncate text-neutral-500">{snippet.body}</span>
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs underline"
+                  aria-label={`Remove snippet ${snippet.trigger}`}
+                  onClick={() =>
+                    void window.sayso.snippets.remove(snippet.id).then(snippets.reload)
+                  }
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Card>
+
+      <Card
+        label="Remembered choices"
+        title="Remembered “open” choices"
+        description="Sayso remembers what “open …” opened, so the same words open the same thing next time. Say “open GitHub app” or “open GitHub website” to change it, or forget it here."
+      >
+        <div className="flex flex-col gap-3">
+          {choices.error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {choices.error}
+            </p>
+          )}
+          {choices.data?.length === 0 && <Empty>Nothing remembered yet.</Empty>}
+          <ul className="flex flex-col gap-1.5">
+            {choices.data?.map((choice) => (
+              <li
+                key={choice.phrase}
+                className={`flex items-center justify-between gap-3 ${rowClass}`}
+              >
+                <span className="min-w-0">
+                  <span className="font-medium">“open {choice.phrase}”</span>
+                  <span className="text-neutral-500">
+                    {' '}
+                    → {choice.targetType === 'app' ? 'the app' : 'the website'}{' '}
+                    <span className="break-all">{choice.target}</span>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-xs underline"
+                  aria-label={`Forget open ${choice.phrase}`}
+                  onClick={() =>
+                    void window.sayso.openChoices.remove(choice.phrase).then(choices.reload)
+                  }
+                >
+                  Forget
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Card>
     </div>
   );
 }
