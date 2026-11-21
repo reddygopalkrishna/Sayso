@@ -39,6 +39,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:44 · UI: Activity, About me, Words and Settings as cards (`cca5828`)
+- **What:** the four remaining screens use the same rounded cards as Home (one shared `Card.tsx`). Activity: a note card, a speed card, one card per dictation. About me: all fields in one "Your details" card, two columns. Words: Your words, Snippets and Remembered "open" choices as three cards. Settings: grouped into **Voice** (hold key, language, wake word), **Text** (style, cleanup, skip the AI, pause before "send"), **Understanding** (understand my own words, preview time) and **Privacy and history** (history kept), plus the Style per app card.
+- **Unchanged:** every setting, label and behaviour. Checked in the browser preview in dark mode (screenshots of all four screens); not checked in the packaged app.
+- Tests: `cards.test.tsx` checks the Card, the four Settings cards and which setting sits in which, and the About me, Style per app and speed cards. 1,262 desktop tests, 37 and 68 package tests and 71 helper tests pass; typecheck and lint clean.
+
 ### 15:23 · UI: Home as cards (`77c886a`)
 - **What:** Home is now a stack of cards: a big **Hands-free** card (green while it listens), a card showing the **key you hold** as a keycap and what holding it does, the **status as small chips** (a problem shows amber or red), the last thing typed or run, and a **"Things you can say"** sheet (Type; Open and move; Click and fill), each line something Sayso does today.
 - **Next in the UI:** the other screens (Activity, About me, Words, Settings) in the same card style.
