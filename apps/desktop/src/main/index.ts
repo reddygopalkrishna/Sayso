@@ -103,6 +103,7 @@ const refreshCleanupStatus = (): void =>
   status.update({
     cleanup: { level: config.cleanupLevel, provider: providerLabel },
     wakeWord: config.wakeWord,
+    holdKey: config.holdKey,
   });
 
 const stt = new HelperWhisperSTT(helper);

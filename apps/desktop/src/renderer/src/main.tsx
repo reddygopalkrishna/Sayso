@@ -10,6 +10,17 @@ import './index.css';
 const root = document.getElementById('root');
 if (!root) throw new Error('missing #root');
 
+// Development only: `?preview` in an ordinary browser fakes the app with sample data, so the
+// screens can be designed there. The production build drops this branch.
+if (
+  import.meta.env.DEV &&
+  typeof window.sayso === 'undefined' &&
+  location.search.includes('preview')
+) {
+  const { previewApi } = await import('./preview/previewApi.ts');
+  window.sayso = previewApi;
+}
+
 const view = window.location.hash;
 // The pill and the chip are transparent windows; only the shape itself is drawn.
 if (view === '#pill' || view === '#chip') document.documentElement.classList.add('pill');

@@ -75,6 +75,8 @@ export interface AppStatus {
   handsFree: HandsFreeStatus;
   /** The word said before a hands-free command. */
   wakeWord: string;
+  /** The key held to dictate (fn, rightOption, rightCommand, rightControl). */
+  holdKey: 'fn' | 'rightOption' | 'rightCommand' | 'rightControl';
   preview: PreviewStatus | null;
   permissions: PermissionsStatus;
   database: DatabaseStatus;
@@ -89,6 +91,7 @@ export const initialStatus: AppStatus = {
   dictation: { phase: 'idle' },
   handsFree: { state: 'off' },
   wakeWord: 'sayso',
+  holdKey: 'fn',
   preview: null,
   permissions: { microphone: 'unknown', accessibility: 'unknown' },
   database: { state: 'unknown' },
