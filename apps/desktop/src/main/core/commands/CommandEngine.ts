@@ -78,6 +78,8 @@ const MISHEARD: ReadonlyMap<string, string> = new Map([
   ['new check', 'new chat'],
   ['a new chat', 'new chat'],
   ['a new chart', 'new chat'],
+  ['openclaw', 'open claude'],
+  ['open claw', 'open claude'],
 ]);
 
 /** Lowercase words only (letters and digits, single spaces), without politeness words. */
@@ -92,6 +94,8 @@ export function normalizeUtterance(text: string): string {
   }
   // "new chart" is never a real thing to say: "click new chart" and "open new chart" mean the chat.
   n = n.replace(/\bnew chart\b/g, 'new chat');
+  // "faster result" is "first result" (heard live); the open-by-position command then takes it.
+  n = n.replace(/\bfaster (result|link|item)\b/g, 'first $1');
   return MISHEARD.get(n) ?? n;
 }
 

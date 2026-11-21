@@ -12,6 +12,8 @@ describe('short commands Whisper mishears (seen live)', () => {
     ['He tender', 'enter'],
     ['Hit tender.', 'enter'],
     ['Scrolla', 'scroll_down'],
+    ['Open faster result.', 'open_position'],
+    ['Click the faster link', 'open_position'],
     ['New chart?', 'new_chat'],
     ['A new chat?', 'new_chat'],
     ['Open New Chart', 'new_chat'],
