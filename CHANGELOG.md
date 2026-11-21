@@ -17,7 +17,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
 - **"Delete that" removes the current selection only,** not the last thing you dictated. A reliable "delete my last dictation" needs the length of the last paste (or an undo of it); decide with real use.
 - **Ask-once chip for "open X":** when an app and a website both fit, the PRD asks once with a chip. For now you teach it by voice ("open GitHub app" / "open GitHub website") and it is remembered; the chip itself is not built.
-- **More commands from the PRD:** volume, lock screen, dark mode, screenshot; positional arguments ("open the third email"); "open GitHub in Chrome" (a named browser).
+- **More commands from the PRD:** volume, lock screen, dark mode, screenshot; "open GitHub in Chrome" (a named browser).
 - **Hand-test the remaining settings links:** the Microphone and Accessibility panes (Keyboard settings and the History tab are confirmed working; the pane addresses are not yet checked for the other two), and the "Allow microphone" / "Show the macOS prompt" buttons on a Mac where a permission is still off.
 - **SQLite driver (decision):** the plan says better-sqlite3; the code uses Node's built-in `node:sqlite` because one compiled better-sqlite3 cannot match both Electron's Node 24 and the test runner's Node 26. One file (`core/storage/db.ts`) to change if you prefer better-sqlite3.
 - **From the Infina recordings (14 Nov):** (1) **AI cleanup speed:** theirs adds about 0.2 s, ours 0.8–2 s over the internet; the lever is a small on-device model (Gemma is in the PRD) or a faster hosted path. (2) **Choose the hold key** (Fn, Right Option, Right ⌘, Caps Lock) so Sayso and other dictation apps can coexist. (3) **Per-app style** Default / Chill with a setting. (4) **Snippets** (say a trigger, type the full text). (5) Commands: go back, next window / close this, new chat / previous chat, and "open the second email" or a link by its first words. (6) Onboarding as a short stepper ending with a "try it" step.
@@ -38,6 +38,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Pill polish:** a waveform in the pill.
 
 ## 2026-11-21
+
+### 13:41 · Position commands: "open the first result", "open the third email" (`4d26b53`)
+- **Say:** "open the", "click the", "go to the" or "select the" + first…tenth / 1st…10th / top / last + result, link, email, message, button or "one". "open first result" works too. "open the App Store" still opens the app (only a real position counts). Shows the preview chip first.
+- **How:** the helper finds those items wholly inside the front window, counts them from the top, skips ones scrolled out of view, and clicks the chosen one. Links, results and rows get a real mouse click (Google ignores an accessibility press); buttons are pressed. If there are fewer, Sayso says "There is no ninth email on screen."
+- **Checked live** in Chrome: "first result" on a Google search for "aws console" opened the top result (a sponsored AWS link: ads count as results for now). Web-mail rows (Gmail) and native lists are not tried live yet.
+- **Your AWS flow now:** "open Chrome, new tab", "type AWS console", "send it", "open the first result", then "click Sign in" / "click on profile" by name.
+- Tests: 1,127 desktop, 37 grammar, 65 protocol and 63 helper tests pass; typecheck and lint clean.
+- Noted in `docs/STATUS.md`: your AWS credits (Phase 2 hosting) and $250 OpenAI credits (a possible AI provider).
 
 ### 13:27 · Menu-bar icon (`ffea228`)
 - **What:** a microphone icon in the menu bar (follows light and dark menu bars). Its menu shows what Sayso is doing ("Speech model loading…", "Ready to dictate", "Hands-free is listening"…), a **Hands-free** on/off item (on only once Sayso is ready; off always works), **Open Sayso** and **Quit Sayso**.
