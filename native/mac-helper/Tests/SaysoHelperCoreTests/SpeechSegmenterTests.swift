@@ -190,4 +190,13 @@ private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
         #expect(out.count == 1)
         #expect(ms(out[0]) >= 1_350, "segment is \(ms(out[0])) ms")
     }
+
+    @Test func aQuietVoiceFromFurtherAwayIsStillHeard() {
+        // Seen live: speech had to be close to the microphone. A voice about 20 dB quieter than
+        // normal speech (RMS about 0.01) must still make an utterance in a quiet room.
+        let distant = speech(ms: 1_200, amplitude: 0.015)
+        let out = segments(of: quiet(ms: 1_000) + distant + quiet(ms: 1_500))
+        #expect(out.count == 1)
+        #expect(ms(out[0]) >= 1_100)
+    }
 }

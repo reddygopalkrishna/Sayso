@@ -7,7 +7,7 @@ public struct SpeechSegmenter: Sendable {
         /// The length of one measured frame.
         public var frameMs = 30
         /// Never treat anything quieter than this (RMS) as speech, however still the room is.
-        public var minThreshold: Float = 0.015
+        public var minThreshold: Float = 0.008
         /// Speech must be this many times louder than the room's own noise level to start…
         public var speechRatio: Float = 3.0
         /// …and stays speech while it is this many times louder (so a sentence is not cut mid-word).
