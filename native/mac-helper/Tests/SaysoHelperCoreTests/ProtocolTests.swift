@@ -24,17 +24,19 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 18)
+        #expect(names.count == 20)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
+        #expect(try AppMessage.decode(fixture("app.startListening.json")) == .startListening(id: "l-1"))
+        #expect(try AppMessage.decode(fixture("app.stopListening.json")) == .stopListening(id: "l-2"))
         #expect(try AppMessage.decode(fixture("app.setHoldKey.json")) == .setHoldKey(id: "h-1", key: .rightOption))
         #expect(try AppMessage.decode(fixture("app.insertText.json")) == .insertText(id: "i-1", text: "Hello from Sayso"))
     }
 
     @Test func everyHelperFixtureRoundTrips() throws {
         let names = try fixtureNames(prefix: "helper.")
-        #expect(names.count == 17)
+        #expect(names.count == 18)
         for name in names {
             let message = try HelperMessage.decode(fixture(name))
             let line = message.encodedLine()
@@ -44,7 +46,7 @@ func fixtureNames(prefix: String) throws -> [String] {
         }
     }
 
-    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.errorReply.json", "helper.sttStatus.json", "helper.contextEmpty.json", "helper.contextSecure.json", "helper.context.json"])
+    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.heard.json", "helper.errorReply.json", "helper.sttStatus.json", "helper.contextEmpty.json", "helper.contextSecure.json", "helper.context.json"])
     func encodingMatchesFixtureExactly(name: String) throws {
         let message = try HelperMessage.decode(fixture(name))
         let encoded = try JSONSerialization.jsonObject(with: Data(message.encodedLine().utf8)) as? NSDictionary

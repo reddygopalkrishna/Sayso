@@ -84,6 +84,14 @@ public protocol EscapeCapturing: AnyObject {
 }
 
 @MainActor
+public protocol ContinuousListening: AnyObject {
+    /// Starts the microphone and calls `onSamples` (from any thread, in order) with 16 kHz mono
+    /// audio until `stop()`. Throws `ServiceError` (mic_denied / mic_failed).
+    func start(onSamples: @escaping @Sendable ([Float]) -> Void) async throws
+    func stop()
+}
+
+@MainActor
 public protocol HoldKeyConfiguring: AnyObject {
     /// Changes the key that is held to dictate. Takes effect for the next hold.
     func setHoldKey(_ key: HoldKey)

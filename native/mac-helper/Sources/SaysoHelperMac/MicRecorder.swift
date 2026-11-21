@@ -63,7 +63,7 @@ public final class MicRecorder: AudioRecording {
         { buffer, _ in converter.convert(buffer, into: sink) }
     }
 
-    private static func ensurePermission() async throws {
+    static func ensurePermission() async throws {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             return
@@ -78,8 +78,13 @@ public final class MicRecorder: AudioRecording {
     }
 }
 
+/// Where converted audio goes: a buffer for a held recording, or a callback for continuous listening.
+protocol SampleSink: Sendable {
+    func append(_ chunk: UnsafeBufferPointer<Float>)
+}
+
 /// Thread-safe sample accumulator shared between the audio thread and the main actor.
-final class SampleBuffer: @unchecked Sendable {
+final class SampleBuffer: SampleSink, @unchecked Sendable {
     private let lock = NSLock()
     private var storage: [Float] = []
 
@@ -110,7 +115,7 @@ final class Converter: @unchecked Sendable {
         self.outFormat = outFormat
     }
 
-    func convert(_ input: AVAudioPCMBuffer, into sink: SampleBuffer) {
+    func convert(_ input: AVAudioPCMBuffer, into sink: any SampleSink) {
         let ratio = outFormat.sampleRate / input.format.sampleRate
         let capacity = AVAudioFrameCount(Double(input.frameLength) * ratio) + 64
         guard let output = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: capacity) else { return }

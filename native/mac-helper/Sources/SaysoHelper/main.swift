@@ -71,7 +71,8 @@ let (loop, fnTap) = MainActor.assumeIsolated {
         scroller: ScrollPoster(),
         elementPresser: AXElementPresser(),
         permissions: SystemPermissions(),
-        holdKeys: fnTap
+        holdKeys: fnTap,
+        listener: StreamingMic()
     )
     box.loop = loop
     return (loop, fnTap)

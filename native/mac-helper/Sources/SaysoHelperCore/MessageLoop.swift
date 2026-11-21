@@ -32,11 +32,20 @@ public final class MessageLoop {
     private let keyPresser: KeyPressing
     private let escapeCapture: EscapeCapturing
     private let holdKeys: HoldKeyConfiguring?
+    private let listener: ContinuousListening?
     private let appControl: AppControlling
     private let scroller: Scrolling
     private let elementPresser: ElementPressing
     private let permissions: PermissionControlling
     private var recordingID: String?
+
+    // Hands-free: the microphone runs continuously, a segmenter cuts it into utterances, and each
+    // utterance is transcribed in order and reported as a `heard` event.
+    private var segmenter = SpeechSegmenter()
+    private var listening = false
+    private var listenInput: AsyncStream<[Float]>.Continuation?
+    private var listenTask: Task<Void, Never>?
+    private var transcribeChain: Task<Void, Never>?
 
     public init(
         writer: LineWriter,
@@ -51,6 +60,7 @@ public final class MessageLoop {
         elementPresser: ElementPressing,
         permissions: PermissionControlling,
         holdKeys: HoldKeyConfiguring? = nil,
+        listener: ContinuousListening? = nil,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -61,6 +71,7 @@ public final class MessageLoop {
         self.keyPresser = keyPresser
         self.escapeCapture = escapeCapture
         self.holdKeys = holdKeys
+        self.listener = listener
         self.appControl = appControl
         self.scroller = scroller
         self.elementPresser = elementPresser
@@ -96,6 +107,8 @@ public final class MessageLoop {
         case .shutdown:
             escapeCapture.setCapture(false)
             if recordingID != nil { recorder.cancel() }
+            listener?.stop()
+            listenInput?.finish()
             return (.stop, nil)
         case let .recordStart(id):
             return (.keepRunning, Task { await self.recordStart(id) })
@@ -158,12 +171,79 @@ public final class MessageLoop {
             escapeCapture.setCapture(enabled)
             send(.done(id: id))
             return (.keepRunning, nil)
+        case let .startListening(id):
+            return (.keepRunning, Task { await self.startListening(id) })
+        case let .stopListening(id):
+            return (.keepRunning, Task { await self.stopListening(id) })
         case let .setHoldKey(id, key):
             holdKeys?.setHoldKey(key)
             send(.done(id: id))
             return (.keepRunning, nil)
         case let .keyPress(id, key, modifiers):
             return (.keepRunning, Task { await self.pressKey(id, key, modifiers) })
+        }
+    }
+
+    private func startListening(_ id: String) async {
+        guard let listener else {
+            send(.error(id: id, code: HelperErrorCode.micFailed, msg: "listening is not available"))
+            return
+        }
+        if listening {
+            send(.done(id: id))
+            return
+        }
+        let (stream, input) = AsyncStream<[Float]>.makeStream()
+        do {
+            try await listener.start { samples in input.yield(samples) }
+        } catch {
+            input.finish()
+            sendError(id: id, error, fallbackCode: HelperErrorCode.micFailed)
+            return
+        }
+        segmenter = SpeechSegmenter()
+        listening = true
+        listenInput = input
+        listenTask = Task { [weak self] in
+            for await samples in stream {
+                guard let self else { return }
+                for utterance in self.segmenter.feed(samples) { self.transcribeUtterance(utterance) }
+            }
+        }
+        send(.done(id: id))
+    }
+
+    private func stopListening(_ id: String) async {
+        if listening {
+            listening = false
+            listener?.stop()
+            listenInput?.finish()
+            listenInput = nil
+            await listenTask?.value
+            listenTask = nil
+            if let rest = segmenter.flush() { transcribeUtterance(rest) }
+            await transcribeChain?.value
+        }
+        send(.done(id: id))
+    }
+
+    /// Transcribes one utterance after the ones before it, so `heard` events keep their order.
+    private func transcribeUtterance(_ samples: [Float]) {
+        let previous = transcribeChain
+        transcribeChain = Task { [transcriber] in
+            await previous?.value
+            let audioMs = Double(samples.count) / sampleRate * 1000
+            let clock = ContinuousClock()
+            let started = clock.now
+            guard let transcription = try? await transcriber.transcribe(samples) else { return }
+            let elapsed = clock.now - started
+            let sttMs = Double(elapsed.components.seconds) * 1000
+                + Double(elapsed.components.attoseconds) / 1e15
+            let text = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return }
+            self.send(.heard(
+                transcription: transcription, audioMs: audioMs, sttMs: sttMs,
+                model: transcriber.modelName))
         }
     }
 

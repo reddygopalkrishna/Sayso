@@ -118,6 +118,26 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakeListener: ContinuousListening {
+    var startError: ServiceError?
+    private(set) var running = false
+    private(set) var starts = 0
+    private var handler: (@Sendable ([Float]) -> Void)?
+    func start(onSamples: @escaping @Sendable ([Float]) -> Void) async throws {
+        if let startError { throw startError }
+        starts += 1
+        running = true
+        handler = onSamples
+    }
+    func stop() { running = false }
+    /// What the microphone would deliver.
+    func emit(_ samples: [Float]) { handler?(samples) }
+}
+
+/// A loud signal for speech and silence for the quiet between sentences (16 samples per ms).
+func loud(ms: Int) -> [Float] { (0..<(16 * ms)).map { $0 % 2 == 0 ? 0.3 : -0.3 } }
+func still(ms: Int) -> [Float] { [Float](repeating: 0, count: 16 * ms) }
+
 @MainActor final class FakeHoldKeys: HoldKeyConfiguring {
     private(set) var keys: [HoldKey] = []
     func setHoldKey(_ key: HoldKey) { keys.append(key) }
@@ -137,6 +157,7 @@ struct Harness {
     let keys = FakeKeys()
     let escape = FakeEscape()
     let holdKeys = FakeHoldKeys()
+    let listener = FakeListener()
     let apps = FakeApps()
     let scroller = FakeScroller()
     let presser = FakePresser()
@@ -148,7 +169,7 @@ struct Harness {
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
             contextProvider: context, keyPresser: keys, escapeCapture: escape,
             appControl: apps, scroller: scroller, elementPresser: presser, permissions: permissions,
-            holdKeys: holdKeys, osDescription: "macOS 14.0")
+            holdKeys: holdKeys, listener: listener, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -347,6 +368,104 @@ struct Harness {
         let h = Harness()
         await h.send(#"{"v":1,"type":"setHoldKey","id":"h-3","key":"capsLock"}"#)
         #expect(h.holdKeys.keys.isEmpty)
+    }
+
+    private func heardCount(_ h: Harness) -> Int {
+        h.out.messages.filter { if case .heard = $0 { return true } else { return false } }.count
+    }
+
+    @Test func listensAndReportsEachUtteranceItHears() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        #expect(h.listener.running)
+        h.listener.emit(still(ms: 500) + loud(ms: 1_000) + still(ms: 1_500))
+        await h.send(#"{"v":1,"type":"stopListening","id":"l-2"}"#)
+        #expect(!h.listener.running)
+        let messages = h.out.messages
+        #expect(messages.first == .done(id: "l-1"))
+        #expect(messages.last == .done(id: "l-2"))
+        guard case let .heard(transcription, audioMs, _, model) = messages[1] else {
+            Issue.record("expected a heard event, got \(messages)")
+            return
+        }
+        #expect(transcription.text == "hello world")
+        #expect(model == "fake-model")
+        #expect(audioMs > 1_000 && audioMs < 2_100)
+    }
+
+    @Test func twoSentencesAreTwoEventsInOrder() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        h.listener.emit(loud(ms: 900) + still(ms: 1_600) + loud(ms: 1_100) + still(ms: 1_500))
+        await h.send(#"{"v":1,"type":"stopListening","id":"l-2"}"#)
+        #expect(heardCount(h) == 2)
+    }
+
+    @Test func stoppingWhileSomeoneIsSpeakingStillReportsWhatWasSaid() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        h.listener.emit(still(ms: 400) + loud(ms: 1_200))
+        await h.send(#"{"v":1,"type":"stopListening","id":"l-2"}"#)
+        #expect(heardCount(h) == 1)
+    }
+
+    @Test func silenceIsNeverReported() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        h.listener.emit(still(ms: 5_000))
+        await h.send(#"{"v":1,"type":"stopListening","id":"l-2"}"#)
+        #expect(heardCount(h) == 0)
+    }
+
+    @Test func anEmptyTranscriptIsNotReported() async {
+        var transcriber = FakeTranscriber()
+        transcriber.result = Transcription(text: "   ", words: [])
+        let h = Harness(transcriber: transcriber)
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        h.listener.emit(loud(ms: 1_000) + still(ms: 1_500))
+        await h.send(#"{"v":1,"type":"stopListening","id":"l-2"}"#)
+        #expect(heardCount(h) == 0)
+    }
+
+    @Test func startingTwiceKeepsOneMicrophoneSession() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        await h.send(#"{"v":1,"type":"startListening","id":"l-2"}"#)
+        #expect(h.listener.starts == 1)
+        #expect(h.out.messages == [.done(id: "l-1"), .done(id: "l-2")])
+    }
+
+    @Test func aMicrophoneProblemIsReportedAndNothingIsListening() async {
+        let h = Harness()
+        h.listener.startError = ServiceError(code: HelperErrorCode.micDenied, message: "off")
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        #expect(h.out.messages == [.error(id: "l-1", code: HelperErrorCode.micDenied, msg: "off")])
+        #expect(!h.listener.running)
+    }
+
+    @Test func stoppingWhenNotListeningIsFine() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"stopListening","id":"l-1"}"#)
+        #expect(h.out.messages == [.done(id: "l-1")])
+    }
+
+    @Test func shuttingDownSwitchesTheMicrophoneOff() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"startListening","id":"l-1"}"#)
+        await h.send(#"{"v":1,"type":"shutdown"}"#)
+        #expect(!h.listener.running)
+    }
+
+    @Test func reportsWhenListeningIsNotAvailable() async {
+        let out = BufferWriter()
+        let loop = MessageLoop(
+            writer: out, recorder: FakeRecorder(), transcriber: FakeTranscriber(), inserter: FakeInserter(),
+            contextProvider: FakeContext(), keyPresser: FakeKeys(), escapeCapture: FakeEscape(),
+            appControl: FakeApps(), scroller: FakeScroller(), elementPresser: FakePresser(),
+            permissions: FakePermissions(), osDescription: "macOS 14.0")
+        let (_, task) = loop.handle(line: #"{"v":1,"type":"startListening","id":"l-1"}"#)
+        await task?.value
+        #expect(out.messages == [.error(id: "l-1", code: HelperErrorCode.micFailed, msg: "listening is not available")])
     }
 
     @Test func reportsTheFocusedFieldInContext() async {

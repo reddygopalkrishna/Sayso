@@ -255,6 +255,7 @@ export class HelperProcess implements HelperRequester {
       case 'escape':
       case 'fnListener':
       case 'sttStatus':
+      case 'heard':
         break;
       default: {
         // A new message type must be handled above (replies must settle their request).

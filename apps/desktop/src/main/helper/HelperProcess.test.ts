@@ -284,6 +284,23 @@ describe('HelperProcess', () => {
     await expect(result).rejects.toMatchObject({ code: 'helper_exited' });
   });
 
+  it('passes a heard event (hands-free) to message listeners', async () => {
+    const { helper, latest } = await connected();
+    const seen: string[] = [];
+    helper.onMessage((m) => seen.push(m.type === 'heard' ? `heard:${m.text}` : m.type));
+    latest().emitMessage({
+      v: 1,
+      type: 'heard',
+      text: 'type hello',
+      words: [],
+      audioMs: 900,
+      sttMs: 300,
+      model: 'm',
+    });
+    await flush();
+    expect(seen).toEqual(['heard:type hello']);
+  });
+
   it('passes events to message listeners', async () => {
     const { helper, latest } = await connected();
     const seen: string[] = [];

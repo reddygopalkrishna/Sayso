@@ -82,6 +82,15 @@ export const CaptureEscapeSchema = z
   .object({ v, type: z.literal('captureEscape'), id, enabled: z.boolean() })
   .strict();
 
+/**
+ * Start listening continuously (hands-free): the microphone stays on and every utterance is
+ * transcribed and reported as a `heard` event. Nothing is saved. Answered with `done`.
+ */
+export const StartListeningSchema = z.object({ v, type: z.literal('startListening'), id }).strict();
+
+/** Stop listening. The utterance in progress is still transcribed and reported. Answered with `done`. */
+export const StopListeningSchema = z.object({ v, type: z.literal('stopListening'), id }).strict();
+
 /** The keys that can be held to dictate. Fn is the default; the others sit on the right. */
 export const HoldKeySchema = z.enum(['fn', 'rightOption', 'rightCommand', 'rightControl']);
 
@@ -161,6 +170,8 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   KeyPressSchema,
   CaptureEscapeSchema,
   SetHoldKeySchema,
+  StartListeningSchema,
+  StopListeningSchema,
   ScrollSchema,
   PressElementSchema,
   ListAppsSchema,
@@ -197,6 +208,22 @@ export const TranscriptSchema = z
     v,
     type: z.literal('transcript'),
     id,
+    text: z.string(),
+    words: z.array(WordTimingSchema),
+    audioMs: z.number().nonnegative(),
+    sttMs: z.number().nonnegative(),
+    model: z.string().min(1),
+  })
+  .strict();
+
+/**
+ * One utterance heard while listening continuously (hands-free), in the same shape as a
+ * transcript but not an answer to a request, so it has no `id`.
+ */
+export const HeardSchema = z
+  .object({
+    v,
+    type: z.literal('heard'),
     text: z.string(),
     words: z.array(WordTimingSchema),
     audioMs: z.number().nonnegative(),
@@ -289,6 +316,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   PongSchema,
   DoneSchema,
   TranscriptSchema,
+  HeardSchema,
   ContextSchema,
   AppsSchema,
   PermissionsSchema,

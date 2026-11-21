@@ -62,6 +62,15 @@ export class HelperActions implements TextInserter, KeyPresser, CommandActions {
     await this.helper.request({ type: 'captureEscape', enabled }, { timeoutMs: 1_000 });
   }
 
+  /** Hands-free: keep the microphone on; each utterance arrives later as a `heard` event. */
+  async startListening(): Promise<void> {
+    await this.helper.request({ type: 'startListening' }, { timeoutMs: 10_000 });
+  }
+
+  async stopListening(): Promise<void> {
+    await this.helper.request({ type: 'stopListening' }, { timeoutMs: 30_000 });
+  }
+
   /** Change the key that is held to dictate (Fn, or a right-hand modifier key). */
   async setHoldKey(key: HoldKeyName): Promise<void> {
     await this.helper.request({ type: 'setHoldKey', key }, { timeoutMs: 1_000 });

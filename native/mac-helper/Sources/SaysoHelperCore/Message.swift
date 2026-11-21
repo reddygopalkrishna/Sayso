@@ -98,6 +98,8 @@ public enum AppMessage: Equatable, Sendable {
     case keyPress(id: String, key: String, modifiers: [Modifier])
     case captureEscape(id: String, enabled: Bool)
     case setHoldKey(id: String, key: HoldKey)
+    case startListening(id: String)
+    case stopListening(id: String)
     case scroll(id: String, direction: ScrollDirection, amount: Int)
     case pressElement(id: String, label: String)
     case listApps(id: String)
@@ -146,6 +148,8 @@ public enum AppMessage: Equatable, Sendable {
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
+        case "startListening": return .startListening(id: try requestID(data))
+        case "stopListening": return .stopListening(id: try requestID(data))
         case "setHoldKey":
             struct H: Decodable { let key: HoldKey }
             return .setHoldKey(id: try requestID(data), key: try field(H.self, data).key)
@@ -231,6 +235,8 @@ public enum HelperMessage: Equatable, Sendable {
     case pong(id: String)
     case done(id: String)
     case transcript(id: String, transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
+    /// One utterance heard while listening continuously (hands-free). Not an answer to a request.
+    case heard(transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
     case context(id: String, context: AppContext)
     case apps(id: String, apps: [AppInfo])
     case permissions(id: String, state: PermissionState)
@@ -259,6 +265,20 @@ public enum HelperMessage: Equatable, Sendable {
         case let .transcript(id, transcription, audioMs, sttMs, model):
             f["type"] = "transcript"
             f["id"] = .string(id)
+            f["text"] = .string(transcription.text)
+            f["words"] = .array(transcription.words.map { w in
+                .object([
+                    "text": .string(w.text),
+                    "startMs": .double(w.startMs),
+                    "endMs": .double(w.endMs),
+                    "p": .double(w.p),
+                ])
+            })
+            f["audioMs"] = .double(audioMs)
+            f["sttMs"] = .double(sttMs)
+            f["model"] = .string(model)
+        case let .heard(transcription, audioMs, sttMs, model):
+            f["type"] = "heard"
             f["text"] = .string(transcription.text)
             f["words"] = .array(transcription.words.map { w in
                 .object([
@@ -341,6 +361,15 @@ public enum HelperMessage: Equatable, Sendable {
             let t = try field(T.self, data)
             return .transcript(
                 id: t.id, transcription: Transcription(text: t.text, words: t.words),
+                audioMs: t.audioMs, sttMs: t.sttMs, model: t.model)
+        case "heard":
+            struct T: Decodable {
+                let text: String; let words: [Word]
+                let audioMs: Double; let sttMs: Double; let model: String
+            }
+            let t = try field(T.self, data)
+            return .heard(
+                transcription: Transcription(text: t.text, words: t.words),
                 audioMs: t.audioMs, sttMs: t.sttMs, model: t.model)
         case "context":
             struct C: Decodable {
