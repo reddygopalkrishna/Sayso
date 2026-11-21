@@ -12,7 +12,12 @@ import { parseMessageRequest, parsePosition } from '@sayso/command-grammar';
 import { verbatimIn } from './commands/messageSentence.ts';
 import { messageAppForBundle, RECIPES, titleCase } from './messaging/recipes.ts';
 import { HelperRequestError } from '../helper/HelperProcess.ts';
-import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
+import {
+  CommandFailed,
+  CommandNotUnderstood,
+  CommandRefused,
+  needsMoreHint,
+} from './commands/errors.ts';
 import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
 import { DEFAULT_PAGE_WAIT_MS, loadsPage, type StepEffect } from './commands/pageLoad.ts';
 import type { AppContext } from './context/HelperContext.ts';
@@ -253,6 +258,8 @@ export class UtterancePipeline {
       : singleStep(this.opts.engine.match(text));
     // No exact command? Try the interpreter. Command mode never types a sentence it did not
     // understand: it is reported, not inserted.
+    // A command word on its own ("open") is a clipped command: ask for the rest, no AI call.
+    if (!steps && needsMoreHint(text) !== null) throw new CommandNotUnderstood(segment.text);
     const planned: PlanStep[] | null = steps
       ? steps.map((match) => ({ kind: 'command', match }))
       : await this.interpretFallback(text, context);

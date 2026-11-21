@@ -676,6 +676,32 @@ describe('UtterancePipeline: chained commands', () => {
   });
 });
 
+describe('UtterancePipeline: a clipped command word', () => {
+  it.each([
+    ['Open.', 'Open what?'],
+    ['click', 'Click what?'],
+    ['Open it', 'Open what?'],
+  ])('%j asks "%s" and does not call the interpreter', async (heard, ask) => {
+    const t = setup({
+      contexts: [slack],
+      interpret: () => toPlan({ steps: [{ command: 'new_tab' }] }),
+    });
+    const error = await t.pipeline.deliver(segment(heard), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandNotUnderstood);
+    expect(error.message).toContain(ask);
+    expect(t.log.filter((l) => l.startsWith('interpret') || l.startsWith('key'))).toEqual([]);
+  });
+
+  it('a sentence the interpreter can handle still goes to it', async () => {
+    const t = setup({
+      contexts: [slack],
+      interpret: () => toPlan({ steps: [{ command: 'new_tab' }] }),
+    });
+    await t.pipeline.deliver(segment('make me a fresh tab'), 'command');
+    expect(t.log).toContain('key cmd+t');
+  });
+});
+
 describe('UtterancePipeline: command mode', () => {
   const said = (text: string) => segment(text);
   const run = async (text: string, over: Partial<Setup> = {}) => {
