@@ -65,6 +65,18 @@ describe('typeLiterally (the hold key\'s "type …")', () => {
   });
 });
 
+describe('BUILT_IN_TERMS: AI tool names', () => {
+  it.each([
+    ['i used cloud code today', 'i used Claude Code today'],
+    ['codex and claude code both work', 'Codex and Claude Code both work'],
+    ['i code x on mac', 'i Codex on mac'],
+    ['the cloud is down', 'the cloud is down'],
+    ['open the code editor', 'open the code editor'],
+  ])('%j → %j', (input, expected) => {
+    expect(applyDictionary(input, BUILT_IN_TERMS)).toBe(expected);
+  });
+});
+
 describe('BUILT_IN_TERMS: Indian places, services and names', () => {
   it.each([
     ['i live in hydrabad near gachi bowli', 'i live in Hyderabad near Gachibowli'],
