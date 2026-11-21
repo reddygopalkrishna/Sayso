@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 16:58 · A clipped command word asks for the rest (`d7503cf`)
+- **Why:** in the founder's live log short commands arrive clipped to one word ("Open."), and the pill said "Didn't catch a command".
+- **What:** a lone "open", "launch", "start", "click", "press", "tap", "hit", "switch", "focus", "message" or "tell" (also with a word that names nothing: "open it", "click the button") now says what to say next, for example **"Open what? Say “open Slack”."** and **"Click what? Say “click Sign in”."** Nothing runs, and the interpreter is not asked (no network call for a clipped word). "scroll" and other whole commands are unchanged; any other unknown sentence keeps the old message.
+- **Tested in code:** the hint for each word and for the "names nothing" forms, words that must not trigger it ("I know.", "open slack", "scroll"), and the pipeline (no interpreter call, no key pressed; a loose sentence still goes to the interpreter). Not tried by voice.
+- **Restart needed:** main-process change.
+
 ### 16:49 · Handover document (`a595667`)
 - **What:** `docs/HANDOVER.md` for whoever continues in this folder: the rules, what exists, and what to do next in order: the approved WhatsApp live test (up to 3 messages to one contact, none sent yet; a dry run was interrupted and may have left the name in WhatsApp's search box), the voice-controlled "create an API key" flow the founder described (what already works, what to add: a known-site entry for OpenAI's platform, risky-label entries for revoke, no key ever read or logged), the things never tested by voice, and the other open items. Also how to test against real apps through the helper without the microphone. `docs/STATUS.md` points to it.
 - **Not done:** no code changed; the WhatsApp test and the API-key flow are described, not run.
