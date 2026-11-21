@@ -1,4 +1,9 @@
-import { parsePosition, phraseArgument, type CommandSpec } from '@sayso/command-grammar';
+import {
+  parseMessageRequest,
+  parsePosition,
+  phraseArgument,
+  type CommandSpec,
+} from '@sayso/command-grammar';
 
 export interface InstantMatch {
   command: CommandSpec;
@@ -26,6 +31,8 @@ interface Compiled {
  */
 const ARGUMENT_CHECKS: Readonly<Record<string, (value: string) => boolean>> = {
   position: (value) => parsePosition(value) !== null,
+  // Who and what: only a sentence that really names a person and a text counts.
+  message: (value) => parseMessageRequest(value) !== null,
 };
 
 /** Fuzzy matching only for phrases this long, and only above this similarity. */
@@ -65,7 +72,8 @@ export function normalizeUtterance(text: string): string {
 
 function cleanArgument(name: string, rest: string): string {
   let arg = rest;
-  while (ARTICLE_PREFIX.test(arg)) arg = arg.replace(ARTICLE_PREFIX, '');
+  // A message keeps its first words as said ("message a friend…" is not an article).
+  while (name !== 'message' && ARTICLE_PREFIX.test(arg)) arg = arg.replace(ARTICLE_PREFIX, '');
   // "open GitHub app" / "open GitHub website" keep their last word: the resolver reads it as a
   // preference (and remembers it). Only "click ... button" and "switch to ... app" drop theirs.
   if (name === 'label') arg = arg.replace(LABEL_SUFFIX, '');

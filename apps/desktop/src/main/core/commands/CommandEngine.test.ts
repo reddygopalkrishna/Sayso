@@ -200,3 +200,33 @@ describe('CommandEngine: chained commands', () => {
     expect(engine.matchChain('undo, redo, copy that, paste, select all')).toBeNull();
   });
 });
+
+describe('CommandEngine: messages', () => {
+  it.each([
+    ['Message Priya on Slack saying I will be late.', 'priya on slack saying i will be late'],
+    ['message priya on whatsapp running late', 'priya on whatsapp running late'],
+    ['Send a message to Priya Sharma saying call me', 'priya sharma saying call me'],
+    ['send message to priya that I am here', 'priya that i am here'],
+    ['message a friend saying hello', 'a friend saying hello'],
+  ])('%j → send_message with the rest as the argument', (spoken, arg) => {
+    const match = engine.match(spoken);
+    expect(match?.command.id).toBe('send_message');
+    expect(match?.args['message']).toBe(arg);
+  });
+
+  it.each(['message', 'message priya', 'message priya on slack', 'send a message to priya'])(
+    '%j names no text, so it is not a message command',
+    (spoken) => {
+      expect(engine.match(spoken)?.command.id).not.toBe('send_message');
+    },
+  );
+
+  it('"send message" alone is still the send command', () => {
+    expect(engine.match('send message')?.command.id).toBe('send');
+  });
+
+  it('works inside a chain', () => {
+    const steps = engine.matchChain('open Slack, message priya saying hello');
+    expect(steps?.map((s) => s.command.id)).toEqual(['open', 'send_message']);
+  });
+});

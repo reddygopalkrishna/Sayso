@@ -1,4 +1,10 @@
-import { commands, parsePosition, phraseArgument, type CommandSpec } from '@sayso/command-grammar';
+import {
+  commands,
+  parseMessageRequest,
+  parsePosition,
+  phraseArgument,
+  type CommandSpec,
+} from '@sayso/command-grammar';
 import { z } from 'zod';
 import { PROFILE_KEYS, type ProfileKey } from '../../../shared/profile.ts';
 import type { InstantMatch } from '../commands/CommandEngine.ts';
@@ -98,6 +104,7 @@ export function toPlan(raw: unknown): Plan | null {
     if (name === null && arg !== '') return null;
     if (name !== null && arg === '') return null;
     if (name === 'position' && parsePosition(arg) === null) return null;
+    if (name === 'message' && parseMessageRequest(arg) === null) return null;
     const phrase = spec.phrases.find((p) => phraseArgument(p) === name) ?? spec.phrases[0] ?? '';
     steps.push({
       kind: 'command',

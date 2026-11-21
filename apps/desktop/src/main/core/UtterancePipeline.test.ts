@@ -54,6 +54,7 @@ interface Setup {
 const installedApps: KnownApp[] = [
   { name: 'Slack', bundleId: 'com.tinyspeck.slackmacgap', running: true },
   { name: 'Safari', bundleId: 'com.apple.Safari', running: true },
+  { name: 'WhatsApp', bundleId: 'net.whatsapp.WhatsApp', running: true },
   { name: 'Calculator', bundleId: 'com.apple.calculator', running: false },
   { name: 'Claude', bundleId: 'com.anthropic.claudefordesktop', running: true },
 ];
@@ -71,11 +72,18 @@ function setup({
   settleMs = 0,
   pageWaitMs = 0,
   appReadyMs = 0,
+  messageSpeed = 0,
+  apps,
+  contextFor,
 }: Setup & {
   confirmMs?: number;
   settleMs?: number;
   pageWaitMs?: number;
   appReadyMs?: number;
+  messageSpeed?: number;
+  apps?: KnownApp[];
+  /** The context to return, decided from what has happened so far (instead of counting reads). */
+  contextFor?: (log: readonly string[]) => AppContext;
   snippets?: Record<string, string>;
   styles?: Record<string, 'default' | 'chill'>;
   interpret?: (utterance: string) => Plan | null | Promise<Plan | null>;
@@ -93,7 +101,10 @@ function setup({
     },
   };
   const pipeline = new UtterancePipeline({
-    readContext: async () => contexts[Math.min(reads++, contexts.length - 1)] ?? context(null),
+    readContext: async () =>
+      contextFor
+        ? contextFor(log)
+        : (contexts[Math.min(reads++, contexts.length - 1)] ?? context(null)),
     cleanup: new TextCleanup({ provider, level: () => 'full' }),
     actions: {
       insertText: async (t) => void log.push(`insert ${t}`),
@@ -126,6 +137,7 @@ function setup({
     settleMs: () => settleMs,
     pageWaitMs: () => pageWaitMs,
     appReadyMs: () => appReadyMs,
+    messageSpeed: () => messageSpeed,
     profileValue: (key) => profile?.[key] ?? null,
     ...(interpret
       ? {
@@ -150,8 +162,8 @@ function setup({
     onConfirmEnd: () => void log.push('prompt end'),
     dictionary: () => dictionary ?? [],
     resolver: {
-      resolveOpen: async (t) => resolveOpen(t, installedApps),
-      resolveSwitch: async (n) => resolveSwitch(n, installedApps),
+      resolveOpen: async (t) => resolveOpen(t, apps ?? installedApps),
+      resolveSwitch: async (n) => resolveSwitch(n, apps ?? installedApps),
     },
     pauseMs: () => 600,
     previewMs: () => 1000,
@@ -1004,5 +1016,180 @@ describe('UtterancePipeline: waiting for an opened app to come to the front', ()
     await vi.advanceTimersByTimeAsync(0);
     await done;
     expect(t.log).toContain('openUrl https://github.com');
+  });
+});
+
+describe('UtterancePipeline: messaging recipes', () => {
+  afterEach(() => vi.useRealTimers());
+  const safari = context('com.apple.Safari');
+  const slackCtx = context('com.tinyspeck.slackmacgap');
+  const whatsapp = context('net.whatsapp.WhatsApp');
+  const zoom = context('us.zoom.xos');
+  const say = (text: string) => segment(text);
+  const withoutChips = (log: readonly string[]) => log.filter((l) => !l.startsWith('chip '));
+
+  it('Slack: open, ⌘K, name, Enter, text, chip, Enter', async () => {
+    const t = setup({ contexts: [slackCtx] });
+    await t.pipeline.deliver(say('message priya on slack i will be late'), 'command');
+    expect(t.log).toEqual([
+      'llm i will be late',
+      'openApp com.tinyspeck.slackmacgap',
+      'key cmd+k',
+      'insert Priya',
+      'key enter',
+      'insert I will be late.',
+      'chip Send “I will be late.” to Priya? 3000',
+      'key enter',
+    ]);
+    expect(t.outcomes[0]?.command).toEqual({ id: 'send_message', result: 'ran' });
+  });
+
+  it('WhatsApp: ⌘F, name, Down, Enter, text, chip, Enter', async () => {
+    const t = setup({ contexts: [whatsapp] });
+    await t.pipeline.deliver(
+      say('send a message to priya sharma on whatsapp saying call me'),
+      'command',
+    );
+    expect(withoutChips(t.log)).toEqual([
+      'llm call me',
+      'openApp net.whatsapp.WhatsApp',
+      'key cmd+f',
+      'insert Priya Sharma',
+      'key down',
+      'key enter',
+      'insert Call me.',
+      'key enter',
+    ]);
+    expect(t.log).toContain('chip Send “Call me.” to Priya Sharma? 3000');
+  });
+
+  it('Esc on the chip cancels: the text is typed but Enter is not pressed to send', async () => {
+    const t = setup({ contexts: [slackCtx], chip: 'cancelled' });
+    await t.pipeline.deliver(say('message priya on slack saying hello'), 'command');
+    expect(t.log.filter((l) => l === 'key enter')).toHaveLength(1); // only the pick, not the send
+    expect(t.log.at(-1)).toBe('chip Send “Hello.” to Priya? 3000');
+    expect(t.outcomes[0]?.command).toEqual({ id: 'send_message', result: 'cancelled' });
+  });
+
+  it('uses the messaging app in front when none is named', async () => {
+    const t = setup({ contexts: [slackCtx] });
+    await t.pipeline.deliver(say('message priya saying hello'), 'command');
+    expect(t.log).toContain('openApp com.tinyspeck.slackmacgap');
+    expect(t.outcomes[0]?.command?.result).toBe('ran');
+  });
+
+  it('asks which app when none is named and none is in front', async () => {
+    const t = setup({ contexts: [safari] });
+    const error = await t.pipeline
+      .deliver(say('message priya saying hello'), 'command')
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toContain('Say which app');
+    expect(t.log).toEqual([]);
+  });
+
+  it('says so when the app is not installed', async () => {
+    const t = setup({ contexts: [safari], apps: [] });
+    const error = await t.pipeline
+      .deliver(say('message priya on slack saying hello'), 'command')
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toContain('not installed');
+    expect(t.log.filter((l) => l.startsWith('key') || l.startsWith('insert'))).toEqual([]);
+  });
+
+  it('a message with no text is not understood as a message command', async () => {
+    const t = setup({ contexts: [slackCtx] });
+    const error = await t.pipeline.deliver(say('message priya'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandNotUnderstood);
+    expect(t.log).toEqual([]);
+  });
+
+  it("works as the interpreter's plan, with the same chip", async () => {
+    const t = setup({
+      contexts: [slackCtx],
+      interpret: () =>
+        toPlan({ steps: [{ command: 'send_message', arg: 'Priya on Slack saying running late' }] }),
+    });
+    await t.pipeline.deliver(say('tell priya on slack i am running late'), 'command');
+    expect(t.log).toContain('chip Send “Running late.” to Priya? 3000');
+    expect(t.log.at(-1)).toBe('key enter');
+  });
+
+  describe('safety matrix: nothing is typed or sent', () => {
+    const noTyping = (log: readonly string[]) =>
+      log.filter((l) => l.startsWith('insert') || l.startsWith('key') || l.startsWith('chip'));
+
+    it.each([
+      ['a meeting app is in front', [zoom]],
+      ['a password field has the cursor', [context('com.apple.Safari', { secureField: true })]],
+    ])('refused at the start when %s', async (_name, contexts) => {
+      const t = setup({ contexts });
+      const error = await t.pipeline
+        .deliver(say('message priya on slack saying hello'), 'command')
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(CommandRefused);
+      expect(noTyping(t.log)).toEqual([]);
+      expect(t.log).not.toContain('openApp com.tinyspeck.slackmacgap');
+    });
+
+    it('stops when a meeting app is in front after the app opened', async () => {
+      const t = setup({ contexts: [safari, safari, zoom] });
+      const error = await t.pipeline
+        .deliver(say('message priya on slack saying hello'), 'command')
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(CommandRefused);
+      expect(noTyping(t.log)).toEqual([]);
+    });
+
+    it('stops when the cursor lands in a password field before the text is typed', async () => {
+      const secure = context('com.tinyspeck.slackmacgap', { secureField: true });
+      const t = setup({
+        contexts: [],
+        contextFor: (log) => (log.includes('insert Priya') ? secure : slackCtx),
+      });
+      const error = await t.pipeline
+        .deliver(say('message priya on slack saying hello'), 'command')
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(SafetyRefusal);
+      expect(t.log.filter((l) => l.startsWith('insert I') || l.startsWith('chip'))).toEqual([]);
+      expect(t.log.filter((l) => l === 'key enter').length).toBeLessThanOrEqual(1);
+    });
+
+    it('does not send when the app changed after the chip', async () => {
+      const t = setup({
+        contexts: [],
+        contextFor: (log) => (log.some((l) => l.startsWith('chip ')) ? safari : slackCtx),
+      });
+      const error = await t.pipeline
+        .deliver(say('message priya on slack saying hello'), 'command')
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(CommandFailed);
+      expect(t.log.filter((l) => l === 'key enter')).toHaveLength(1); // only the pick
+    });
+
+    it('does not send when a meeting app came to the front after the chip', async () => {
+      const t = setup({
+        contexts: [],
+        contextFor: (log) => (log.some((l) => l.startsWith('chip ')) ? zoom : slackCtx),
+      });
+      const error = await t.pipeline
+        .deliver(say('message priya on slack saying hello'), 'command')
+        .catch((e) => e);
+      expect(error).toBeInstanceOf(CommandRefused);
+      expect(t.log.filter((l) => l === 'key enter')).toHaveLength(1);
+    });
+  });
+
+  it('waits for a freshly opened app to be ready before using its search (fake timers)', async () => {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [safari, safari, slackCtx], messageSpeed: 1 });
+    const done = t.pipeline.deliver(say('message priya on slack saying hi'), 'command');
+    await vi.advanceTimersByTimeAsync(1_799);
+    expect(t.log).not.toContain('key cmd+k');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(t.log).toContain('key cmd+k');
+    await vi.advanceTimersByTimeAsync(20_000);
+    await done;
   });
 });

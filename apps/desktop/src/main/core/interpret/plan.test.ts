@@ -64,8 +64,17 @@ describe('toPlan', () => {
     expect(idsOf(plan)).toEqual(['open_position']);
   });
 
+  it('accepts a message for send_message', () => {
+    const plan = toPlan({
+      steps: [{ command: 'send_message', arg: 'Priya on Slack saying running late' }],
+    });
+    expect(idsOf(plan)).toEqual(['send_message']);
+  });
+
   it.each([
     ['an empty plan', { steps: [] }],
+    ['a message with no text', { steps: [{ command: 'send_message', arg: 'Priya on Slack' }] }],
+    ['a message with no argument', { steps: [{ command: 'send_message' }] }],
     ['no steps field', {}],
     ['an unknown command', { steps: [{ command: 'format_disk' }] }],
     ['cancel (the model may not cancel)', { steps: [{ command: 'cancel' }] }],

@@ -92,11 +92,19 @@ const safeInstant = [
   'open',
   'switch_app',
 ];
-const normalInstant = ['delete_that', 'open_position', 'click', 'close_tab', 'lock_screen'];
+const normalInstant = [
+  'delete_that',
+  'open_position',
+  'click',
+  'close_tab',
+  'lock_screen',
+  'send_message',
+];
 const argsFor: Record<string, Record<string, string>> = {
   click: { label: 'submit' },
   open: { target: 'slack' },
   switch_app: { app: 'safari' },
+  send_message: { message: 'priya on slack saying hello' },
 };
 const terminalsBlock = ['close_tab']; // Terminals never close tabs by voice
 

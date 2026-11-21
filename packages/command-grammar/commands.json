@@ -324,6 +324,15 @@
       },
       "safety": "normal",
       "blockedIn": []
+    },
+    {
+      "id": "send_message",
+      "label": "Message",
+      "phrases": ["message {message}", "send a message to {message}", "send message to {message}"],
+      "endOfUtteranceOnly": false,
+      "action": { "type": "sendMessage" },
+      "safety": "normal",
+      "blockedIn": []
     }
   ]
 }

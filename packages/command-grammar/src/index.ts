@@ -2,6 +2,7 @@ import raw from '../commands.json' with { type: 'json' };
 import { GrammarSchema, type CommandSpec } from './schema.ts';
 
 export * from './schema.ts';
+export * from './message.ts';
 export * from './position.ts';
 
 /** All commands, validated at load time (a bad commands.json fails fast). */

@@ -26,6 +26,8 @@ export const CommandActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('openTarget') }).strict(),
   /** Bring a running app to the front; the name is the `{app}` argument. */
   z.object({ type: z.literal('switchApp') }).strict(),
+  /** Message someone in Slack or WhatsApp; the rest of the sentence is the `{message}` argument (see message.ts). */
+  z.object({ type: z.literal('sendMessage') }).strict(),
   /** Do nothing: "cancel" / "never mind". */
   z.object({ type: z.literal('cancel') }).strict(),
   /** Press the risky action that is waiting for "yes" (see UtterancePipeline). */
@@ -55,6 +57,7 @@ const ACTION_ARGUMENT: Partial<Record<CommandAction['type'], string>> = {
   pressPosition: 'position',
   openTarget: 'target',
   switchApp: 'app',
+  sendMessage: 'message',
 };
 
 /** The {name} a phrase ends with, or null. */

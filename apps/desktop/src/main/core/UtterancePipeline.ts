@@ -8,7 +8,8 @@ import type { Plan, PlanStep } from './interpret/plan.ts';
 import type { ProfileKey } from '../../shared/profile.ts';
 import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
-import { parsePosition } from '@sayso/command-grammar';
+import { parseMessageRequest, parsePosition } from '@sayso/command-grammar';
+import { messageAppForBundle, RECIPES, titleCase } from './messaging/recipes.ts';
 import { HelperRequestError } from '../helper/HelperProcess.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
@@ -80,6 +81,10 @@ export interface UtterancePipelineOptions {
   pageWaitMs?: () => number;
   /** How long to wait for an opened app to come to the front before the next step. Default 3 s; 0 = do not wait. */
   appReadyMs?: () => number;
+  /** Scales the fixed waits of the messaging steps (default 1; 0 for none, used in tests). */
+  messageSpeed?: () => number;
+  /** How long the "Send … to …?" chip shows before a message is sent. Default 3 s. */
+  messagePreviewMs?: () => number;
   /**
    * "Say it in your own words": for a command-mode sentence no exact command matched, a plan made
    * only of the app's own commands (or null). Its steps go through the same safety checks.
@@ -405,6 +410,82 @@ export class UtterancePipeline {
       : { id: waiting.match.command.id, result: 'ran' };
   }
 
+  private async pause(ms: number): Promise<void> {
+    const scaled = Math.round(ms * (this.opts.messageSpeed?.() ?? 1));
+    if (scaled > 0) await new Promise((resolve) => setTimeout(resolve, scaled));
+  }
+
+  /** The app in front is still the messaging app, and it is not a meeting app or a password field. */
+  private async assertStillSafe(bundleId: string): Promise<void> {
+    const live = await this.opts.readContext();
+    if (isMeetingApp(live.bundleId)) throw new CommandRefused('meeting_app', live.appName);
+    this.assertCanInsert(live);
+    if (live.bundleId !== bundleId) {
+      throw new CommandFailed('The app changed, so the message was not sent.');
+    }
+  }
+
+  /**
+   * "Message Priya on Slack saying I will be late": open the app, open its search, type the name,
+   * take the first match, type the text, then show “Send … to …?” and press Enter unless Esc
+   * cancels. The steps are fixed (messaging/recipes.ts). Refused in meeting apps and password
+   * fields, and checked again before each typing step and before Enter. The text is cleaned up
+   * like dictation; the person it goes to is the first match of the typed name, which the chip
+   * names so it can be cancelled.
+   */
+  private async sendMessage(match: InstantMatch, live: AppContext): Promise<CommandOutcome> {
+    const id = match.command.id;
+    const request = parseMessageRequest(match.args['message'] ?? '');
+    if (!request) {
+      throw new CommandFailed('Say it like “message Priya on Slack saying I will be late”.');
+    }
+    const app = request.app ?? messageAppForBundle(live.bundleId);
+    if (!app) {
+      throw new CommandFailed('Say which app: “message Priya on Slack saying …” or on WhatsApp.');
+    }
+    const recipe = RECIPES[app];
+    const resolved = await this.opts.resolver.resolveOpen(recipe.appName);
+    if (resolved.type !== 'app') throw new CommandFailed(`${recipe.appName} is not installed.`);
+    const bundleId = resolved.bundleId;
+    const name = titleCase(request.name);
+
+    // The text is cleaned up the way dictation is (capitals, punctuation), before anything opens.
+    const cleaned = await this.opts.cleanup.clean({
+      rawText: request.text,
+      bundleId,
+      appName: recipe.appName,
+    });
+    const text = cleaned.text.trim() === '' ? request.text : cleaned.text.trim();
+
+    const wasInFront = live.bundleId === bundleId;
+    await this.opts.actions.openApp(bundleId);
+    await this.waitForFront(bundleId);
+    if (!wasInFront) await this.pause(recipe.appReadyMs);
+
+    await this.assertStillSafe(bundleId);
+    await this.opts.actions.pressKey(recipe.openSearch.key, recipe.openSearch.modifiers);
+    await this.pause(recipe.afterOpenSearchMs);
+    await this.insert(name);
+    await this.pause(recipe.afterNameMs);
+    for (const stroke of recipe.pickFirst) {
+      await this.opts.actions.pressKey(stroke.key, stroke.modifiers);
+      await this.pause(150);
+    }
+    await this.pause(recipe.afterPickMs);
+
+    await this.assertStillSafe(bundleId);
+    await this.insert(text);
+
+    const chip = await this.opts.chip.confirm(
+      `Send “${text}” to ${name}?`,
+      this.opts.messagePreviewMs?.() ?? 3_000,
+    );
+    if (chip === 'cancelled') return { id, result: 'cancelled' };
+    await this.assertStillSafe(bundleId);
+    await this.opts.actions.pressKey('enter', []);
+    return { id, result: 'ran' };
+  }
+
   /**
    * After opening an app: wait until it is the app in front (polling every 150 ms, up to
    * `appReadyMs`), so the next step does not land in the app that was in front before. It
@@ -444,6 +525,9 @@ export class UtterancePipeline {
       if (how.failOnRefusal) throw new CommandRefused(reason, live.appName);
       return { id: spec.id, result: 'skipped', reason };
     }
+
+    // Messaging has its own steps and shows its own chip, with who and what, right before sending.
+    if (spec.action.type === 'sendMessage') return this.sendMessage(match, live);
 
     let target = live;
     if (decision.kind === 'preview') {
@@ -522,6 +606,9 @@ export class UtterancePipeline {
         await actions.activateApp(app.bundleId);
         break;
       }
+      case 'sendMessage':
+        // Handled in runCommand, which shows the chip with the message before sending.
+        throw new CommandFailed('Say who to message, like “message Priya on Slack saying hello”.');
       case 'cancel':
         break;
       case 'confirmPending':
