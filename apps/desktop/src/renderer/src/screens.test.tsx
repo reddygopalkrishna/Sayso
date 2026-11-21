@@ -233,6 +233,7 @@ describe('SettingsForm', () => {
     holdKey: 'fn',
     wakeWord: 'sayso',
     language: 'en',
+    interpret: true,
   } as const;
   const noop = () => undefined;
   const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
@@ -291,6 +292,7 @@ describe('Style in Settings', () => {
           holdKey: 'fn',
           wakeWord: 'sayso',
           language: 'en',
+          interpret: true,
         }}
         message={null}
         saved={false}
@@ -351,6 +353,7 @@ describe('Hold key in Settings', () => {
           holdKey,
           wakeWord: 'sayso',
           language: 'en',
+          interpret: true,
         }}
         message={null}
         saved={false}
@@ -455,6 +458,7 @@ describe('Language in Settings', () => {
           holdKey: 'fn',
           wakeWord: 'sayso',
           language,
+          interpret: true,
         }}
         message={null}
         saved={false}
@@ -474,5 +478,44 @@ describe('Language in Settings', () => {
 
   it('shows the chosen language as selected', () => {
     expect(form('te')).toContain('<option value="te" selected="">');
+  });
+});
+
+describe('Understand my own words in Settings', () => {
+  const noop = () => undefined;
+  const form = (interpret: boolean) =>
+    html(
+      <SettingsForm
+        values={{
+          pauseMs: 600,
+          previewMs: 1000,
+          cleanupLevel: 'full',
+          skipAi: true,
+          historyKeep: 50,
+          style: 'default',
+          holdKey: 'fn',
+          wakeWord: 'sayso',
+          language: 'en',
+          interpret,
+        }}
+        message={null}
+        saved={false}
+        onChange={noop}
+        onSave={noop}
+        onReset={noop}
+      />,
+    );
+
+  it('says in plain words what is sent, and what is not', () => {
+    const out = form(true);
+    expect(out).toContain('Understand my own words');
+    expect(out).toContain('the names of the buttons and links on screen');
+    expect(out).toContain('never page text or what');
+    expect(out).toContain('never in password fields or meetings');
+  });
+
+  it('shows whether it is on', () => {
+    expect(form(true)).toMatch(/aria-label="Understand my own words"[^>]*checked=""/);
+    expect(form(false)).not.toMatch(/aria-label="Understand my own words"[^>]*checked=""/);
   });
 });

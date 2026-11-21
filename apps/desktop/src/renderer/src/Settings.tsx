@@ -245,6 +245,26 @@ export function SettingsForm({
         <input
           type="checkbox"
           className="mt-1"
+          aria-label="Understand my own words"
+          checked={values.interpret}
+          onChange={(e) => onChange({ interpret: e.target.checked })}
+        />
+        <span>
+          <span className="font-medium">Understand my own words</span>
+          <span className="block text-xs text-neutral-500">
+            When you say something that is not an exact command (“log me in”, “open a fresh tab and
+            search for AWS”), Sayso asks an AI to work out the steps. It sends what you said, the
+            app’s name and the names of the buttons and links on screen (never page text or what you
+            typed), only then, and never in password fields or meetings. Every step still goes
+            through the same safety checks.
+          </span>
+        </span>
+      </label>
+
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-1"
           checked={values.skipAi}
           onChange={(e) => onChange({ skipAi: e.target.checked })}
         />

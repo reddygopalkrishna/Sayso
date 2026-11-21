@@ -14,6 +14,7 @@ const defaults: UserSettings = {
   holdKey: 'fn',
   wakeWord: 'sayso',
   language: 'en',
+  interpret: true,
 };
 const settings = {
   current: () => defaults,

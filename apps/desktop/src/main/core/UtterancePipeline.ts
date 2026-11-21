@@ -4,6 +4,7 @@ import { keyStrokeFor } from './actions/sendStrategy.ts';
 import { applyDictionary, type DictionaryTerm } from './cleanup/dictionary.ts';
 import { applyStyle } from './cleanup/style.ts';
 import { afterTypeWord, fixWebAddresses, typeLiterally } from './cleanup/webAddress.ts';
+import type { Plan, PlanStep } from './interpret/plan.ts';
 import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
 import { parsePosition } from '@sayso/command-grammar';
@@ -13,7 +14,13 @@ import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
 import type { AppContext } from './context/HelperContext.ts';
 import type { KnownApp, OpenResolution } from './resolver/AppResolver.ts';
 import type { ChipResult } from './safety/PreviewChip.ts';
-import { canInsertText, decideAction, isExecutable, SafetyRefusal } from './safety/SafetyGate.ts';
+import {
+  canInsertText,
+  decideAction,
+  isExecutable,
+  isMeetingApp,
+  SafetyRefusal,
+} from './safety/SafetyGate.ts';
 import { route, type RoutingDecision } from './router/IntentRouter.ts';
 import type { TranscriptSegment } from './stt/types.ts';
 
@@ -59,6 +66,11 @@ export interface UtterancePipelineOptions {
   };
   /** Pause between chained steps, so the screen can update first. Default 300 ms. */
   settleMs?: () => number;
+  /**
+   * "Say it in your own words": for a command-mode sentence no exact command matched, a plan made
+   * only of the app's own commands (or null). Its steps go through the same safety checks.
+   */
+  interpret?: (utterance: string, context: AppContext) => Promise<Plan | null>;
   /** Default or chill for the app in front. Chill: no capitals, minimal punctuation. */
   style?: (bundleId: string | null) => Style;
   /** Your snippets: when the whole dictation is a trigger, its text is typed as saved, no AI. */
@@ -215,11 +227,19 @@ export class UtterancePipeline {
     const steps = this.opts.engine.matchChain
       ? this.opts.engine.matchChain(text)
       : singleStep(this.opts.engine.match(text));
-    // Command mode never types: an unrecognised utterance is reported, not inserted.
-    if (!steps) throw new CommandNotUnderstood(segment.text);
+    // No exact command? Try the interpreter. Command mode never types a sentence it did not
+    // understand: it is reported, not inserted.
+    const planned: PlanStep[] | null = steps
+      ? steps.map((match) => ({ kind: 'command', match }))
+      : await this.interpretFallback(text, context);
+    if (!planned) throw new CommandNotUnderstood(segment.text);
 
     // "yes" answers a waiting risky action. Any other command ends that wait.
-    const isYes = steps.length === 1 && steps[0]?.command.action.type === 'confirmPending';
+    const first = planned[0];
+    const isYes =
+      planned.length === 1 &&
+      first?.kind === 'command' &&
+      first.match.command.action.type === 'confirmPending';
     if (!isYes) this.clearPending();
     if (isYes) {
       const command = await this.confirmPending();
@@ -238,10 +258,13 @@ export class UtterancePipeline {
     // Steps run in order, each after a short settle so the screen can catch up. A refusal or a
     // failure throws and stops the chain; a cancel, a skip or a wait for "yes" stops it.
     let command: CommandOutcome | null = null;
-    for (const [index, step] of steps.entries()) {
+    for (const [index, step] of planned.entries()) {
       if (index > 0)
         await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
-      command = await this.runCommand(step, { failOnRefusal: true, allowConfirm: true });
+      command =
+        step.kind === 'command'
+          ? await this.runCommand(step.match, { failOnRefusal: true, allowConfirm: true })
+          : await this.typeStep(step.text);
       if (command.result !== 'ran') break;
     }
     this.opts.onOutcome?.({
@@ -263,6 +286,28 @@ export class UtterancePipeline {
   private async insert(text: string): Promise<void> {
     this.assertCanInsert(await this.opts.readContext());
     await this.opts.actions.insertText(text);
+  }
+
+  /**
+   * The interpreter's plan for a sentence no exact command matched. Nothing is read or sent in a
+   * password field or a meeting app, and a failure of any kind is just "not understood".
+   */
+  private async interpretFallback(text: string, context: AppContext): Promise<PlanStep[] | null> {
+    if (!this.opts.interpret) return null;
+    if (context.secureField || isMeetingApp(context.bundleId)) return null;
+    try {
+      return (await this.opts.interpret(text, context))?.steps ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** A "type …" step of a plan: typed as said, with the same checks as typing by voice. */
+  private async typeStep(text: string): Promise<CommandOutcome> {
+    this.assertCanInsert(await this.opts.readContext());
+    const typed = typeLiterally(text, this.opts.dictionary?.() ?? []);
+    if (typed !== '') await this.opts.actions.insertText(typed);
+    return { id: 'type', result: 'ran' };
   }
 
   /** Asks for "yes" before a risky action. Nothing is pressed here. */

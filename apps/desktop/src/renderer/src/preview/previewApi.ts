@@ -53,6 +53,7 @@ let settings: UserSettings = {
   holdKey: 'fn',
   wakeWord: 'sayso',
   language: 'en',
+  interpret: true,
 };
 
 const history: HistoryEntry[] = [

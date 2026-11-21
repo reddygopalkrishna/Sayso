@@ -27,6 +27,9 @@ describe('loadConfig', () => {
       holdKey: 'fn',
       wakeWord: 'sayso',
       language: 'en',
+      interpret: true,
+      openaiApiKey: null,
+      openaiModel: null,
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -53,6 +56,9 @@ describe('loadConfig', () => {
       holdKey: 'fn',
       wakeWord: 'sayso',
       language: 'en',
+      interpret: true,
+      openaiApiKey: null,
+      openaiModel: null,
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -190,5 +196,25 @@ describe('language in the config', () => {
     ['xx', 'en'],
   ])('SAYSO_STT_LANGUAGE=%j → %s', (value, expected) => {
     expect(loadConfig(files(`SAYSO_STT_LANGUAGE=${value}`), {}).language).toBe(expected);
+  });
+});
+
+describe('understanding your own words in the config', () => {
+  it.each([
+    ['', true],
+    ['on', true],
+    ['off', false],
+    ['false', false],
+    ['0', false],
+    ['NO', false],
+  ])('SAYSO_INTERPRET=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_INTERPRET=${value}`), {}).interpret).toBe(expected);
+  });
+
+  it('reads an OpenAI key and model, and ignores a model id with odd characters', () => {
+    const config = loadConfig(files('OPENAI_API_KEY=sk-test\nOPENAI_MODEL=some-model.1'), {});
+    expect(config.openaiApiKey).toBe('sk-test');
+    expect(config.openaiModel).toBe('some-model.1');
+    expect(loadConfig(files('OPENAI_MODEL=bad model; rm'), {}).openaiModel).toBeNull();
   });
 });

@@ -58,6 +58,8 @@ export interface UserSettings {
   wakeWord: string;
   /** The language you speak, or "auto" to detect it each time. */
   language: Language;
+  /** Understand your own words: when no exact command matches, ask an AI (sends the spoken words and button names). */
+  interpret: boolean;
 }
 
 /** One or more settings to change. Anything else, or any value out of range, is rejected. */
@@ -71,6 +73,7 @@ export const SettingsPatchSchema = z
     holdKey: z.enum(HOLD_KEYS),
     wakeWord: z.string().regex(/^[a-z][a-z0-9]{1,29}$/),
     language: z.enum(LANGUAGES),
+    interpret: z.boolean(),
     historyKeep: z
       .number()
       .int()

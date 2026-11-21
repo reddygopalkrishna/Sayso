@@ -42,6 +42,9 @@ Record the time from the end of the phrase to the result. Target: under 1 s for 
 - A helper test for `pressElement` with the not-found error code (exists in the protocol fixtures).
 - Live check: `printf` a `pressElement` line to the helper with Claude frontmost; expect `done`. (Done 15 Nov for "Search" in Claude.)
 
+## Understanding your own words (built 21 Nov)
+When no exact command matches, Sayso reads the names of what the front window shows (buttons, links, fields) and asks an AI (Groq first, then OpenAI if configured) for a plan of up to four of its own commands or text to type. The plan is checked step by step and dropped whole if anything is off, and its steps go through the same safety checks (preview chip, "yes?" before risky buttons, never in password fields or meetings). The AI can never say "yes" or "cancel" for you. Sent to the AI, only then: the words you said, the app name, and at most 40 button and link names (browser tab titles removed). A switch in Settings turns it off. Measured with Groq: 150 to 350 ms per sentence; chat and prompt-injection sentences give no plan.
+
 ## Beyond Infina: languages (built 21 Nov)
 Infina is English only. Sayso's speech model already understands many languages, so Settings has "Language you speak": English (default), Telugu, Hindi, Tamil, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Urdu, Spanish, French, German, Portuguese, or detect it each time. Text is typed in that language's own script and the AI cleanup never translates. Voice commands and hands-free words stay in English for now; Telugu and Hindi command words are a later step.
 

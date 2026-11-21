@@ -74,8 +74,14 @@ describe('classifyHeard: other commands need the wake word, or Sayso awake', () 
     expect(classify('new tab', true).intent?.kind).toBe('command');
   });
 
-  it('the wake word with something that is not a command does nothing, but wakes', () => {
-    expect(classify('Sayso, what is the weather like')).toEqual({ intent: null, triggered: true });
+  it('the wake word with your own words is still a command (the interpreter reads it)', () => {
+    const result = classify('Sayso, log me in please');
+    expect(result.intent?.kind).toBe('command');
+    expect(result.intent?.segment.text).toBe('log me in please');
+  });
+
+  it('the wake word alone does nothing but wakes', () => {
+    expect(classify('Sayso.')).toEqual({ intent: null, triggered: true });
   });
 });
 

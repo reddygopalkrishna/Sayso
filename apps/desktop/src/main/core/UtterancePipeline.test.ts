@@ -10,6 +10,7 @@ import type { AppContext } from './context/HelperContext.ts';
 import { resolveOpen, resolveSwitch, type KnownApp } from './resolver/AppResolver.ts';
 import type { ChipResult } from './safety/PreviewChip.ts';
 import { SafetyRefusal } from './safety/SafetyGate.ts';
+import { toPlan, type Plan } from './interpret/plan.ts';
 import { HelperRequestError } from '../helper/HelperProcess.ts';
 import type { TranscriptSegment, TranscriptWord } from './stt/types.ts';
 
@@ -64,10 +65,12 @@ function setup({
   confirmMs,
   snippets,
   styles,
+  interpret,
 }: Setup & {
   confirmMs?: number;
   snippets?: Record<string, string>;
   styles?: Record<string, 'default' | 'chill'>;
+  interpret?: (utterance: string) => Plan | null | Promise<Plan | null>;
 }) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
@@ -108,6 +111,14 @@ function setup({
     endCommands,
     engine: new CommandEngine(commands),
     settleMs: () => 0,
+    ...(interpret
+      ? {
+          interpret: async (utterance: string) => {
+            log.push(`interpret ${utterance}`);
+            return interpret(utterance);
+          },
+        }
+      : {}),
     style: (bundleId) => (bundleId ? styles?.[bundleId] : undefined) ?? 'default',
     snippets: {
       find: (spoken) =>
@@ -208,6 +219,96 @@ describe('UtterancePipeline', () => {
     const { pipeline, log } = setup({ contexts: [context('us.zoom.xos')] });
     await pipeline.deliver(segment('see you soon', send));
     expect(log).toEqual(['llm see you soon send', 'insert See you soon send.']);
+  });
+});
+
+describe('UtterancePipeline: your own words (the interpreter)', () => {
+  const said = (text: string) => segment(text);
+  const plan = (steps: unknown[]): Plan => {
+    const result = toPlan({ steps });
+    if (!result) throw new Error('bad test plan');
+    return result;
+  };
+
+  it('runs the plan when no exact command matched', async () => {
+    const t = setup({
+      contexts: [slack],
+      interpret: () =>
+        plan([{ command: 'new_tab' }, { type: 'aws console' }, { command: 'enter' }]),
+    });
+    await t.pipeline.deliver(said('please set up a fresh search for aws console'), 'command');
+    expect(t.log).toEqual([
+      'interpret please set up a fresh search for aws console',
+      'key cmd+t',
+      'insert aws console',
+      'chip Press Enter 1000',
+      'key enter',
+    ]);
+  });
+
+  it('a click step goes through the preview chip like a spoken click', async () => {
+    const t = setup({
+      contexts: [slack],
+      interpret: () => plan([{ command: 'click', arg: 'Sign in' }]),
+    });
+    await t.pipeline.deliver(said('log me in'), 'command');
+    expect(t.log).toEqual(['interpret log me in', 'chip Click “sign in” 1000', 'press sign in']);
+  });
+
+  it('a risky button the AI picked still waits for "yes"', async () => {
+    const t = setup({
+      contexts: [slack],
+      interpret: () => plan([{ command: 'click', arg: 'Delete account' }]),
+    });
+    await t.pipeline.deliver(said('get rid of my account'), 'command');
+    expect(t.log.some((line) => line.startsWith('press'))).toBe(false);
+    expect(t.log.some((line) => line.startsWith('prompt Say “yes”'))).toBe(true);
+  });
+
+  it('an exact command never asks the interpreter', async () => {
+    const t = setup({ contexts: [slack], interpret: () => plan([{ command: 'new_tab' }]) });
+    await t.pipeline.deliver(said('undo'), 'command');
+    expect(t.log).toEqual(['key cmd+z']);
+  });
+
+  it.each([
+    ['nothing usable', () => null],
+    ['an error', () => Promise.reject(new Error('down'))],
+  ])('says it did not catch that when the interpreter gives %s', async (_label, interpret) => {
+    const t = setup({ contexts: [slack], interpret });
+    const error = await t.pipeline.deliver(said('do the thing'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandNotUnderstood);
+    expect(t.log).toEqual(['interpret do the thing']);
+  });
+
+  it('is never asked in a password field or a meeting app', async () => {
+    const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
+    for (const where of [password, context('us.zoom.xos')]) {
+      const t = setup({ contexts: [where], interpret: () => plan([{ command: 'new_tab' }]) });
+      await expect(t.pipeline.deliver(said('do the thing'), 'command')).rejects.toBeInstanceOf(
+        CommandNotUnderstood,
+      );
+      expect(t.log).toEqual([]);
+    }
+  });
+
+  it('a typed step is refused in a password field that appears mid-plan', async () => {
+    const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
+    const t = setup({
+      contexts: [slack, slack, password],
+      interpret: () => plan([{ command: 'new_tab' }, { type: 'hunter2' }]),
+    });
+    await expect(
+      t.pipeline.deliver(said('make me a fresh tab and write my secret in it'), 'command'),
+    ).rejects.toBeInstanceOf(SafetyRefusal);
+    expect(t.log.some((line) => line.startsWith('insert'))).toBe(false);
+  });
+
+  it('works without an interpreter (as before)', async () => {
+    const t = setup({ contexts: [slack] });
+    await expect(t.pipeline.deliver(said('do the thing'), 'command')).rejects.toBeInstanceOf(
+      CommandNotUnderstood,
+    );
   });
 });
 

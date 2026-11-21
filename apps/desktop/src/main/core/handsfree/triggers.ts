@@ -58,13 +58,13 @@ export function classifyHeard(segment: TranscriptSegment, options: TriggerOption
       : { intent: { kind: 'dictate', segment: rest }, triggered: true };
   }
 
-  // "Sayso, new tab" → a command, whatever it is.
+  // "Sayso, new tab" or "Sayso, log me in" → a command, in the person's own words if need be
+  // (the pipeline asks the interpreter when no exact command matches).
   if (first === options.wakeWord) {
     const rest = afterFirstWord(segment);
-    if (rest.text !== '' && options.isCommand(rest.text)) {
-      return { intent: { kind: 'command', segment: rest }, triggered: true };
-    }
-    return { intent: null, triggered: true };
+    return rest.text === ''
+      ? { intent: null, triggered: true }
+      : { intent: { kind: 'command', segment: rest }, triggered: true };
   }
 
   // "open Slack", and the short commands said alone.

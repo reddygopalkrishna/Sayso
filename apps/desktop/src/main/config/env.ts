@@ -36,6 +36,11 @@ export interface AppConfig {
   wakeWord: string;
   /** The language spoken (two-letter code) or "auto". */
   language: Language;
+  /** Understand your own words with an AI when no exact command matches. On by default. */
+  interpret: boolean;
+  /** OpenAI key and model for interpreting (both needed; used after Groq, or alone). */
+  openaiApiKey: string | null;
+  openaiModel: string | null;
 }
 
 /**
@@ -61,6 +66,9 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_HOLD_KEY',
     'SAYSO_WAKE_WORD',
     'SAYSO_STT_LANGUAGE',
+    'SAYSO_INTERPRET',
+    'OPENAI_API_KEY',
+    'OPENAI_MODEL',
     'GROQ_API_KEY',
     'SAYSO_FAST_MODEL',
     'SAYSO_AI_PROVIDER',
@@ -92,6 +100,14 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
       LANGUAGES.find(
         (code) => code === (merged['SAYSO_STT_LANGUAGE'] ?? '').trim().toLowerCase(),
       ) ?? 'en',
+    interpret: !['off', 'false', '0', 'no'].includes(
+      (merged['SAYSO_INTERPRET'] ?? '').trim().toLowerCase(),
+    ),
+    openaiApiKey: merged['OPENAI_API_KEY']?.trim() || null,
+    // A model id is letters, digits and . _ / : - only.
+    openaiModel: /^[\w./:-]{1,100}$/.test((merged['OPENAI_MODEL'] ?? '').trim())
+      ? (merged['OPENAI_MODEL'] ?? '').trim()
+      : null,
     holdKey: HOLD_KEYS.find((key) => key === (merged['SAYSO_HOLD_KEY'] ?? '').trim()) ?? 'fn',
     skipAi: !['off', 'false', '0', 'no'].includes(
       (merged['SAYSO_SKIP_AI'] ?? '').trim().toLowerCase(),

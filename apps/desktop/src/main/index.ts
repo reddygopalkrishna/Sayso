@@ -10,6 +10,9 @@ import { TextCleanup } from './core/cleanup/TextCleanup.ts';
 import type { DictionaryTerm } from './core/cleanup/dictionary.ts';
 import { buildProvider } from './core/cleanup/providers.ts';
 import { BUILT_IN_TERMS } from './core/cleanup/builtInTerms.ts';
+import { OpenAIChatJson, type ChatJson } from './core/interpret/chatJson.ts';
+import { Interpreter } from './core/interpret/Interpreter.ts';
+import { GROQ_BASE_URL, groqRequestExtras } from './core/cleanup/providers.ts';
 import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
 import { AppResolver } from './core/resolver/AppResolver.ts';
@@ -82,6 +85,7 @@ const settingsNow = (): UserSettings => ({
   holdKey: config.holdKey,
   wakeWord: config.wakeWord,
   language: config.language,
+  interpret: config.interpret,
 });
 const startingSettings = settingsNow();
 // Tells the helper which key is held to dictate (on connect, after a restart, and on a change).
@@ -167,8 +171,47 @@ function readDictionary(): DictionaryTerm[] {
 
 const engine = new CommandEngine(commands);
 
+// "Say it in your own words": Groq first (about 0.3 s), then OpenAI if it has a key and a model.
+// Only asked when no exact command matched, and never in a password field or a meeting app.
+const interpretClients: ChatJson[] = [];
+if (config.groqApiKey && config.aiProvider !== 'gemini') {
+  interpretClients.push(
+    new OpenAIChatJson({
+      name: 'groq',
+      model: config.fastModel,
+      apiKey: config.groqApiKey,
+      baseUrl: GROQ_BASE_URL,
+      extraBody: groqRequestExtras(config.fastModel),
+    }),
+  );
+}
+if (config.openaiApiKey && config.openaiModel) {
+  interpretClients.push(
+    new OpenAIChatJson({
+      name: 'openai',
+      model: config.openaiModel,
+      apiKey: config.openaiApiKey,
+      baseUrl: 'https://api.openai.com/v1',
+    }),
+  );
+}
+const interpreter = new Interpreter({
+  clients: interpretClients,
+  log: (message) => console.info(message),
+});
+
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
+  interpret: async (utterance, context) => {
+    if (!config.interpret || !interpreter.available) return null;
+    let screen: Awaited<ReturnType<typeof actions.listElements>> = [];
+    try {
+      screen = await actions.listElements();
+    } catch {
+      // Without the screen the interpreter can still open apps and press keys.
+    }
+    return interpreter.interpret({ utterance, appName: context.appName, screen });
+  },
   style: (bundleId) => {
     try {
       return storage?.appStyles.get(bundleId) ?? config.style;
