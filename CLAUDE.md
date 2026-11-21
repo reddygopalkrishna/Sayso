@@ -19,6 +19,7 @@ Voice dictation + actions for the desktop: speak, and the computer types clean t
 - Run tests and builds through the `test-runner` agent so only failures come back.
 - Use the `add-voice-command` skill for any new or changed voice command.
 - Prefer Grep and reading line ranges over reading whole files.
+- **Keep `CHANGELOG.md` current** (the user asked for it): after every commit add an entry under today's date with the time (IST), commit hash, what changed and why, in plain words. Anything deferred or found broken goes in **Pending (later)**; unfinished step work goes in **In progress**. Remove items once they are done.
 
 ## Repo state
 Phase 0 progress: **steps 1–3 done** (scaffold; Fn hold → mic → WhisperKit → paste with the listening pill; Gemini cleanup). Next: step 4 (pause rule / IntentRouter).
