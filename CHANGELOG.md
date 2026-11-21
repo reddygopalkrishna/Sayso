@@ -40,6 +40,9 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 16:10 · README is about the product only (`2472b68`)
+- **What:** removed the section about what existed before the Builders 2026 event and what was built at it, and the note on commit dates, from `README.md` (at the founder's request); the README now covers only the product, how to run it and its limits. One line about it was also removed from `docs/DEMO_SCRIPT.md`. The record of when things were built stays in this changelog.
+
 ### 15:59 · README and demo script (`bca898d`)
 - **What:** `README.md` (what Sayso is, what it can do with how each part was tested, privacy, how to run, how it is built, honest limits) and `docs/DEMO_SCRIPT.md` (a 90-second spoken flow: open Chrome, new tab, type, send, open the first result, click Sign in, fill in my details, an unusual sentence for the interpreter, a dictation with an Indian name and a place; setup, fallbacks, and a table of what is certain and what is not).
 - **Event line:** the README says the base dictation app (13 to 16 November) existed before the Builders 2026 event, and lists what was built at it (from 21 November, 10 AM), from this changelog. It also says commit dates were reset to 21 November, so the changelog is the record of when things were built.
