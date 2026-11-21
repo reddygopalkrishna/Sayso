@@ -42,12 +42,21 @@ type Internal =
   | { phase: 'prompt'; message: string }
   | { phase: 'error'; message: string };
 
+const BUSY: ReadonlySet<Internal['phase']> = new Set([
+  'starting',
+  'recording',
+  'transcribing',
+  'inserting',
+]);
+
 /**
  * Fn hold → record → transcribe → deliver, as a state machine. Owns the utterance lifecycle only;
  * what happens to the text is `deliver`'s job.
  */
 export class DictationController {
   private state: Internal = { phase: 'idle' };
+  /** When a held-key utterance was last in progress (hands-free ignores that speech). */
+  private lastActive = 0;
   private seq = 0;
   private readonly listeners = new Set<(s: DictationState) => void>();
   private maxTimer: NodeJS.Timeout | null = null;
@@ -223,7 +232,24 @@ export class DictationController {
     if (this.state.phase === 'prompt') this.set({ phase: 'idle' });
   }
 
+  /** True while a held-key utterance is being recorded, transcribed or delivered. */
+  isBusy(): boolean {
+    return BUSY.has(this.state.phase);
+  }
+
+  /** When a held-key utterance was last in progress (0 if never). */
+  lastActiveAt(): number {
+    return this.isBusy() ? this.now() : this.lastActive;
+  }
+
+  /** Shows a message in the pill (e.g. a hands-free command that failed), unless a hold is in progress. */
+  showError(message: string): void {
+    if (this.isBusy()) return;
+    this.fail(message);
+  }
+
   private set(next: Internal): void {
+    if (BUSY.has(this.state.phase) || BUSY.has(next.phase)) this.lastActive = this.now();
     if (this.errorTimer && next.phase !== 'error') {
       clearTimeout(this.errorTimer);
       this.errorTimer = null;

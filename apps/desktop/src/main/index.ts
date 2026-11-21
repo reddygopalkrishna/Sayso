@@ -13,6 +13,9 @@ import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
 import { AppResolver } from './core/resolver/AppResolver.ts';
 import { DictationController } from './core/dictation/DictationController.ts';
+import { describeError } from './core/dictation/errors.ts';
+import { applyDictionary } from './core/cleanup/dictionary.ts';
+import { HandsFreeController } from './core/handsfree/HandsFreeController.ts';
 import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
 import { resolveHelperPath } from './helper/binaryPath.ts';
@@ -142,6 +145,8 @@ function readDictionary(): DictionaryTerm[] {
   }
 }
 
+const engine = new CommandEngine(commands);
+
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
   style: (bundleId) => {
@@ -181,7 +186,7 @@ const pipeline = new UtterancePipeline({
   actions,
   chip,
   endCommands,
-  engine: new CommandEngine(commands),
+  engine,
   dictionary: readDictionary,
   resolver: new AppResolver(() => actions.listApps(), {
     get: (phrase) => {
@@ -256,6 +261,21 @@ const dictation = new DictationController({
   log: (msg) => console.info(`[dictation] ${msg}`),
 });
 
+// Hands-free: while on, the helper reports every utterance and the controller picks what to act on.
+const handsFree = new HandsFreeController({
+  listen: { start: () => actions.startListening(), stop: () => actions.stopListening() },
+  deliver: (segment, mode) => pipeline.deliver(segment, mode),
+  isCommand: (text) => engine.matchChain(applyDictionary(text, readDictionary())) !== null,
+  wakeWord: () => config.wakeWord,
+  sttReady: () => stt.readiness().ready,
+  holdBusy: () => dictation.isBusy(),
+  lastHoldAt: () => dictation.lastActiveAt(),
+  onError: (message) => dictation.showError(message),
+  onStatus: (handsFreeStatus) => status.update({ handsFree: handsFreeStatus }),
+  describeError,
+  log: (message) => console.info(message),
+});
+
 helper.onStatus((helperStatus) => {
   status.update({ helper: helperStatus });
   if (helperStatus.state === 'connected') {
@@ -263,6 +283,7 @@ helper.onStatus((helperStatus) => {
     sendHoldKey();
   } else permissions.reset();
   if (helperStatus.state !== 'connected') {
+    handsFree.reset(`helper ${helperStatus.state}`);
     stt.updateStatus(null);
     dictation.reset(`helper ${helperStatus.state}`);
     status.update({ stt: { state: 'unknown' }, fnListener: 'unknown' });
@@ -273,6 +294,9 @@ helper.onMessage((message) => {
   switch (message.type) {
     case 'hotkey':
       dictation.handleHotkey(message.phase);
+      break;
+    case 'heard':
+      void handsFree.handleHeard(message);
       break;
     case 'escape':
       pipeline.cancelPending();

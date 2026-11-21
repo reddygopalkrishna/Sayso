@@ -13,6 +13,13 @@ export type SttStatus =
 
 export type FnListenerStatus = 'unknown' | 'active' | 'unavailable';
 
+/** Hands-free listening: off, starting, listening, or stopped with a reason. */
+export type HandsFreeStatus =
+  | { state: 'off' }
+  | { state: 'starting' }
+  | { state: 'listening' }
+  | { state: 'error'; message: string };
+
 export type DictationState =
   | { phase: 'idle' }
   | { phase: 'listening'; mode: 'dictation' | 'command' }
@@ -65,6 +72,7 @@ export interface AppStatus {
   fnListener: FnListenerStatus;
   cleanup: CleanupStatus;
   dictation: DictationState;
+  handsFree: HandsFreeStatus;
   preview: PreviewStatus | null;
   permissions: PermissionsStatus;
   database: DatabaseStatus;
@@ -77,6 +85,7 @@ export const initialStatus: AppStatus = {
   fnListener: 'unknown',
   cleanup: { level: 'full', provider: null },
   dictation: { phase: 'idle' },
+  handsFree: { state: 'off' },
   preview: null,
   permissions: { microphone: 'unknown', accessibility: 'unknown' },
   database: { state: 'unknown' },

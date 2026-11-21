@@ -332,6 +332,7 @@ export type AppMessage = z.infer<typeof AppMessageSchema>;
 export type HelperMessage = z.infer<typeof HelperMessageSchema>;
 export type ReadyMessage = z.infer<typeof ReadySchema>;
 export type TranscriptMessage = z.infer<typeof TranscriptSchema>;
+export type HeardMessage = z.infer<typeof HeardSchema>;
 export type WordTiming = z.infer<typeof WordTimingSchema>;
 export type HotkeyMessage = z.infer<typeof HotkeySchema>;
 export type ContextMessage = z.infer<typeof ContextSchema>;

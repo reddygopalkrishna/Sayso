@@ -378,3 +378,32 @@ describe('DictationController: the "say yes" prompt', () => {
     }
   });
 });
+
+describe('DictationController: what hands-free needs to know', () => {
+  it('is busy only while a held-key utterance is in progress', async () => {
+    const { controller } = setup();
+    expect(controller.isBusy()).toBe(false);
+    controller.handleHotkey('down');
+    await flush();
+    expect(controller.isBusy()).toBe(true);
+  });
+
+  it('remembers when a hold was last in progress', async () => {
+    const { controller } = setup();
+    expect(controller.lastActiveAt()).toBe(0);
+    controller.handleHotkey('down');
+    await flush();
+    expect(controller.lastActiveAt()).toBeGreaterThan(0);
+  });
+
+  it('shows a hands-free error in the pill, but never over a hold in progress', async () => {
+    const { controller, states } = setup();
+    controller.showError('Could not do that.');
+    expect(states.at(-1)).toBe('error');
+    controller.handleHotkey('down');
+    await flush();
+    const before = states.length;
+    controller.showError('ignored');
+    expect(states.length).toBe(before);
+  });
+});

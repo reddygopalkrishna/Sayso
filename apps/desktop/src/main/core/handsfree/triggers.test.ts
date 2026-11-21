@@ -1,0 +1,97 @@
+import { commands } from '@sayso/command-grammar';
+import { describe, expect, it } from 'vitest';
+import { CommandEngine } from '../commands/CommandEngine.ts';
+import type { TranscriptSegment } from '../stt/types.ts';
+import { classifyHeard } from './triggers.ts';
+
+const engine = new CommandEngine(commands);
+const isCommand = (text: string): boolean => engine.matchChain(text) !== null;
+
+/** A segment with one word timing per word, 300 ms apart. */
+function heard(text: string): TranscriptSegment {
+  const words = text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w, i) => ({ text: w, startMs: i * 300, endMs: i * 300 + 250, p: 0.9 }));
+  return { text, words, audioMs: words.length * 300, sttMs: 200, model: 'm' };
+}
+
+const classify = (text: string, awake = false) =>
+  classifyHeard(heard(text), { wakeWord: 'sayso', awake, isCommand });
+
+describe('classifyHeard: "type …" is dictation', () => {
+  it.each([
+    ['type hello there', 'hello there'],
+    ['Type, can we move the call to 3pm?', 'can we move the call to 3pm?'],
+    ['TYPE: ok', 'ok'],
+  ])('%j → dictate %j', (text, rest) => {
+    const result = classify(text);
+    expect(result.intent?.kind).toBe('dictate');
+    expect(result.intent?.segment.text).toBe(rest);
+    expect(result.triggered).toBe(true);
+  });
+
+  it('drops the word "type" from the word timings too (the pause rule still works)', () => {
+    const result = classify('type see you soon send');
+    expect(result.intent?.segment.words.map((w) => w.text)).toEqual(['see', 'you', 'soon', 'send']);
+  });
+
+  it('"type" alone types nothing but wakes Sayso', () => {
+    expect(classify('Type.')).toEqual({ intent: null, triggered: true });
+  });
+});
+
+describe('classifyHeard: commands that need no wake word', () => {
+  it.each(['send it', 'Send it.', 'enter', 'new line', 'open Slack', 'Open github.com'])(
+    '%j is a command',
+    (text) => {
+      const result = classify(text);
+      expect(result.intent?.kind).toBe('command');
+      expect(result.intent?.segment.text).toBe(text);
+    },
+  );
+});
+
+describe('classifyHeard: other commands need the wake word, or Sayso awake', () => {
+  it.each(['new tab', 'go back', 'click Reply', 'scroll down'])(
+    '%j alone is ignored when asleep',
+    (text) => {
+      expect(classify(text)).toEqual({ intent: null, triggered: false });
+    },
+  );
+
+  it.each([
+    ['Sayso, new tab', 'new tab'],
+    ['sayso go back', 'go back'],
+    ['Sayso click Reply', 'click Reply'],
+  ])('%j → command %j', (text, rest) => {
+    const result = classify(text);
+    expect(result.intent?.kind).toBe('command');
+    expect(result.intent?.segment.text).toBe(rest);
+  });
+
+  it('works without the wake word while awake', () => {
+    expect(classify('new tab', true).intent?.kind).toBe('command');
+  });
+
+  it('the wake word with something that is not a command does nothing, but wakes', () => {
+    expect(classify('Sayso, what is the weather like')).toEqual({ intent: null, triggered: true });
+  });
+});
+
+describe('classifyHeard: conversation is never typed', () => {
+  it.each([
+    'I think we should send it tomorrow',
+    'can you open the window please',
+    'hello how are you',
+    'we need to type this up later',
+    '',
+    '   ',
+  ])('%j is ignored', (text) => {
+    expect(classify(text).intent).toBeNull();
+  });
+
+  it('awake does not turn conversation into a command', () => {
+    expect(classify('hello how are you', true).intent).toBeNull();
+  });
+});

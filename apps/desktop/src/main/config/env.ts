@@ -26,6 +26,8 @@ export interface AppConfig {
   style: Style;
   /** The key held to dictate: fn (default), rightOption, rightCommand or rightControl. */
   holdKey: HoldKeyName;
+  /** Hands-free: the word said before a command (one word, lowercase). */
+  wakeWord: string;
 }
 
 /**
@@ -49,6 +51,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_SKIP_AI',
     'SAYSO_STYLE',
     'SAYSO_HOLD_KEY',
+    'SAYSO_WAKE_WORD',
     'GROQ_API_KEY',
     'SAYSO_FAST_MODEL',
     'SAYSO_AI_PROVIDER',
@@ -73,6 +76,9 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,
     historyKeep: Number.isInteger(keep) && keep >= 0 && keep <= 1000 ? keep : 50,
     style: (merged['SAYSO_STYLE'] ?? '').trim().toLowerCase() === 'chill' ? 'chill' : 'default',
+    wakeWord: /^[a-z][a-z0-9]{1,29}$/.test((merged['SAYSO_WAKE_WORD'] ?? '').trim().toLowerCase())
+      ? (merged['SAYSO_WAKE_WORD'] ?? '').trim().toLowerCase()
+      : 'sayso',
     holdKey: HOLD_KEYS.find((key) => key === (merged['SAYSO_HOLD_KEY'] ?? '').trim()) ?? 'fn',
     skipAi: !['off', 'false', '0', 'no'].includes(
       (merged['SAYSO_SKIP_AI'] ?? '').trim().toLowerCase(),

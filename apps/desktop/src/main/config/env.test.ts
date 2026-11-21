@@ -25,6 +25,7 @@ describe('loadConfig', () => {
       historyKeep: 50,
       style: 'default',
       holdKey: 'fn',
+      wakeWord: 'sayso',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -49,6 +50,7 @@ describe('loadConfig', () => {
       historyKeep: 50,
       style: 'default',
       holdKey: 'fn',
+      wakeWord: 'sayso',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -159,5 +161,18 @@ describe('hold key in the config', () => {
     ['', 'fn'],
   ])('SAYSO_HOLD_KEY=%j → %s', (value, expected) => {
     expect(loadConfig(files(`SAYSO_HOLD_KEY=${value}`), {}).holdKey).toBe(expected);
+  });
+});
+
+describe('wake word in the config', () => {
+  it.each([
+    ['Kairo', 'kairo'],
+    ['vaani', 'vaani'],
+    ['', 'sayso'],
+    ['two words', 'sayso'],
+    ['x', 'sayso'],
+    ['9lives', 'sayso'],
+  ])('SAYSO_WAKE_WORD=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_WAKE_WORD=${value}`), {}).wakeWord).toBe(expected);
   });
 });
