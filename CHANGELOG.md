@@ -39,6 +39,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:23 · UI: Home as cards (`77c886a`)
+- **What:** Home is now a stack of cards: a big **Hands-free** card (green while it listens), a card showing the **key you hold** as a keycap and what holding it does, the **status as small chips** (a problem shows amber or red), the last thing typed or run, and a **"Things you can say"** sheet (Type; Open and move; Click and fill), each line something Sayso does today.
+- **Next in the UI:** the other screens (Activity, About me, Words, Settings) in the same card style.
+- Tests: 1,246 desktop tests pass; typecheck and lint clean.
+
 ### 15:22 · UI: a sidebar like Infina's (`38ba5d5`)
 - **What:** the top tabs are now a left sidebar: Sayso mark and name; Home, Activity, About me, Words, Settings with icons; the current one highlighted; and a small status at the bottom ("Listening" / "Hands-free off"). Every page has a title and a one-line subtitle, in a centred column.
 - **Next in the UI:** restyle Home (a big hands-free card, the hold key), then the other screens.
