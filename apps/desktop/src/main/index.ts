@@ -1,6 +1,6 @@
 import { join, resolve } from 'node:path';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
-import { IPC } from '../shared/status.ts';
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, shell, Tray } from 'electron';
+import { IPC, type AppStatus } from '../shared/status.ts';
 import { StatusHub } from './StatusHub.ts';
 import { loadConfig } from './config/env.ts';
 import { UtterancePipeline } from './core/UtterancePipeline.ts';
@@ -29,6 +29,7 @@ import type { UserSettings } from '../shared/settings.ts';
 import { createIpcHandlers, UserMessageError } from './ipcHandlers.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
 import { Overlay } from './windows/overlay.ts';
+import { buildTrayMenu, trayKey } from './windows/trayMenu.ts';
 
 // Logging must never crash the app. When the terminal that started a dev build closes, writes to
 // stdout/stderr fail with EIO/EPIPE; unhandled, that 'error' event becomes an uncaught exception
@@ -110,6 +111,8 @@ const actions = new HelperActions(helper);
 // The local database (history, dictionary, remembered choices). Opened in whenReady, once this
 // copy owns the app. If it cannot be opened, dictation still works without those features.
 let storage: Storage | null = null;
+/** Kept here so the menu-bar icon is not garbage-collected. */
+let tray: Tray | null = null;
 const warn = (what: string, error: unknown): void => console.warn(`[storage] ${what}`, error);
 
 const historyRecorder = new HistoryRecorder({
@@ -457,6 +460,33 @@ app.whenReady().then(async () => {
   // The chip sits just above the pill.
   const chipWindow = new Overlay({ view: 'chip', width: 300, height: 56, bottomOffset: 82 });
   status.onChange((current) => (current.preview ? chipWindow.show() : chipWindow.hide()));
+
+  // The menu-bar icon: status, the hands-free switch, Open and Quit. Rebuilt only when it changes.
+  const icon = nativeImage.createFromPath(join(app.getAppPath(), 'resources', 'trayTemplate.png'));
+  icon.setTemplateImage(true);
+  tray = new Tray(icon);
+  tray.setToolTip('Sayso');
+  let shownKey = '';
+  const refreshTray = (current: AppStatus): void => {
+    const key = trayKey(current);
+    if (!tray || key === shownKey) return;
+    shownKey = key;
+    tray.setContextMenu(
+      Menu.buildFromTemplate(
+        buildTrayMenu(current, {
+          setHandsFree: (on) => {
+            (on ? handsFree.enable() : handsFree.disable()).catch((error: unknown) =>
+              dictation.showError(error instanceof Error ? error.message : String(error)),
+            );
+          },
+          openWindow: showMainWindow,
+          quit: () => app.quit(),
+        }),
+      ),
+    );
+  };
+  refreshTray(status.current);
+  status.onChange(refreshTray);
 
   helper.start();
   showMainWindow();
