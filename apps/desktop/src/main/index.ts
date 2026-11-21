@@ -15,6 +15,13 @@ import { resolveHelperPath } from './helper/binaryPath.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
 import { PillWindow } from './windows/pillWindow.ts';
 
+// Logging must never crash the app. When the terminal that started a dev build closes, writes to
+// stdout/stderr fail with EIO/EPIPE; unhandled, that 'error' event becomes an uncaught exception
+// and Electron shows an error dialog on every log line.
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on('error', () => undefined);
+}
+
 // Keep settings, models and (later) the database under "Sayso", not the package name.
 app.setPath('userData', join(app.getPath('appData'), 'Sayso'));
 
