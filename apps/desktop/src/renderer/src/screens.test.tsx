@@ -8,6 +8,7 @@ import { Onboarding } from './Onboarding.tsx';
 import { HandsFreeCard } from './HandsFree.tsx';
 import { pillContent } from './Pill.tsx';
 import { AboutMeForm } from './AboutMe.tsx';
+import { SECTIONS, Sidebar } from './Sidebar.tsx';
 import { AppStyleList, SettingsForm } from './Settings.tsx';
 import { initialStatus } from '../../shared/status.ts';
 
@@ -558,5 +559,41 @@ describe('AboutMeForm', () => {
   it('shows Saved. or the problem', () => {
     expect(show({ saved: true })).toContain('Saved.');
     expect(show({ message: 'That has characters Sayso cannot type.' })).toContain('cannot type');
+  });
+});
+
+describe('Sidebar', () => {
+  const noop = () => undefined;
+  const show = (
+    current: (typeof SECTIONS)[number]['id'],
+    handsFree: 'off' | 'starting' | 'listening' | 'error',
+  ) => html(<Sidebar current={current} onSelect={noop} handsFree={handsFree} />);
+
+  it('lists every section as a vertical tab, with the app name', () => {
+    const out = show('home', 'off');
+    for (const section of SECTIONS) expect(out).toContain(`id="tab-${section.id}"`);
+    for (const text of ['Home', 'Activity', 'About me', 'Words', 'Settings', 'Sayso']) {
+      expect(out).toContain(text);
+    }
+    expect(out).toContain('aria-orientation="vertical"');
+  });
+
+  it('marks only the current section as selected', () => {
+    const out = show('settings', 'off');
+    expect(out.match(/aria-selected="true"/g)).toHaveLength(1);
+    expect(out).toMatch(/id="tab-settings"[^>]*aria-selected="true"/);
+  });
+
+  it('says in words whether hands-free is on', () => {
+    expect(show('home', 'off')).toContain('Hands-free off');
+    expect(show('home', 'listening')).toContain('Listening');
+    expect(show('home', 'error')).toContain('Hands-free stopped');
+  });
+
+  it('every section has a title and a one-line subtitle for its page', () => {
+    for (const section of SECTIONS) {
+      expect(section.title.length).toBeGreaterThan(0);
+      expect(section.subtitle.endsWith('.')).toBe(true);
+    }
   });
 });
