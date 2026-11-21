@@ -40,6 +40,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 12:32 · Style: Default or Chill, everywhere and per app (`2b2726e`)
+- **Style (Settings tab):** Default (capitals and full punctuation) or Chill (no capitals, almost no punctuation), with an example of each. A list under it shows the apps you have dictated into; each can follow the everywhere style or have its own.
+- **What Chill keeps:** your dictionary words keep their spelling, links and emails stay as written, numbered lists keep their numbers, line breaks stay. Snippets are never changed.
+- **Starting style:** `SAYSO_STYLE=chill` in `.env`. The Settings tab wins over it. Applies at once, without a restart.
+- **Database:** schema 6 (per-app styles). History records the text that was typed.
+- Tests: typecheck and lint clean; 979 desktop tests pass.
+- Not yet seen in the running app: restart `pnpm dev` first.
+
 ### 11:52 · Snippets and a Settings tab (`7ad6b32`)
 - **Snippets (Dictionary tab):** say a short trigger on its own ("calendly") and Sayso types the saved text exactly as written, with no AI. It also works as "calendly", pause, "send". A trigger inside a longer sentence is just dictation. Never typed into a password field. Up to 200 snippets; trigger up to 60 characters, text up to 2,000.
 - **Settings tab:** pause before "send", preview time, text cleanup level (off, light, full), skip the AI for short clean text, and history size. Changes apply at once, with no restart, and win over `.env`, which only gives the starting values. "Reset to defaults" goes back to the `.env` values. Out-of-range values are refused.
