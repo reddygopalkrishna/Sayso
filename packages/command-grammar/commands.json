@@ -109,6 +109,17 @@
       "blockedIn": []
     },
     {
+      "id": "new_chat",
+      "label": "New chat",
+      "phrases": ["new chat", "start a new chat", "start new chat", "open a new chat", "open new chat", "new conversation", "start a new conversation"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "contextual_new_chat"
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
       "id": "undo",
       "label": "Undo",
       "phrases": ["undo", "undo that", "undo this", "undo it"],

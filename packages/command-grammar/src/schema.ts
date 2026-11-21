@@ -10,6 +10,8 @@ export { KeySchema, ModifierSchema, type Key, type Modifier } from '@sayso/helpe
 export const CommandActionSchema = z.discriminatedUnion('type', [
   /** Enter in chat apps; the app's send shortcut in mail apps (per-app send strategy). */
   z.object({ type: z.literal('contextual_send') }).strict(),
+  /** Start a new chat in the app in front (⌘N in the ChatGPT and Claude apps, ⇧⌘O on their websites). */
+  z.object({ type: z.literal('contextual_new_chat') }).strict(),
   /** Scroll the view under the pointer by `amount` pixels. */
   z
     .object({

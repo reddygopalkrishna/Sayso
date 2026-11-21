@@ -77,6 +77,7 @@ const matrix: Array<[id: string, context: keyof typeof contexts, expected: Expec
 // The instant commands (command mode), written out per safety class so the PRD's table is the spec:
 // Safe runs at once, Normal shows the chip; every refusal applies to both; "cancel" always runs.
 const safeInstant = [
+  'new_chat',
   'next_field',
   'previous_field',
   'undo',

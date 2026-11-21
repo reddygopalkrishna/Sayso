@@ -589,6 +589,7 @@ export class UtterancePipeline {
     let effect: StepEffect = { type: 'other' };
     switch (action.type) {
       case 'contextual_send':
+      case 'contextual_new_chat':
       case 'keyPress': {
         const stroke = keyStrokeFor(action, target.bundleId);
         await actions.pressKey(stroke.key, stroke.modifiers);

@@ -15,16 +15,28 @@ const SEND_SHORTCUTS: Record<string, KeyStroke> = {
   'com.superhuman.electron': { key: 'enter', modifiers: ['cmd'] },
 };
 
+// A new chat: ⌘N in the desktop apps (checked in their File menus: "New Chat" in ChatGPT, "New
+// Session" in Claude). In a browser the sites use ⇧⌘O (chatgpt.com and claude.ai), so that is the
+// default; on other pages it only opens the browser's bookmark manager.
+const NEW_CHAT_SHORTCUTS: Record<string, KeyStroke> = {
+  'com.anthropic.claudefordesktop': { key: 'n', modifiers: ['cmd'] },
+  'com.openai.chat': { key: 'n', modifiers: ['cmd'] },
+  'com.openai.codex': { key: 'n', modifiers: ['cmd'] },
+};
+const NEW_CHAT_IN_BROWSER: KeyStroke = { key: 'o', modifiers: ['cmd', 'shift'] };
+
 const ENTER: KeyStroke = { key: 'enter', modifiers: [] };
 
 /** Turns a command action into the key stroke to press in the app that is in front. */
 export function keyStrokeFor(
-  action: Extract<CommandAction, { type: 'contextual_send' | 'keyPress' }>,
+  action: Extract<CommandAction, { type: 'contextual_send' | 'contextual_new_chat' | 'keyPress' }>,
   bundleId: string | null,
 ): KeyStroke {
   switch (action.type) {
     case 'contextual_send':
       return (bundleId && SEND_SHORTCUTS[bundleId]) || ENTER;
+    case 'contextual_new_chat':
+      return (bundleId && NEW_CHAT_SHORTCUTS[bundleId]) || NEW_CHAT_IN_BROWSER;
     case 'keyPress':
       return { key: action.key, modifiers: [...(action.modifiers ?? [])] };
   }

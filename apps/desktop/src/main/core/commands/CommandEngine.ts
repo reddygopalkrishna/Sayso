@@ -74,6 +74,8 @@ const MISHEARD: ReadonlyMap<string, string> = new Map([
   ['hit tender', 'hit enter'],
   ['hit ender', 'hit enter'],
   ['scrolla', 'scroll down'],
+  ['new chart', 'new chat'],
+  ['new check', 'new chat'],
 ]);
 
 /** Lowercase words only (letters and digits, single spaces), without politeness words. */

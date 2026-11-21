@@ -24,4 +24,13 @@ describe('keyStrokeFor', () => {
       modifiers: [],
     });
   });
+
+  it.each([
+    ['com.openai.codex', { key: 'n', modifiers: ['cmd'] }],
+    ['com.anthropic.claudefordesktop', { key: 'n', modifiers: ['cmd'] }],
+    ['com.google.Chrome', { key: 'o', modifiers: ['cmd', 'shift'] }],
+    [null, { key: 'o', modifiers: ['cmd', 'shift'] }],
+  ])('new chat in %s', (bundleId, stroke) => {
+    expect(keyStrokeFor({ type: 'contextual_new_chat' }, bundleId)).toEqual(stroke);
+  });
 });

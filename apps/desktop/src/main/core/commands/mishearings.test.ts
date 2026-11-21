@@ -12,6 +12,9 @@ describe('short commands Whisper mishears (seen live)', () => {
     ['He tender', 'enter'],
     ['Hit tender.', 'enter'],
     ['Scrolla', 'scroll_down'],
+    ['New chart?', 'new_chat'],
+    ['new chat', 'new_chat'],
+    ['Start a new chat.', 'new_chat'],
   ])('%j → %s', (heard, name) => {
     expect(engine.matchChain(heard)?.[0]?.command.id).toBe(name);
   });
