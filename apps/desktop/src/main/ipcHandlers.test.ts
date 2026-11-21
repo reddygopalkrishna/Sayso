@@ -11,6 +11,7 @@ const defaults: UserSettings = {
   skipAi: true,
   historyKeep: 50,
   style: 'default',
+  holdKey: 'fn',
 };
 const settings = {
   current: () => defaults,

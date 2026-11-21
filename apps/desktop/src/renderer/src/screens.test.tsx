@@ -227,6 +227,7 @@ describe('SettingsForm', () => {
     skipAi: true,
     historyKeep: 50,
     style: 'default',
+    holdKey: 'fn',
   } as const;
   const noop = () => undefined;
   const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
@@ -282,6 +283,7 @@ describe('Style in Settings', () => {
           skipAi: true,
           historyKeep: 50,
           style,
+          holdKey: 'fn',
         }}
         message={null}
         saved={false}
@@ -324,5 +326,40 @@ describe('Style in Settings', () => {
     expect(html(<AppStyleList everywhere="default" onChange={noop} apps={[]} />)).toContain(
       'No apps yet.',
     );
+  });
+});
+
+describe('Hold key in Settings', () => {
+  const noop = () => undefined;
+  const form = (holdKey: 'fn' | 'rightOption' | 'rightCommand' | 'rightControl') =>
+    html(
+      <SettingsForm
+        values={{
+          pauseMs: 600,
+          previewMs: 1000,
+          cleanupLevel: 'full',
+          skipAi: true,
+          historyKeep: 50,
+          style: 'default',
+          holdKey,
+        }}
+        message={null}
+        saved={false}
+        onChange={noop}
+        onSave={noop}
+        onReset={noop}
+      />,
+    );
+
+  it('offers Fn and the three right-hand keys, and explains why you would change it', () => {
+    const out = form('fn');
+    for (const text of ['Fn (globe key)', 'Right Option', 'Right Command', 'Right Control']) {
+      expect(out).toContain(text);
+    }
+    expect(out).toContain('another dictation app already uses Fn');
+  });
+
+  it('shows the chosen key as selected', () => {
+    expect(form('rightOption')).toContain('<option value="rightOption" selected="">');
   });
 });

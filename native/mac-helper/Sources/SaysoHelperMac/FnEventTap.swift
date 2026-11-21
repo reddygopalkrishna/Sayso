@@ -6,12 +6,13 @@ import SaysoHelperCore
 /// while the preview chip is showing. All other events pass through unchanged. Needs Accessibility
 /// permission; `install()` returns false without it.
 @MainActor
-public final class FnEventTap: EscapeCapturing {
+public final class FnEventTap: EscapeCapturing, HoldKeyConfiguring {
     private static let escapeKeyCode: Int64 = 53
 
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var tracker = FnTracker()
+    private var holdKey: HoldKey = .fn
     private let onPhase: (HotkeyPhase) -> Void
     private let onEscape: () -> Void
     private let maxCapture: Duration
@@ -54,6 +55,12 @@ public final class FnEventTap: EscapeCapturing {
         return true
     }
 
+    public func setHoldKey(_ key: HoldKey) {
+        guard key != holdKey else { return }
+        holdKey = key
+        tracker = FnTracker()
+    }
+
     public func setCapture(_ enabled: Bool) {
         captureGeneration += 1
         capturingEscape = enabled
@@ -68,13 +75,14 @@ public final class FnEventTap: EscapeCapturing {
     }
 
     /// Returns true when the event must be swallowed.
-    fileprivate func handle(type: CGEventType, fnDown: Bool, shiftDown: Bool, keyCode: Int64) -> Bool {
+    fileprivate func handle(type: CGEventType, flags: UInt64, shiftDown: Bool, keyCode: Int64) -> Bool {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return false
         case .flagsChanged:
-            for phase in tracker.flagsChanged(fnDown: fnDown, shiftDown: shiftDown) { onPhase(phase) }
+            let holdDown = holdKey.isDown(flags: flags)
+            for phase in tracker.flagsChanged(fnDown: holdDown, shiftDown: shiftDown) { onPhase(phase) }
             return false
         case .keyDown:
             if let phase = tracker.keyDown() { onPhase(phase) }
@@ -106,9 +114,9 @@ private func fnTapCallback(
     guard let refcon else { return Unmanaged.passUnretained(event) }
     // The tap's run loop source is on the main run loop, so this runs on the main thread.
     let owner = Unmanaged<FnEventTap>.fromOpaque(refcon).takeUnretainedValue()
-    let fnDown = event.flags.contains(.maskSecondaryFn)
+    let flags = event.flags.rawValue
     let shiftDown = event.flags.contains(.maskShift)
     let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-    let swallow = MainActor.assumeIsolated { owner.handle(type: type, fnDown: fnDown, shiftDown: shiftDown, keyCode: keyCode) }
+    let swallow = MainActor.assumeIsolated { owner.handle(type: type, flags: flags, shiftDown: shiftDown, keyCode: keyCode) }
     return swallow ? nil : Unmanaged.passUnretained(event)
 }

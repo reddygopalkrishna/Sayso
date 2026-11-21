@@ -74,8 +74,15 @@ const settingsNow = (): UserSettings => ({
   skipAi: config.skipAi,
   historyKeep: config.historyKeep,
   style: config.style,
+  holdKey: config.holdKey,
 });
 const startingSettings = settingsNow();
+// Tells the helper which key is held to dictate (on connect, after a restart, and on a change).
+const sendHoldKey = (): void => {
+  void actions
+    .setHoldKey(config.holdKey)
+    .catch((error: unknown) => warn('could not set the hold key', error));
+};
 const refreshCleanupStatus = (): void =>
   status.update({ cleanup: { level: config.cleanupLevel, provider: providerLabel } });
 
@@ -251,8 +258,10 @@ const dictation = new DictationController({
 
 helper.onStatus((helperStatus) => {
   status.update({ helper: helperStatus });
-  if (helperStatus.state === 'connected') void permissions.refresh();
-  else permissions.reset();
+  if (helperStatus.state === 'connected') {
+    void permissions.refresh();
+    sendHoldKey();
+  } else permissions.reset();
   if (helperStatus.state !== 'connected') {
     stt.updateStatus(null);
     dictation.reset(`helper ${helperStatus.state}`);
@@ -331,6 +340,7 @@ app.whenReady().then(async () => {
     status.update({ database: { state: 'ok' } });
     Object.assign(config, storage.settings.get());
     refreshCleanupStatus();
+    sendHoldKey();
   } catch (error) {
     console.error('[storage] could not open the local database', error);
     status.update({
@@ -347,6 +357,7 @@ app.whenReady().then(async () => {
         storage.settings.set(patch);
         Object.assign(config, patch);
         refreshCleanupStatus();
+        if (patch.holdKey) sendHoldKey();
         return settingsNow();
       },
       reset: () => {
@@ -354,6 +365,7 @@ app.whenReady().then(async () => {
         storage.settings.reset();
         Object.assign(config, startingSettings);
         refreshCleanupStatus();
+        sendHoldKey();
         return settingsNow();
       },
     },

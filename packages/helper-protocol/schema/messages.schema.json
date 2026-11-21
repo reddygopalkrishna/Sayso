@@ -278,6 +278,40 @@
             },
             "type": {
               "type": "string",
+              "const": "setHoldKey"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "key": {
+              "type": "string",
+              "enum": [
+                "fn",
+                "rightOption",
+                "rightCommand",
+                "rightControl"
+              ]
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "key"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
               "const": "scroll"
             },
             "id": {

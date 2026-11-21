@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { DEFAULT_FAST_MODEL } from '../core/cleanup/providers.ts';
 import type { CleanupLevel } from '../core/cleanup/types.ts';
-import type { Style } from '../../shared/settings.ts';
+import { HOLD_KEYS, type HoldKeyName, type Style } from '../../shared/settings.ts';
 
 export interface AppConfig {
   geminiApiKey: string | null;
@@ -24,6 +24,8 @@ export interface AppConfig {
   historyKeep: number;
   /** Default or chill: how dictated text looks, unless an app has its own style. */
   style: Style;
+  /** The key held to dictate: fn (default), rightOption, rightCommand or rightControl. */
+  holdKey: HoldKeyName;
 }
 
 /**
@@ -46,6 +48,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     'SAYSO_HISTORY_KEEP',
     'SAYSO_SKIP_AI',
     'SAYSO_STYLE',
+    'SAYSO_HOLD_KEY',
     'GROQ_API_KEY',
     'SAYSO_FAST_MODEL',
     'SAYSO_AI_PROVIDER',
@@ -70,6 +73,7 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,
     historyKeep: Number.isInteger(keep) && keep >= 0 && keep <= 1000 ? keep : 50,
     style: (merged['SAYSO_STYLE'] ?? '').trim().toLowerCase() === 'chill' ? 'chill' : 'default',
+    holdKey: HOLD_KEYS.find((key) => key === (merged['SAYSO_HOLD_KEY'] ?? '').trim()) ?? 'fn',
     skipAi: !['off', 'false', '0', 'no'].includes(
       (merged['SAYSO_SKIP_AI'] ?? '').trim().toLowerCase(),
     ),

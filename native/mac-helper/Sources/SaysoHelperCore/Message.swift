@@ -97,6 +97,7 @@ public enum AppMessage: Equatable, Sendable {
     case getContext(id: String)
     case keyPress(id: String, key: String, modifiers: [Modifier])
     case captureEscape(id: String, enabled: Bool)
+    case setHoldKey(id: String, key: HoldKey)
     case scroll(id: String, direction: ScrollDirection, amount: Int)
     case pressElement(id: String, label: String)
     case listApps(id: String)
@@ -145,6 +146,9 @@ public enum AppMessage: Equatable, Sendable {
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
+        case "setHoldKey":
+            struct H: Decodable { let key: HoldKey }
+            return .setHoldKey(id: try requestID(data), key: try field(H.self, data).key)
         case "keyPress":
             struct K: Decodable { let key: String; let modifiers: [Modifier] }
             let k = try field(K.self, data)

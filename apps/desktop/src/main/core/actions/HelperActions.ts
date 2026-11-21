@@ -1,3 +1,4 @@
+import type { HoldKeyName } from '../../../shared/settings.ts';
 import type { AppInfo, Key, Modifier } from '@sayso/helper-protocol';
 import type { HelperRequester } from '../../helper/HelperProcess.ts';
 
@@ -59,6 +60,11 @@ export class HelperActions implements TextInserter, KeyPresser, CommandActions {
   /** Swallow Escape (and report it) while the preview chip is showing. */
   async captureEscape(enabled: boolean): Promise<void> {
     await this.helper.request({ type: 'captureEscape', enabled }, { timeoutMs: 1_000 });
+  }
+
+  /** Change the key that is held to dictate (Fn, or a right-hand modifier key). */
+  async setHoldKey(key: HoldKeyName): Promise<void> {
+    await this.helper.request({ type: 'setHoldKey', key }, { timeoutMs: 1_000 });
   }
 
   async pressKey(key: Key, modifiers: readonly Modifier[]): Promise<void> {

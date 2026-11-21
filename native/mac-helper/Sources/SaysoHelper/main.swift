@@ -70,7 +70,8 @@ let (loop, fnTap) = MainActor.assumeIsolated {
         appControl: apps,
         scroller: ScrollPoster(),
         elementPresser: AXElementPresser(),
-        permissions: SystemPermissions()
+        permissions: SystemPermissions(),
+        holdKeys: fnTap
     )
     box.loop = loop
     return (loop, fnTap)

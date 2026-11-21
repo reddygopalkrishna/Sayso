@@ -9,6 +9,10 @@ export const SETTING_LIMITS = {
 
 export const CLEANUP_LEVELS = ['off', 'light', 'full'] as const;
 
+/** The key that is held to dictate. Fn is the default; the others are the right-hand modifier keys. */
+export const HOLD_KEYS = ['fn', 'rightOption', 'rightCommand', 'rightControl'] as const;
+export type HoldKeyName = (typeof HOLD_KEYS)[number];
+
 /** Default: capitals and full punctuation. Chill: no capitals and minimal punctuation. */
 export const STYLES = ['default', 'chill'] as const;
 export type Style = (typeof STYLES)[number];
@@ -27,6 +31,8 @@ export interface UserSettings {
   historyKeep: number;
   /** How dictated text looks everywhere, unless an app has its own style. */
   style: Style;
+  /** The key held to dictate (Shift with it gives commands). */
+  holdKey: HoldKeyName;
 }
 
 /** One or more settings to change. Anything else, or any value out of range, is rejected. */
@@ -37,6 +43,7 @@ export const SettingsPatchSchema = z
     cleanupLevel: z.enum(CLEANUP_LEVELS),
     skipAi: z.boolean(),
     style: z.enum(STYLES),
+    holdKey: z.enum(HOLD_KEYS),
     historyKeep: z
       .number()
       .int()

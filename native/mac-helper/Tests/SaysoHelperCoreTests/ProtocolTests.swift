@@ -24,10 +24,11 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 17)
+        #expect(names.count == 18)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
+        #expect(try AppMessage.decode(fixture("app.setHoldKey.json")) == .setHoldKey(id: "h-1", key: .rightOption))
         #expect(try AppMessage.decode(fixture("app.insertText.json")) == .insertText(id: "i-1", text: "Hello from Sayso"))
     }
 
@@ -63,6 +64,8 @@ func fixtureNames(prefix: String) throws -> [String] {
         ("{\"v\":1,\"type\":\"insertText\",\"id\":\"a\",\"text\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"recordStop\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"captureEscape\",\"id\":\"e\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"setHoldKey\",\"id\":\"h\",\"key\":\"capsLock\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"setHoldKey\",\"id\":\"h\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"requestPermission\",\"id\":\"r\",\"kind\":\"screen\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"down\",\"amount\":10}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"scroll\",\"id\":\"s\",\"direction\":\"left\",\"amount\":100}", ProtocolError.invalidJSON),
@@ -142,3 +145,29 @@ func fixtureNames(prefix: String) throws -> [String] {
         #expect(LabelMatch.score(query: query, text: text) == expected)
     }
 }
+
+@Suite struct HoldKeyDetection {
+    @Test func fnUsesTheSecondaryFnFlag() {
+        #expect(HoldKey.fn.isDown(flags: 0x0080_0000))
+        #expect(!HoldKey.fn.isDown(flags: 0))
+    }
+
+    @Test(arguments: [
+        (HoldKey.rightCommand, UInt64(0x10), UInt64(0x08)),
+        (HoldKey.rightOption, UInt64(0x40), UInt64(0x20)),
+        (HoldKey.rightControl, UInt64(0x2000), UInt64(0x01)),
+    ])
+    func rightKeysAreToldApartFromTheirLeftTwins(key: HoldKey, right: UInt64, left: UInt64) {
+        #expect(key.isDown(flags: right))
+        #expect(!key.isDown(flags: left))
+        #expect(!key.isDown(flags: 0))
+    }
+
+    @Test func otherModifiersDoNotCount() {
+        // Shift (0x02) is not a hold key; Fn held does not trigger the right-hand keys.
+        for key in [HoldKey.rightCommand, .rightOption, .rightControl] {
+            #expect(!key.isDown(flags: 0x0080_0000 | 0x02))
+        }
+    }
+}
+

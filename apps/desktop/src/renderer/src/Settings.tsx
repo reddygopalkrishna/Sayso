@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { AppStyle } from '../../shared/data.ts';
 import {
   CLEANUP_LEVELS,
+  HOLD_KEYS,
+  type HoldKeyName,
   SETTING_LIMITS,
   STYLES,
   type Style,
@@ -16,6 +18,13 @@ const LEVEL_TEXT: Record<UserSettings['cleanupLevel'], string> = {
   off: 'Off: type exactly what was heard',
   light: 'Light: fix capitals and punctuation on this Mac only',
   full: 'Full: also remove fillers and fix grammar with AI',
+};
+
+const HOLD_KEY_TEXT: Record<HoldKeyName, string> = {
+  fn: 'Fn (globe key)',
+  rightOption: 'Right Option ⌥',
+  rightCommand: 'Right Command ⌘',
+  rightControl: 'Right Control ⌃',
 };
 
 const STYLE_CARDS: Record<Style, { title: string; hint: string; example: string }> = {
@@ -101,6 +110,26 @@ export function SettingsForm({
           value={values.previewMs}
           onChange={(e) => onChange({ previewMs: Number(e.target.value) })}
         />
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium">Key to hold to dictate</span>
+        <span className="text-xs text-neutral-500">
+          Hold it while you speak. Add Shift for commands. Pick a different key if another dictation
+          app already uses Fn, otherwise both type everything you say.
+        </span>
+        <select
+          className={field}
+          aria-label="Key to hold to dictate"
+          value={values.holdKey}
+          onChange={(e) => onChange({ holdKey: e.target.value as HoldKeyName })}
+        >
+          {HOLD_KEYS.map((key) => (
+            <option key={key} value={key}>
+              {HOLD_KEY_TEXT[key]}
+            </option>
+          ))}
+        </select>
       </label>
 
       <fieldset className="flex flex-col gap-2 text-sm">

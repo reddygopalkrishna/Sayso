@@ -31,6 +31,7 @@ public final class MessageLoop {
     private let contextProvider: ContextProviding
     private let keyPresser: KeyPressing
     private let escapeCapture: EscapeCapturing
+    private let holdKeys: HoldKeyConfiguring?
     private let appControl: AppControlling
     private let scroller: Scrolling
     private let elementPresser: ElementPressing
@@ -49,6 +50,7 @@ public final class MessageLoop {
         scroller: Scrolling,
         elementPresser: ElementPressing,
         permissions: PermissionControlling,
+        holdKeys: HoldKeyConfiguring? = nil,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -58,6 +60,7 @@ public final class MessageLoop {
         self.contextProvider = contextProvider
         self.keyPresser = keyPresser
         self.escapeCapture = escapeCapture
+        self.holdKeys = holdKeys
         self.appControl = appControl
         self.scroller = scroller
         self.elementPresser = elementPresser
@@ -153,6 +156,10 @@ public final class MessageLoop {
             })
         case let .captureEscape(id, enabled):
             escapeCapture.setCapture(enabled)
+            send(.done(id: id))
+            return (.keepRunning, nil)
+        case let .setHoldKey(id, key):
+            holdKeys?.setHoldKey(key)
             send(.done(id: id))
             return (.keepRunning, nil)
         case let .keyPress(id, key, modifiers):

@@ -6,9 +6,15 @@
 export function hasCurrentApi(api: unknown): boolean {
   if (typeof api !== 'object' || api === null) return false;
   const a = api as Record<string, unknown>;
-  return ['history', 'dictionary', 'snippets', 'settings', 'appStyles', 'openChoices', 'permissions'].every(
-    (key) => typeof a[key] === 'object' && a[key] !== null,
-  );
+  return [
+    'history',
+    'dictionary',
+    'snippets',
+    'settings',
+    'appStyles',
+    'openChoices',
+    'permissions',
+  ].every((key) => typeof a[key] === 'object' && a[key] !== null);
 }
 
 /** Shown instead of the app when the window is newer than the program behind it. */

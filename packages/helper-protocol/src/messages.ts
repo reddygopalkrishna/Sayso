@@ -82,6 +82,17 @@ export const CaptureEscapeSchema = z
   .object({ v, type: z.literal('captureEscape'), id, enabled: z.boolean() })
   .strict();
 
+/** The keys that can be held to dictate. Fn is the default; the others sit on the right. */
+export const HoldKeySchema = z.enum(['fn', 'rightOption', 'rightCommand', 'rightControl']);
+
+/**
+ * Change the key that is held to dictate. Takes effect for the next hold. The `hotkey` events keep
+ * saying `fn`: they mean "the hold key". Answered with `done`.
+ */
+export const SetHoldKeySchema = z
+  .object({ v, type: z.literal('setHoldKey'), id, key: HoldKeySchema })
+  .strict();
+
 /** Scroll the view under the pointer by `amount` pixels. Answered with `done`. */
 export const ScrollSchema = z
   .object({
@@ -149,6 +160,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   GetContextSchema,
   KeyPressSchema,
   CaptureEscapeSchema,
+  SetHoldKeySchema,
   ScrollSchema,
   PressElementSchema,
   ListAppsSchema,

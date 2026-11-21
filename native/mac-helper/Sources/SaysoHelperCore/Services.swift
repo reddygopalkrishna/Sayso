@@ -84,6 +84,12 @@ public protocol EscapeCapturing: AnyObject {
 }
 
 @MainActor
+public protocol HoldKeyConfiguring: AnyObject {
+    /// Changes the key that is held to dictate. Takes effect for the next hold.
+    func setHoldKey(_ key: HoldKey)
+}
+
+@MainActor
 public protocol KeyPressing: AnyObject {
     /// Presses one key with modifiers in the frontmost app. Throws `ServiceError`
     /// (accessibility_denied) when synthetic input is not allowed.

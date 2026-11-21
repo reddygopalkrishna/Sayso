@@ -72,6 +72,8 @@ describe('decodeHelperLine rejects bad input', () => {
       '{"v":1,"type":"context","id":"a","bundleId":null,"appName":null,"focusRole":null}',
     ],
     ['captureEscape without enabled', '{"v":1,"type":"captureEscape","id":"a"}'],
+    ['setHoldKey with an unknown key', '{"v":1,"type":"setHoldKey","id":"a","key":"capsLock"}'],
+    ['setHoldKey without a key', '{"v":1,"type":"setHoldKey","id":"a"}'],
   ])('%s', (_label, line) => {
     const result = decodeHelperLine(line);
     expect(result.ok).toBe(false);

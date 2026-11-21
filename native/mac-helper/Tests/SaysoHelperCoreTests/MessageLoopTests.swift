@@ -118,6 +118,11 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakeHoldKeys: HoldKeyConfiguring {
+    private(set) var keys: [HoldKey] = []
+    func setHoldKey(_ key: HoldKey) { keys.append(key) }
+}
+
 @MainActor final class FakeEscape: EscapeCapturing {
     private(set) var states: [Bool] = []
     func setCapture(_ enabled: Bool) { states.append(enabled) }
@@ -131,6 +136,7 @@ struct Harness {
     let context = FakeContext()
     let keys = FakeKeys()
     let escape = FakeEscape()
+    let holdKeys = FakeHoldKeys()
     let apps = FakeApps()
     let scroller = FakeScroller()
     let presser = FakePresser()
@@ -142,7 +148,7 @@ struct Harness {
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
             contextProvider: context, keyPresser: keys, escapeCapture: escape,
             appControl: apps, scroller: scroller, elementPresser: presser, permissions: permissions,
-            osDescription: "macOS 14.0")
+            holdKeys: holdKeys, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -327,6 +333,20 @@ struct Harness {
         #expect(h.out.messages == [.done(id: "e-1"), .done(id: "e-2")])
         await h.send(#"{"v":1,"type":"shutdown"}"#)
         #expect(h.escape.states.last == false)
+    }
+
+    @Test func changesTheHoldKeyOnRequest() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"setHoldKey","id":"h-1","key":"rightOption"}"#)
+        await h.send(#"{"v":1,"type":"setHoldKey","id":"h-2","key":"fn"}"#)
+        #expect(h.holdKeys.keys == [.rightOption, .fn])
+        #expect(h.out.messages == [.done(id: "h-1"), .done(id: "h-2")])
+    }
+
+    @Test func refusesAnUnknownHoldKey() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"setHoldKey","id":"h-3","key":"capsLock"}"#)
+        #expect(h.holdKeys.keys.isEmpty)
     }
 
     @Test func reportsTheFocusedFieldInContext() async {

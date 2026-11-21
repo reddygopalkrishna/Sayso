@@ -24,6 +24,7 @@ describe('loadConfig', () => {
       previewMs: 1000,
       historyKeep: 50,
       style: 'default',
+      holdKey: 'fn',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -47,6 +48,7 @@ describe('loadConfig', () => {
       previewMs: 1000,
       historyKeep: 50,
       style: 'default',
+      holdKey: 'fn',
       skipAi: true,
       groqApiKey: null,
       fastModel: 'qwen/qwen3.8-27b',
@@ -143,5 +145,19 @@ describe('style in the config', () => {
     ['', 'default'],
   ])('SAYSO_STYLE=%j → %s', (value, expected) => {
     expect(loadConfig(files(`SAYSO_STYLE=${value}`), {}).style).toBe(expected);
+  });
+});
+
+describe('hold key in the config', () => {
+  it.each([
+    ['fn', 'fn'],
+    ['rightOption', 'rightOption'],
+    ['rightCommand', 'rightCommand'],
+    ['rightControl', 'rightControl'],
+    ['capsLock', 'fn'],
+    ['leftCommand', 'fn'],
+    ['', 'fn'],
+  ])('SAYSO_HOLD_KEY=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_HOLD_KEY=${value}`), {}).holdKey).toBe(expected);
   });
 });
