@@ -35,9 +35,15 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Non-QWERTY keyboards:** paste uses the ANSI V key code; other layouts are not handled yet.
 - **Streaming cleanup:** Gemini is called without streaming; fine for paste, but streaming could cut latency.
 - **Model load time:** the first load in a new helper process took 131 s (Neural Engine compile); later loads about 10 s. Show progress in the window.
-- **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
+- **Pill polish:** a waveform in the pill.
 
 ## 2026-11-21
+
+### 13:27 · Menu-bar icon (`ffea228`)
+- **What:** a microphone icon in the menu bar (follows light and dark menu bars). Its menu shows what Sayso is doing ("Speech model loading…", "Ready to dictate", "Hands-free is listening"…), a **Hands-free** on/off item (on only once Sayso is ready; off always works), **Open Sayso** and **Quit Sayso**.
+- **Why:** Sayso now feels like a Mac app: you can check it and switch hands-free without opening the window.
+- **Note for packaging:** the icon lives in `apps/desktop/resources/`; that folder must be included when the packaged app is set up (Phase 2).
+- Tests: 1,110 desktop tests pass (new: the menu's status line, items, hands-free switch rules and when it rebuilds); typecheck and lint clean. Not seen on screen yet: needs a restart.
 
 ### 13:25 · Choose the language you speak (`bdcf42b`)
 - **Settings → "Language you speak":** English (default), Telugu, Hindi, Tamil, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Urdu, Spanish, French, German, Portuguese, or "Detect it each time" (good for mixing languages, slightly less accurate). Changes apply at once, no restart.
