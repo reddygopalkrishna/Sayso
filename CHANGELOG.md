@@ -40,6 +40,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 02:25 · Typing mode shows in the pill (`1367155`)
+- **What:** while typing mode is on the pill reads "Typing mode · say “stop typing” to end" (the status now carries `typing`), and typing mode switches itself off on a timer after 3 quiet minutes, so the pill never goes stale.
+- **Tested:** unit tests (1,628 desktop); this commit's own files were also checked on their own against the last commit (typecheck and 135 tests). **Not seen on screen yet.**
+- **Note:** the working folder still holds uncommitted hands-free changes from another session (no wake word, the quieter pill). They are not part of this commit.
+
 ### 02:10 · Long dictation in hands-free: typing mode, and spaces between pieces (`3bb0248`)
 - **Why:** the founder could not tell a whole story into the Claude Code or Codex input box: hands-free types only after "type", and a pause of 0.65 s ends an utterance, so everything after the first pause was ignored.
 - **What:** say **"start typing"** (or "start dictation", "dictation mode") and every utterance is typed until you say **"stop typing"** (or "stop dictation", "done typing"); it also ends by itself after 3 quiet minutes or when hands-free is turned off. Dictated pieces told one after another in the same app (within 30 s) are now joined with a space (not before punctuation); a command such as send or new line starts the next piece clean. Messaging recipes and snippets are unchanged.
