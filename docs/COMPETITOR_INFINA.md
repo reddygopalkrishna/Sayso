@@ -187,3 +187,30 @@ These are now **table stakes**, because Infina already does them:
 | PRD V4 | Keep languages in V4: English must be stable end to end first |
 | TECHNICAL_ARCHITECTURE | On-device STT (WhisperKit/Parakeet) + on-device wake word; cloud LLM only for smart tasks |
 | Pricing | Free unlimited push-to-talk to match Infina |
+
+## 10. Findings from 15 Nov 2026 (recording, live app, a competitor reel)
+
+### Our screen recording of Infina in use (6.9 min, with audio, transcribed locally)
+- **Worked:** open Chrome; new tab; search GCP; open Google Cloud; open new chat (ChatGPT); type a question and send it; open Brave; open settings.
+- **Failed or unclear:** "click profile" and "click customize" (no visible change in Google Cloud); "click software update" (left the General page open); "close tab" and "close Brave" (Brave still open); "open GCP application" (nothing opened).
+- **Repeats are the clearest failure sign:** "go to search" said about six times in 70 s; "open new chart" about five times; "click on profile" three times; "click software update" four times. Each repeat means the first command gave no feedback.
+- **Likely cause for some misses:** Infina's own pages say only "type", "send it" and "open" work without the wake word. Other commands need the green logo. The logo was green at the start of our recording, but it naps after one minute of quiet.
+- **Infina's window never appears in our recording,** so its replies and errors are not visible there.
+
+### Infina app UI (v1.45.21, read on screen with its own pages)
+- **Home:** hands-free on/off switch with "Double-tap ⌘ to turn on or off"; links to Where it works, Adjust, Settings and All commands; open-apps helper card; hold-right-⌘ card. Hands-free words used: 36 of 2,000.
+- **Hands-free page:** "What to say" list; green-logo rule (awake; naps after 1 minute; wake word "Infina"); Infina Remote (experimental, off); Adjust: pause that ends a sentence (0.8 / 1 / 1.2 / 1.4 s), thinking pauses, **double-tap trackpad to type** (off), stays awake for follow-ups (30 s / 1 / 2 / 5 min); background noise: hold right ⌘ instead.
+- **Commands page:** three always-on commands (type, send it / enter, open Slack); green-logo commands (websites, new chat, open an app); a grid by category (websites, tabs, chats, windows…).
+- **Remote page:** "Reply", "Allow", "Rename", "Fix my resume" (first 2–3 words of a link), "open the second email", "Weekly team update", "can you open the second email" (natural phrasing).
+- **Settings → General:** hold key right ⌘ (Change button); hands-free double-tap ⌘; microphone choice; theme Dark / Light; Accessibility and Microphone permission rows.
+- **Settings → AI cleanup:** "Hold to speak" and "Hands-free" switches, each on; "adds about 0.2–0.25 seconds to a typical sentence".
+- **Words:** snippets (example: "calendly" → a full link; empty by default); dictionary (example: "Infina").
+- **Style:** Default (capitals and full punctuation) or Chill (no capitals, minimal punctuation), everywhere; per-app list (Slack, Gmail, Notes, ChatGPT, WhatsApp, Messages, Telegram and more), each with its own switch.
+- **Activity:** dictations and conversations grouped by day, with the app each went into.
+- **Insights:** words, time saved, streak, a heatmap, top apps, all-time totals (9 dictations, 39 commands, 4 apps).
+
+### A competitor reel: "magic cursor" (Instagram, 68 s, with audio and burned-in captions)
+- **What it is:** a personal AI helper that listens for an action, opens a website, fills form fields from what it knows about its owner, answers longer questions in a text box, and dictates into a social post.
+- **Demonstrated:** "Listening for an action…" overlay; open a personal site; autofill Name, Email and Website on a job application; write a multi-line answer into an "example of your exceptional ability" box; type a post into X.
+- **Not in the video:** comments (Instagram needed a login to show them; not captured).
+- **Relevance to Sayso:** not an Infina feature. It needs three things we do not have: a personal profile to fill from (we have only the dictionary of names), reading field contents on screen (we click by label but do not read fields), and an AI step to write answers. Treat it as a Phase 3 idea, and decide with the user before building.
