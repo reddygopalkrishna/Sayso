@@ -246,6 +246,20 @@ describe('HelperProcess', () => {
     await expect(result).resolves.toEqual(transcript);
   });
 
+  it('resolves getContext with the context reply', async () => {
+    const { helper, latest } = await connected();
+    const result = helper.request({ type: 'getContext' }, { id: 'c-1' });
+    const context: HelperMessage = {
+      v: 1,
+      type: 'context',
+      id: 'c-1',
+      bundleId: 'com.apple.Notes',
+      appName: 'Notes',
+    };
+    latest().emitMessage(context);
+    await expect(result).resolves.toEqual(context);
+  });
+
   it('rejects with the helper error code when the reply is an error', async () => {
     const { helper, latest } = await connected();
     const result = helper.request({ type: 'recordStart' }, { id: 'u-1' });

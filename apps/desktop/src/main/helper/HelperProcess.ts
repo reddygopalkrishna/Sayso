@@ -239,6 +239,7 @@ export class HelperProcess implements HelperRequester {
       case 'pong':
       case 'done':
       case 'transcript':
+      case 'context':
         this.settle(message.id, message);
         break;
       case 'error':
@@ -252,6 +253,11 @@ export class HelperProcess implements HelperRequester {
       case 'fnListener':
       case 'sttStatus':
         break;
+      default: {
+        // A new message type must be handled above (replies must settle their request).
+        const unhandled: never = message;
+        this.opts.logger.warn(`unhandled helper message ${JSON.stringify(unhandled)}`);
+      }
     }
     for (const listener of this.messageListeners) listener(message);
   }
