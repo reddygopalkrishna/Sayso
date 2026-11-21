@@ -33,7 +33,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
-### 12:49 · Phase 0 step 6: instant voice commands (hold Fn+Shift)
+### 12:49 · Phase 0 step 6: instant voice commands (hold Fn+Shift) (`0cc6831`)
 - **Command mode:** hold **Fn + Shift** and speak a command. Everything said in command mode is a command and is never typed; if it is not a command, the pill says what it heard. Plain Fn is still dictation (so "undo" said while dictating is just text). The pill shows "Command…" while you hold.
 - **Commands:** undo, redo, select all, copy, paste, delete that (the selection), new tab, close tab, scroll up / scroll down, cancel (also "never mind", "stop"), plus the earlier send / enter / new line, now also usable as a whole utterance. Natural wording works: "please undo", "copy that", "open a new tab".
 - **Click by label:** "click Submit", "press Save", "click on the Next button". The helper searches the front app's buttons, links and menu items by their visible name (Accessibility, AXPress) within 300 ms. It shows the preview chip first. Buttons that pay, buy, delete, remove, sign out, publish or post are refused (PRD asks "yes?" for those; no confirm dialog yet).
