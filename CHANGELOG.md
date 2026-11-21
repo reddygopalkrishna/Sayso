@@ -40,6 +40,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 03:40 · Stability checklist (`652e0b9`)
+- **What:** `docs/STABILITY_CHECK.md`: 35 rows (26 hands-free commands, 5 held-key checks, 4 things that must not happen), three tries each, the setup, and exactly what to send for a failure (row, words said, expected vs actual, the terminal lines, the app in front).
+- **Why:** to find and fix the exact failing lines before the code freeze, without adding features.
+- **Next:** once the demo rows pass three times, tag that commit as the demo build.
+
 ### 03:20 · Two more mishearings (`e556b36`)
 - **Why:** a live hands-free log: "Open faster result." and "Open first page." became web searches, and "Openclaw." (Open Claude) was ignored.
 - **What:** "faster result/link/item" is read as "first result/link/item"; "openclaw" and "open claw" as "open Claude". "Open first page." is left as it is (it can mean a page of a document).
