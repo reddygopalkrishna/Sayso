@@ -88,6 +88,7 @@ function setup({ contexts, chip = 'proceed', llm, dictionary }: Setup) {
     },
     endCommands,
     engine: new CommandEngine(commands),
+    settleMs: () => 0,
     dictionary: () => dictionary ?? [],
     resolver: {
       resolveOpen: async (t) => resolveOpen(t, installedApps),
@@ -228,6 +229,47 @@ describe('UtterancePipeline: the world changes while acting', () => {
 });
 
 /** Command mode (Fn+Shift): the whole utterance is a command; nothing is ever typed. */
+describe('UtterancePipeline: chained commands', () => {
+  const said = (text: string) => segment(text);
+
+  it('runs every step in order', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('undo, redo'), 'command');
+    expect(t.log).toEqual(['key cmd+z', 'key cmd+shift+z']);
+    expect(t.outcomes[0]?.command?.result).toBe('ran');
+  });
+
+  it('runs an app and then a key on it', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('open Slack, new tab'), 'command');
+    expect(t.log).toEqual(['openApp com.tinyspeck.slackmacgap', 'key cmd+t']);
+  });
+
+  it('stops at the first refused step: the later steps never run', async () => {
+    const t = setup({ contexts: [context('com.apple.Terminal')] });
+    const error = await t.pipeline
+      .deliver(said('copy that, close tab, paste'), 'command')
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(CommandRefused);
+    expect(t.log).toEqual(['key cmd+c']);
+  });
+
+  it('runs nothing when any part is not a command', async () => {
+    const t = setup({ contexts: [slack] });
+    const error = await t.pipeline
+      .deliver(said('undo, hello there'), 'command')
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(CommandNotUnderstood);
+    expect(t.log).toEqual([]);
+  });
+
+  it('a single command still runs exactly as before', async () => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said('undo'), 'command');
+    expect(t.log).toEqual(['key cmd+z']);
+  });
+});
+
 describe('UtterancePipeline: command mode', () => {
   const said = (text: string) => segment(text);
   const run = async (text: string, over: Partial<Setup> = {}) => {

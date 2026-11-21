@@ -1,6 +1,12 @@
 import { commands } from '@sayso/command-grammar';
 import { describe, expect, it } from 'vitest';
-import { CommandEngine, fillLabel, normalizeUtterance } from './CommandEngine.ts';
+import {
+  CommandEngine,
+  fillLabel,
+  MAX_CHAIN_STEPS,
+  normalizeUtterance,
+  splitChain,
+} from './CommandEngine.ts';
 
 const engine = new CommandEngine(commands);
 
@@ -138,5 +144,40 @@ describe('helpers', () => {
   it('fillLabel puts the argument into the chip label', () => {
     expect(fillLabel('Click “{label}”', { label: 'submit' })).toBe('Click “submit”');
     expect(fillLabel('Undo', {})).toBe('Undo');
+  });
+});
+
+describe('CommandEngine: chained commands', () => {
+  it.each([
+    ['open Chrome, new tab', ['open Chrome', 'new tab']],
+    ['undo then redo', ['undo', 'redo']],
+    ['copy that; paste', ['copy that', 'paste']],
+    ['select all and then copy that', ['select all', 'copy that']],
+    ['open Tom and Jerry', ['open Tom and Jerry']],
+  ])('splitChain(%j) → %j', (text, expected) => {
+    expect(splitChain(text)).toEqual(expected);
+  });
+
+  it.each([
+    ['open Chrome, new tab', 2],
+    ['undo, redo, select all', 3],
+    ['new tab', 1],
+  ])('%j becomes %i command(s)', (text, count) => {
+    expect(engine.matchChain(text)?.length).toBe(count);
+  });
+
+  it('keeps each step with its own command and argument', () => {
+    const steps = engine.matchChain('click Submit, scroll down');
+    expect(steps?.map((s) => s.command.id)).toEqual(['click', 'scroll_down']);
+    expect(steps?.[0]?.args).toEqual({ label: 'submit' });
+  });
+
+  it('is null when any step is not a command, so nothing runs', () => {
+    expect(engine.matchChain('undo, hello there how are you')).toBeNull();
+    expect(engine.matchChain('hello there, undo')).toBeNull();
+  });
+
+  it(`is null above ${MAX_CHAIN_STEPS} steps`, () => {
+    expect(engine.matchChain('undo, redo, copy that, paste, select all')).toBeNull();
   });
 });

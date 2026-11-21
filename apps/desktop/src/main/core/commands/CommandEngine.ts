@@ -106,6 +106,28 @@ export class CommandEngine {
     );
   }
 
+  /**
+   * A whole sentence as a list of commands: "open Chrome, new tab" → two steps. Returns null when
+   * the sentence is not exactly one command or a chain of known commands (so nothing runs).
+   */
+  matchChain(text: string): InstantMatch[] | null {
+    // An explicit joint (comma, "then") wins: "open Chrome, new tab" is two steps, not "open" a
+    // target called "Chrome new tab". Without a joint, or when a part is not a command, the
+    // whole sentence is tried as one command.
+    const parts = splitChain(text);
+    if (parts.length >= 2 && parts.length <= MAX_CHAIN_STEPS) {
+      const steps: InstantMatch[] = [];
+      for (const part of parts) {
+        const step = this.match(part);
+        if (!step) break;
+        steps.push(step);
+      }
+      if (steps.length === parts.length) return steps;
+    }
+    const single = this.match(text);
+    return single ? [single] : null;
+  }
+
   match(text: string): InstantMatch | null {
     const n = normalizeUtterance(text);
     if (n === '') return null;
@@ -157,6 +179,20 @@ export class CommandEngine {
       confidence,
     };
   }
+}
+
+/** Most commands one sentence may chain. More than this is refused, so nothing runs by accident. */
+export const MAX_CHAIN_STEPS = 4;
+
+/**
+ * Splits a sentence into steps at explicit joints only: a comma, a semicolon, "then" or "and
+ * then". A bare "and" is not a joint ("open Tom and Jerry" must stay one command).
+ */
+export function splitChain(text: string): string[] {
+  return text
+    .split(/\s*(?:[,;]|\b(?:and\s+)?then\b)\s*/i)
+    .map((part) => part.trim())
+    .filter((part) => part !== '');
 }
 
 /** Fills {label}, {target} or {app} in a command label ("Click “{label}”") from the matched args. */

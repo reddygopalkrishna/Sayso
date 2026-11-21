@@ -40,7 +40,13 @@ export interface UtterancePipelineOptions {
   /** Trailing end commands for the pause rule (dictation mode). */
   endCommands: readonly CommandSpec[];
   /** Whole-utterance command matching (command mode). */
-  engine: { match(text: string): InstantMatch | null };
+  engine: {
+    match(text: string): InstantMatch | null;
+    /** Several commands in one sentence ("open Chrome, new tab"). Falls back to `match`. */
+    matchChain?(text: string): InstantMatch[] | null;
+  };
+  /** Pause between chained steps, so the screen can update first. Default 300 ms. */
+  settleMs?: () => number;
   /** Your own words: "sounds like" entries also fix mis-heard words in spoken commands. */
   dictionary?: () => readonly DictionaryTerm[];
   resolver: {
@@ -133,12 +139,21 @@ export class UtterancePipeline {
   }
 
   private async deliverCommand(segment: TranscriptSegment, context: AppContext): Promise<void> {
-    const match = this.opts.engine.match(
-      applyDictionary(segment.text, this.opts.dictionary?.() ?? []),
-    );
+    const text = applyDictionary(segment.text, this.opts.dictionary?.() ?? []);
+    const steps = this.opts.engine.matchChain
+      ? this.opts.engine.matchChain(text)
+      : singleStep(this.opts.engine.match(text));
     // Command mode never types: an unrecognised utterance is reported, not inserted.
-    if (!match) throw new CommandNotUnderstood(segment.text);
-    const command = await this.runCommand(match, { failOnRefusal: true });
+    if (!steps) throw new CommandNotUnderstood(segment.text);
+
+    // Steps run in order, each after a short settle so the screen can catch up. A refusal or a
+    // failure throws and stops the chain; a cancel or a skip stops it without an error.
+    let command: CommandOutcome | null = null;
+    for (const [index, step] of steps.entries()) {
+      if (index > 0) await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
+      command = await this.runCommand(step, { failOnRefusal: true });
+      if (command.result !== 'ran') break;
+    }
     this.opts.onOutcome?.({
       mode: 'command',
       segment,
@@ -231,6 +246,10 @@ export class UtterancePipeline {
         return;
     }
   }
+}
+
+function singleStep(match: InstantMatch | null): InstantMatch[] | null {
+  return match ? [match] : null;
 }
 
 function requiredArg(args: Readonly<Record<string, string>>, name: string): string {
