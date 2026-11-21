@@ -4,6 +4,7 @@ public enum KeyMap {
         "enter": 36, "tab": 48, "space": 49, "delete": 51, "escape": 53, "forwardDelete": 117,
         "home": 115, "pageUp": 116, "end": 119, "pageDown": 121,
         "left": 123, "right": 124, "down": 125, "up": 126,
+        "leftBracket": 33, "rightBracket": 30,
     ]
     private static let characters: [Character: UInt16] = [
         "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7, "c": 8, "v": 9,

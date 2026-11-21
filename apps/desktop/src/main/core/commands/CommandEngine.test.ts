@@ -147,6 +147,25 @@ describe('helpers', () => {
   });
 });
 
+describe('CommandEngine: back and forward', () => {
+  it.each([
+    ['go back', 'go_back'],
+    ['Back page', 'go_back'],
+    ['go forward', 'go_forward'],
+    ['next page', 'go_forward'],
+  ])('%j is %s', (text, id) => {
+    expect(engine.match(text)?.command.id).toBe(id);
+  });
+
+  it.each(['go backwards and forget it', 'the back of the room', 'forward this email to Sam'])(
+    'near-miss %j is not a navigation command',
+    (text) => {
+      const id = engine.match(text)?.command.id ?? '';
+      expect(id.startsWith('go_')).toBe(false);
+    },
+  );
+});
+
 describe('CommandEngine: chained commands', () => {
   it.each([
     ['open Chrome, new tab', ['open Chrome', 'new tab']],

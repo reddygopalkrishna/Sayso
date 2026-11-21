@@ -177,6 +177,32 @@
       "blockedIn": []
     },
     {
+      "id": "go_back",
+      "label": "Back",
+      "phrases": ["go back", "back page", "previous page"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "leftBracket",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "go_forward",
+      "label": "Forward",
+      "phrases": ["go forward", "forward page", "next page"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "rightBracket",
+        "modifiers": ["cmd"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
       "id": "close_tab",
       "label": "Close tab",
       "phrases": ["close tab", "close this tab", "close the tab", "close current tab"],

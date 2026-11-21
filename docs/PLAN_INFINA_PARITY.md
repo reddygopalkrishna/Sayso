@@ -13,7 +13,7 @@ Written 15 Nov 2026. Source of the gaps: the Screen Recording of 15 Nov 11:49 (6
 ## Stages
 - **Stage A: measure.** Test matrix below. Each run records pass, wrong target, not found, or slow (over 1 s), plus the app name.
 - **Stage B: make single commands reliable.** Done: web accessibility on, focused window first, short not-found message in the pill, one retry on the first click in a new web app. Still to test by hand in Chrome.
-- **Stage C: Phase 1 features in order.** Status: step 1 (chained commands) built 15 Nov, not yet committed or tried live. Multi-command sentences with a check after each step (stop at first failure); press by name with a "yes?" check for risky buttons; position navigation ("third email", "go back"); hands-free with wake word; the WhatsApp recipe; system commands.
+- **Stage C: Phase 1 features in order.** Status: step 1 (chained commands) committed (bb883f9). Step 2 (go back / go forward, ⌘[ and ⌘]) built, not yet committed or tried live. Multi-command sentences with a check after each step (stop at first failure); press by name with a "yes?" check for risky buttons; position navigation ("third email", "go back"); hands-free with wake word; the WhatsApp recipe; system commands.
 - **Stage D: quick wins.** Snippets, per-app Default/Chill style, choice of hold key, Settings window.
 - **Stage E: demos** of real tasks for posting.
 

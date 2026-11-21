@@ -207,7 +207,9 @@
                     "home",
                     "end",
                     "pageUp",
-                    "pageDown"
+                    "pageDown",
+                    "leftBracket",
+                    "rightBracket"
                   ]
                 },
                 {

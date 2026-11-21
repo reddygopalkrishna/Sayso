@@ -114,7 +114,7 @@ func fixtureNames(prefix: String) throws -> [String] {
     /// Every key the protocol allows (KeySchema in messages.ts) must have a key code.
     @Test func coversEveryProtocolKey() {
         let named = ["enter", "tab", "escape", "space", "delete", "forwardDelete", "up", "down",
-                     "left", "right", "home", "end", "pageUp", "pageDown"]
+                     "left", "right", "home", "end", "pageUp", "pageDown", "leftBracket", "rightBracket"]
         let characters = (Array("abcdefghijklmnopqrstuvwxyz") + Array("0123456789")).map(String.init)
         for key in named + characters {
             #expect(KeyMap.code(for: key) != nil, "\(key)")

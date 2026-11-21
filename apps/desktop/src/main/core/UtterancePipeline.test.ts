@@ -286,6 +286,8 @@ describe('UtterancePipeline: command mode', () => {
     ['paste', ['key cmd+v']],
     ['new tab', ['key cmd+t']],
     ['scroll down', ['scroll down 600']],
+    ['go back', ['key cmd+leftBracket']],
+    ['go forward.', ['key cmd+rightBracket']],
     ['Scroll up.', ['scroll up 600']],
     ['cancel', []],
     ['never mind', []],

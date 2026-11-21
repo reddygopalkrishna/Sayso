@@ -57,6 +57,8 @@ export const KeySchema = z.union([
     'end',
     'pageUp',
     'pageDown',
+    'leftBracket',
+    'rightBracket',
   ]),
   z.string().regex(/^[a-z0-9]$/),
 ]);

@@ -83,6 +83,8 @@ const safeInstant = [
   'copy',
   'paste',
   'new_tab',
+  'go_back',
+  'go_forward',
   'scroll_up',
   'scroll_down',
   'open',
