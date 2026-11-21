@@ -182,4 +182,12 @@ private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
         #expect(finished)
         #expect(silenceMs <= 900, "ended \(silenceMs) ms after the speech")
     }
+
+    @Test func aSoftWordStartIsKept() {
+        // "type" begins with a soft t: the first 400 ms are below the speech threshold but belong to the word.
+        let soft = speech(ms: 400, amplitude: 0.015)
+        let out = segments(of: quiet(ms: 1_000) + soft + speech(ms: 1_000) + quiet(ms: 1_500))
+        #expect(out.count == 1)
+        #expect(ms(out[0]) >= 1_350, "segment is \(ms(out[0])) ms")
+    }
 }

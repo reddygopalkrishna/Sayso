@@ -19,13 +19,13 @@ public struct SpeechSegmenter: Sendable {
         /// A longer utterance is cut here and the rest becomes the next one.
         public var maxSegmentMs = 30_000
         /// Audio kept from just before speech was noticed, so the first word is not clipped.
-        public var preRollMs = 300
+        public var preRollMs = 500
         /// Silence kept after the last word.
         public var tailMs = 300
         /// How many recent frames the lowest level is taken over (50 frames is 1.5 s).
         public var minWindowFrames = 50
         /// Loud frames in a row before speech counts as started (ignores one-frame bumps).
-        public var startFrames = 3
+        public var startFrames = 2
 
         public init() {}
     }
