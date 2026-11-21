@@ -5,7 +5,7 @@ Each entry names the commit so you can see the exact code with `git show <commit
 
 ## In progress
 
-Nothing in progress. Phase 0 is feature complete; next is real daily use, then Phase 1 (see docs/STATUS.md).
+- **Stage B of docs/PLAN_INFINA_PARITY.md:** show "not found" in the pill, and one retry after a short wait on the first click in a new app. Then test "click Profile" in Google Cloud Console by hand.
 
 ## Pending (later)
 
@@ -38,6 +38,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-15
+
+### 13:03 · Click reliability for Chrome and Electron apps; the parity plan (`f0fc936`)
+- **Why clicks failed:** Chrome, ChatGPT, Claude, Slack and WhatsApp build their accessibility tree only when asked, so "click Profile" searched an almost empty tree. The helper now asks once per app, then searches the focused window before the whole app.
+- **Plan:** `docs/PLAN_INFINA_PARITY.md` lists the stages (measure, reliable single commands, Phase 1 features, quick wins, demos), a command test matrix for hand testing, and the open decisions.
+- Tests: helper 26 Swift tests pass. Live: "Search" pressed in the Claude app returned success; a label that does not exist returns "not found" in about 1 s. Not yet tested: a click in Chrome (Google Cloud "Profile") and the pill message.
+- Your running Sayso keeps the old helper until you restart it.
 
 ### 00:07 · Faster AI cleanup, step 2: Groq first, Gemini as the fallback (`9057315`)
 - **About 0.2–0.35 s instead of 1–2 s.** Add `GROQ_API_KEY` to `.env` and Sayso tries Groq (Qwen 3.8 27B, reasoning off) first. Live through the real code: 297, 213 and 350 ms for a correction, a numbered list and a long dictation, with your dictionary and the list formatting working as before.
