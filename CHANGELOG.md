@@ -39,6 +39,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:18 · Indian places, services and names out of the box (`9b09113`)
+- **What:** a built-in list of what speech-to-text most often gets wrong for Indian speakers: places (Hyderabad, Gachibowli, HITEC City, Visakhapatnam…), payments and banks (UPI, PhonePe, Paytm, Google Pay, NEFT, IFSC, HDFC…), government and identity (Aadhaar, DigiLocker, IRCTC, GST…), apps and companies (Zomato, Swiggy, Rapido, Flipkart, BigBasket, Equal AI…) and common first names, with the usual mishearings ("hydrabad", "phone pe", "aadhar", "i r c t c", "g s t").
+- **Care taken:** no mishearing is an ordinary English word, ordinary sentences are left alone, and your own dictionary still wins.
+- **Cheaper AI calls:** the cleanup AI is now sent only the names that were actually said, not the whole list (fits the Groq free tier).
+- **Hackathon:** the "Indian names and entities" part of the voice story.
+- Tests: 1,237 desktop tests pass; typecheck and lint clean.
+
 ### 15:16 · Fill this form by voice (`bfd3ee1`)
 - **What:** say "fill in my details" (or "fill in my email"). Sayso reads the names of the fields on screen, asks the AI which saved facts (About me) match which field, then puts the cursor in each field and types the fact. Up to eight fields per sentence.
 - **Privacy by design:** the AI is told only the names of the fields and which facts are saved (name, email, phone…), and answers with fact **names**; it never sees or writes a value. Your details are not sent anywhere. A plan that names an unknown fact, or gives a value instead of a name, is dropped whole.
