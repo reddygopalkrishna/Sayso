@@ -37,6 +37,15 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Model load time:** the first load in a new helper process took 131 s (Neural Engine compile); later loads about 10 s. Show progress in the window.
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
+## 2026-11-16
+
+### 19:17 · Risky buttons ask "yes?" first (`9f08c8b`)
+- **What:** "click Delete" (and other risky labels such as Pay, Sign out, Publish) no longer gets refused. The pill shows "Say “yes” to press …" for 8 seconds. Only "yes" (or "yes do it", "yes go ahead", "yes click it", "confirm") within that time presses the button, and only if the same app is still in front.
+- **Cancelling:** Esc, any other command, or the timeout drops the wait. A late "yes" does nothing.
+- **Still refused:** risky buttons in meeting apps, password fields and blocked apps.
+- **Limits:** Esc works only while the helper is capturing it (a few seconds). History records a waiting action as "awaiting". Not yet tried live.
+- Tests: typecheck and lint clean; 881 desktop tests, grammar and helper tests pass.
+
 ## 2026-11-15
 
 ### 14:35 · Go back and go forward by voice (`b497890`)
