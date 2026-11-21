@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sayso: say it, Sayso does it</title>
+    <meta
+      name="description"
+      content="Voice dictation and voice actions for the Mac. Hold a key and speak: Sayso types clean text, opens apps and sites, clicks buttons by name and fills in forms. Speech runs on your Mac."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="#top" aria-label="Sayso home"
+        ><span class="mark" aria-hidden="true"></span>Sayso</a
+      >
+      <nav aria-label="Sections">
+        <a href="#does">What it does</a>
+        <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <p class="eyebrow">Voice for the Mac, early prototype</p>
+        <h1>Say it. Sayso does it.</h1>
+        <p class="lead">
+          Hold a key and speak: Sayso types clean text. Say a command: it opens apps and sites,
+          clicks buttons by name, opens “the first result” and fills in forms from your saved
+          details. No keyboard, no mouse.
+        </p>
+        <p class="note">Not available to download yet. Today it runs from source on a Mac.</p>
+
+        <figure class="demo-card" aria-label="An example of what you say and what happens">
+          <figcaption>Example: what you say, and what Sayso does</figcaption>
+          <p class="said">“Open Chrome, new tab, type AWS console.”</p>
+          <ol class="steps">
+            <li><span>1</span>Opens Chrome and waits until it is in front</li>
+            <li><span>2</span>Opens a new tab</li>
+            <li><span>3</span>Types “AWS console”</li>
+          </ol>
+          <p class="said">“Send it.” then “Open the first result.”</p>
+        </figure>
+      </section>
+
+      <section id="does" class="block">
+        <h2>What it does today</h2>
+        <p class="sub">
+          Each card says how far it has been tested, and what is still being tested is listed
+          underneath. Nothing here is a promise about accuracy: that has not been measured on real
+          recordings yet.
+        </p>
+        <div class="grid">
+          <article class="card">
+            <h3>Type</h3>
+            <p>
+              Hold a key (Fn, or Right Option, Command or Control), speak, let go: clean text
+              appears in the field you are in, in any app. Fillers like “um” are removed, lists and
+              web addresses are formatted, and you can pick a Default or a Chill style.
+            </p>
+            <p class="tag">Tried by hand.</p>
+          </article>
+          <article class="card">
+            <h3>Act</h3>
+            <p>
+              “Open Slack”, “new tab”, “close tab”, “go back”, “scroll down”, “click Sign in”, “open
+              the first result”. Say “send” after a short pause and it presses Enter.
+            </p>
+            <p class="tag">Tried by hand.</p>
+          </article>
+          <article class="card">
+            <h3>Say it your own way</h3>
+            <p>
+              When what you say is not an exact command (“log me in”, “open a fresh tab and search
+              for AWS”), Sayso reads the names of the buttons on screen and works out the steps. It
+              still asks before anything risky.
+            </p>
+            <p class="tag">
+              Tried against the live AI on sample sentences; not measured on real voice yet.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Fill in forms</h3>
+            <p>
+              Save your name, email and phone once in <em>About me</em>. Say “fill in my details”
+              and Sayso puts each one in the right field. The AI only picks which fact goes where;
+              it never sees the values.
+            </p>
+            <p class="tag">Tried on a real web form through the app’s helper; not yet by voice.</p>
+          </article>
+          <article class="card">
+            <h3>Indian names and places</h3>
+            <p>
+              Built-in spellings for what speech recognition gets wrong: Hyderabad, Aadhaar, UPI,
+              PhonePe, Zomato and common first names, plus your own word list.
+            </p>
+            <p class="tag">Tested in code; real speech not measured yet.</p>
+          </article>
+          <article class="card">
+            <h3>Safe by default</h3>
+            <p>
+              A preview shows before an action runs, and Esc cancels it. Risky buttons (pay, delete)
+              ask “yes?” first. Sayso never types into password fields and does nothing while a
+              meeting app is in front.
+            </p>
+            <p class="tag">
+              The preview and the password-field check were tried by hand; “yes?” is tested in code.
+            </p>
+          </article>
+        </div>
+
+        <div class="callout">
+          <h3>Still being tested</h3>
+          <p>
+            Hands-free mode (it keeps listening and acts on “type …”, “send it”, “open …”, and on
+            any command after the wake word “Sayso”) and messaging in Slack and WhatsApp are built
+            and tested in code, but not yet confirmed end to end by a person speaking. Dictating in
+            Telugu and other languages can be switched on in Settings, but has not been tried yet.
+          </p>
+        </div>
+      </section>
+
+      <section class="block demo-video" aria-label="Demo video">
+        <h2>See it work</h2>
+        <div class="video-placeholder" role="img" aria-label="Demo video placeholder">
+          <p>Demo video coming soon</p>
+          <small>A 90-second spoken-only run: Chrome, a search, a form, no keyboard.</small>
+        </div>
+      </section>
+
+      <section id="how" class="block">
+        <h2>How it works</h2>
+        <ol class="flow">
+          <li>
+            <h3>Hear</h3>
+            <p>
+              Speech is turned into text <strong>on your Mac</strong> with a Whisper model. Audio
+              does not leave the computer.
+            </p>
+          </li>
+          <li>
+            <h3>Decide</h3>
+            <p>
+              Exact commands are matched instantly, with no AI. Anything else is typed as text, or,
+              if you allow it, sent to an AI to work out the steps.
+            </p>
+          </li>
+          <li>
+            <h3>Check</h3>
+            <p>
+              Every action goes through the same safety checks: a preview, “yes?” for risky buttons,
+              and no password fields or meeting apps.
+            </p>
+          </li>
+          <li>
+            <h3>Do</h3>
+            <p>
+              A small helper presses keys, clicks buttons and types text through macOS
+              accessibility, so it works in the apps you already use.
+            </p>
+          </li>
+        </ol>
+        <p class="fine">English is the focus today. Telugu and Hindi are next.</p>
+      </section>
+
+      <section id="privacy" class="block">
+        <h2>Privacy</h2>
+        <ul class="plain">
+          <li>
+            <strong>Your voice stays on your Mac.</strong> Speech recognition runs on the device.
+          </li>
+          <li>
+            <strong>Text goes to an AI only when it helps.</strong> Short, clean text is fixed
+            locally. Longer text is tidied by an AI service, sending only the text and the names you
+            have added to your word list.
+          </li>
+          <li>
+            <strong>Your own words feature is optional.</strong> It sends what you said, the app’s
+            name and the names of buttons and links on screen. Never page text or what you typed,
+            and never from a password field or a meeting app. You can turn it off in Settings.
+          </li>
+          <li>
+            <strong>Your details stay here.</strong> About me values are never sent anywhere, not
+            even to the AI.
+          </li>
+          <li>
+            <strong>You control history.</strong> It is stored on your Mac, and you choose how many
+            items to keep (or none).
+          </li>
+        </ul>
+      </section>
+
+      <section id="pricing" class="block">
+        <h2>Pricing</h2>
+        <p class="badge">Planned pricing. There is no billing yet and nothing to buy.</p>
+        <div class="plans">
+          <article class="plan">
+            <h3>Free</h3>
+            <p class="price">₹0</p>
+            <ul>
+              <li>Dictation and voice commands</li>
+              <li>Speech on your Mac</li>
+              <li>A monthly word limit (to be decided)</li>
+            </ul>
+          </article>
+          <article class="plan featured">
+            <h3>Pro</h3>
+            <p class="price">₹399<small> / month</small></p>
+            <p class="alt">or $99 / year</p>
+            <ul>
+              <li>No word limit</li>
+              <li>Say it your own way, fill forms, messaging</li>
+              <li>Your word list and snippets</li>
+            </ul>
+          </article>
+          <article class="plan">
+            <h3>Teams</h3>
+            <p class="price">Next</p>
+            <ul>
+              <li>Shared word lists and snippets</li>
+              <li>Details to come</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Sayso is an early prototype for macOS. English today, Telugu and Hindi next.</p>
+    </footer>
+  </body>
+</html>
