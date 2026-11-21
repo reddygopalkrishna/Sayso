@@ -24,7 +24,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
-### 09:53 · Phase 0 step 4: say "send" after a pause to send
+### 09:53 · Phase 0 step 4: say "send" after a pause to send (`60e87a4`)
 - Say your message, pause, then say **"send"** (or "send it"): the text is typed, then the message is sent. Also **"enter"** / "press enter" and **"new line"** (Shift+Enter, a line break that does not send).
 - It only counts as a command when it is the last thing you say, after a pause of at least 600 ms. "Send me a flower" and "reply send" (no pause) stay text. Saying just "send" on its own presses send.
 - Send is Enter in chat apps (Slack, WhatsApp, Claude…), ⌘⇧D in Apple Mail and ⌘⏎ in Outlook/Spark/Superhuman.
