@@ -105,6 +105,7 @@ public enum AppMessage: Equatable, Sendable {
     case scroll(id: String, direction: ScrollDirection, amount: Int)
     case pressElement(id: String, label: String)
     case pressPosition(id: String, kind: PositionKind, index: Int)
+    case focusField(id: String, label: String)
     case listApps(id: String)
     case openApp(id: String, bundleId: String)
     case activateApp(id: String, bundleId: String)
@@ -151,6 +152,11 @@ public enum AppMessage: Equatable, Sendable {
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
+        case "focusField":
+            struct F: Decodable { let label: String }
+            let label = try field(F.self, data).label
+            guard !label.isEmpty, label.count <= 200 else { throw ProtocolError.invalidJSON }
+            return .focusField(id: try requestID(data), label: label)
         case "pressPosition":
             struct P: Decodable { let kind: PositionKind; let index: Int }
             let p = try field(P.self, data)

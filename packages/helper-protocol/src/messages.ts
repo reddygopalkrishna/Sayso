@@ -119,6 +119,14 @@ export const SetHoldKeySchema = z
   .strict();
 
 /**
+ * Put the cursor in the text field called `label` in the front window (by clicking into it), so
+ * the next paste goes there. Never a password field. Answered with `done`, or `element_not_found`.
+ */
+export const FocusFieldSchema = z
+  .object({ v, type: z.literal('focusField'), id, label: z.string().min(1).max(200) })
+  .strict();
+
+/**
  * Read what the front window shows that could be named: buttons, links, menu items and fields,
  * top to bottom. Names only, never the text typed in a field. Answered with `elements`.
  */
@@ -219,6 +227,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   PressElementSchema,
   PressPositionSchema,
   ListElementsSchema,
+  FocusFieldSchema,
   ListAppsSchema,
   OpenAppSchema,
   ActivateAppSchema,

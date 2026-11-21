@@ -1,6 +1,12 @@
 import type { ScreenItem } from '@sayso/helper-protocol';
+import { PROFILE_FIELDS, type ProfileKey } from '../../../shared/profile.ts';
 import { ALLOWED_COMMAND_IDS, argumentOf } from './plan.ts';
 import { commands } from '@sayso/command-grammar';
+
+/** What each fact is, in words, so the AI can match "Mobile" to "phone". */
+export const PROFILE_HINTS: Readonly<Record<ProfileKey, string>> = Object.fromEntries(
+  PROFILE_FIELDS.map((f) => [f.key, f.label]),
+) as Record<ProfileKey, string>;
 
 export interface InterpretRequest {
   /** What the person said. */
@@ -9,6 +15,8 @@ export interface InterpretRequest {
   appName: string | null;
   /** What its window shows, by name. */
   screen: readonly ScreenItem[];
+  /** Which facts about the person are saved: the names only, never the values. */
+  profileKeys?: readonly ProfileKey[];
 }
 
 /** Browser tab names are noise (and private); they are dropped before anything is sent. */
@@ -37,13 +45,14 @@ export function buildSystemPrompt(): string {
     'You turn what a person said to their computer into a short list of steps. You only choose from the commands below. You do not answer questions or chat.',
     '',
     'Reply with JSON only, in exactly this shape:',
-    '{"steps":[{"command":"<id>","arg":"<argument>"},{"type":"<text to type>"}]}',
+    '{"steps":[{"command":"<id>","arg":"<argument>"},{"type":"<text to type>"},{"fill":"<field name>","from":"<fact>"}]}',
     '',
     'Commands:',
     describeCommands(),
     '',
     'Rules:',
     '- Use {"type": "..."} for words the person wants typed (after "type", "write", "search for").',
+    '- To fill a form field with a saved fact about the person, use {"fill":"<EXACT field name from the screen list, a field>","from":"<fact name from the list below>"}. Fill only fields that clearly match a saved fact; skip the rest. You only ever name a fact: you never see or write its value.',
     '- To click or press something on screen, use "click" with arg set to the EXACT name from the screen list. If nothing on the screen matches, do not guess: reply {"steps":[]}.',
     '- "open" is for apps and websites by name. "open_position" is for the Nth item ("third email", "first result"), arg like "third email".',
     '- At most 4 steps. Steps run in order. Put the safest reading first.',
@@ -60,6 +69,8 @@ export function buildUserPrompt(request: InterpretRequest): string {
     `App in front: ${request.appName ?? 'unknown'}`,
     'On screen (names only):',
     lines.length > 0 ? lines.join('\n') : '(nothing readable)',
+    '',
+    `Saved facts you may fill from: ${(request.profileKeys ?? []).join(', ') || '(none)'}`,
     '',
     `The person said: <said>${request.utterance.replace(/[<>]/g, ' ').trim()}</said>`,
   ].join('\n');

@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { ALLOWED_COMMAND_IDS, extractJson, MAX_PLAN_STEPS, toPlan } from './plan.ts';
 
 const idsOf = (plan: ReturnType<typeof toPlan>) =>
-  plan?.steps.map((s) => (s.kind === 'command' ? s.match.command.id : `type:${s.text}`));
+  plan?.steps.map((s) =>
+    s.kind === 'command'
+      ? s.match.command.id
+      : s.kind === 'fill'
+        ? `fill:${s.label}=${s.key}`
+        : `type:${s.text}`,
+  );
 
 describe('toPlan', () => {
   it('turns steps into commands with their argument', () => {
@@ -23,6 +29,34 @@ describe('toPlan', () => {
       'type:AWS console',
       'enter',
     ]);
+  });
+
+  it('takes a fill step: a field name and the NAME of a saved fact', () => {
+    expect(
+      idsOf(
+        toPlan({
+          steps: [
+            { fill: 'Mobile', from: 'phone' },
+            { fill: 'Email', from: 'email' },
+          ],
+        }),
+      ),
+    ).toEqual(['fill:Mobile=phone', 'fill:Email=email']);
+  });
+
+  it.each([
+    ['an unknown fact', { steps: [{ fill: 'Passport', from: 'passport' }] }],
+    ['a value instead of a fact name', { steps: [{ fill: 'Email', from: 'keshav@example.com' }] }],
+    ['no field name', { steps: [{ fill: '', from: 'email' }] }],
+    ['no fact', { steps: [{ fill: 'Email' }] }],
+  ])('rejects a fill step with %s', (_label, raw) => {
+    expect(toPlan(raw)).toBeNull();
+  });
+
+  it('allows up to eight steps (a form), not nine', () => {
+    const fill = { fill: 'Name', from: 'name' };
+    expect(toPlan({ steps: Array.from({ length: 8 }, () => fill) })?.steps).toHaveLength(8);
+    expect(toPlan({ steps: Array.from({ length: 9 }, () => fill) })).toBeNull();
   });
 
   it('accepts a position for open_position', () => {

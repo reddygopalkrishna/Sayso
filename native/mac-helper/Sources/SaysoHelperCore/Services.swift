@@ -83,6 +83,10 @@ public protocol ElementPressing: AnyObject {
     /// Opens or clicks the Nth item of a kind in the front window, counted from the top (-1: the
     /// last). Throws `ServiceError` (element_not_found / accessibility_denied).
     func pressPosition(kind: PositionKind, index: Int) async throws
+    /// Puts the cursor in the text field called `label` in the front window (so the next paste
+    /// goes there). Never a password field. Throws `ServiceError` (element_not_found /
+    /// accessibility_denied).
+    func focusField(label: String) async throws
 }
 
 @MainActor

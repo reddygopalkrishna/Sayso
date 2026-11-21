@@ -170,6 +170,12 @@ public final class MessageLoop {
                     try await self.elementPresser.press(label: label)
                 }
             })
+        case let .focusField(id, label):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.elementNotFound) {
+                    try await self.elementPresser.focusField(label: label)
+                }
+            })
         case let .pressPosition(id, kind, index):
             return (.keepRunning, Task {
                 await self.perform(id, fallbackCode: HelperErrorCode.elementNotFound) {

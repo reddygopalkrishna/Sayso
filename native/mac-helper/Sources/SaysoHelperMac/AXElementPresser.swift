@@ -122,6 +122,11 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
 
     private static let fieldRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField"]
 
+    /// A password field is a text field with this subrole: never listed, never focused by Sayso.
+    private static func isSecure(_ element: AXUIElement) -> Bool {
+        string(element, kAXSubroleAttribute) == "AXSecureTextField"
+    }
+
     private static func friendlyRole(_ role: String) -> String {
         switch role {
         case "AXLink": "link"
@@ -157,6 +162,7 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
             head += 1
             let role = Self.string(element, kAXRoleAttribute) ?? ""
             if Self.pressableRoles.contains(role) || Self.fieldRoles.contains(role),
+               !Self.isSecure(element),
                let item = Self.frame(element), Self.visible(item, in: bounds)
             {
                 var label = Self.string(element, kAXTitleAttribute) ?? Self.string(element, kAXDescriptionAttribute) ?? ""
@@ -174,6 +180,50 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
             queue.append(contentsOf: Self.children(element))
         }
         return ScreenElements.clean(raw)
+    }
+
+    /// "Fill in my email": puts the cursor in the text field called `label`, by clicking into it.
+    /// The field is found by its label, title or placeholder (best match first, top to bottom).
+    /// A password field is never chosen. Bounded like every search here.
+    public func focusField(label: String) async throws {
+        guard AXIsProcessTrusted() else {
+            throw ServiceError(
+                code: HelperErrorCode.accessibilityDenied,
+                message: "Accessibility access is off, so Sayso cannot fill fields.")
+        }
+        let missing = ServiceError(code: HelperErrorCode.elementNotFound, message: "Couldn't find a field called “\(label)”.")
+        guard let app = NSWorkspace.shared.frontmostApplication else { throw missing }
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(root, 0.2)
+        enableWebAccessibility(app.processIdentifier, root: root)
+        let window = Self.element(root, kAXFocusedWindowAttribute) ?? root
+        let bounds = Self.frame(window)
+
+        let started = ContinuousClock.now
+        var best: (score: Int, y: Double, element: AXUIElement, item: ScreenItem)?
+        var queue: [AXUIElement] = [window]
+        var head = 0
+        while head < queue.count, head < 6_000, ContinuousClock.now - started < .milliseconds(500) {
+            let element = queue[head]
+            head += 1
+            let role = Self.string(element, kAXRoleAttribute) ?? ""
+            if Self.fieldRoles.contains(role), !Self.isSecure(element),
+               let item = Self.frame(element), Self.visible(item, in: bounds)
+            {
+                var score = 0
+                for attribute in [kAXTitleAttribute, kAXDescriptionAttribute, "AXPlaceholderValue"] {
+                    if let text = Self.string(element, attribute) {
+                        score = max(score, LabelMatch.score(query: label, text: text))
+                    }
+                }
+                if score > 0, best == nil || score > best!.score || (score == best!.score && item.y < best!.y) {
+                    best = (score, item.y, element, item)
+                }
+            }
+            queue.append(contentsOf: Self.children(element))
+        }
+        guard let best else { throw missing }
+        try Self.activate(best.element, at: best.item, click: true)
     }
 
     /// "Open the third email": finds the items of that kind in the front window, counts them from

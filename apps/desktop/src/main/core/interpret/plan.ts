@@ -1,9 +1,10 @@
 import { commands, parsePosition, phraseArgument, type CommandSpec } from '@sayso/command-grammar';
 import { z } from 'zod';
+import { PROFILE_KEYS, type ProfileKey } from '../../../shared/profile.ts';
 import type { InstantMatch } from '../commands/CommandEngine.ts';
 
-/** The most steps one sentence may turn into. */
-export const MAX_PLAN_STEPS = 4;
+/** The most steps one sentence may turn into (a form can have several fields to fill). */
+export const MAX_PLAN_STEPS = 8;
 
 /**
  * Commands the interpreter may use. Never "cancel" or "yes": it must not answer a confirmation
@@ -39,14 +40,22 @@ const StepSchema = z
 
 const TypeStepSchema = z.object({ type: z.string().min(1).max(500) }).strict();
 
+/** Fill the field called `fill` with the saved fact `from`. The AI names a fact, never a value. */
+const FillStepSchema = z
+  .object({ fill: z.string().min(1).max(120), from: z.enum(PROFILE_KEYS) })
+  .strict();
+
 const PlanSchema = z
   .object({
-    steps: z.array(z.union([StepSchema, TypeStepSchema])).max(MAX_PLAN_STEPS),
+    steps: z.array(z.union([StepSchema, TypeStepSchema, FillStepSchema])).max(MAX_PLAN_STEPS),
   })
   .strict();
 
 /** One step the app can run: a command, or text to type. */
-export type PlanStep = { kind: 'command'; match: InstantMatch } | { kind: 'type'; text: string };
+export type PlanStep =
+  | { kind: 'command'; match: InstantMatch }
+  | { kind: 'type'; text: string }
+  | { kind: 'fill'; label: string; key: ProfileKey };
 
 export interface Plan {
   steps: PlanStep[];
@@ -76,6 +85,10 @@ export function toPlan(raw: unknown): Plan | null {
   for (const step of parsed.data.steps) {
     if ('type' in step) {
       steps.push({ kind: 'type', text: step.type });
+      continue;
+    }
+    if ('fill' in step) {
+      steps.push({ kind: 'fill', label: step.fill, key: step.from });
       continue;
     }
     const spec = allowed.get(step.command);

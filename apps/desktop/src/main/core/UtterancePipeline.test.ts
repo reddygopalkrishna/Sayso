@@ -11,6 +11,7 @@ import { resolveOpen, resolveSwitch, type KnownApp } from './resolver/AppResolve
 import type { ChipResult } from './safety/PreviewChip.ts';
 import { SafetyRefusal } from './safety/SafetyGate.ts';
 import { toPlan, type Plan } from './interpret/plan.ts';
+import type { ProfileKey } from '../../shared/profile.ts';
 import { HelperRequestError } from '../helper/HelperProcess.ts';
 import type { TranscriptSegment, TranscriptWord } from './stt/types.ts';
 
@@ -66,11 +67,13 @@ function setup({
   snippets,
   styles,
   interpret,
+  profile,
 }: Setup & {
   confirmMs?: number;
   snippets?: Record<string, string>;
   styles?: Record<string, 'default' | 'chill'>;
   interpret?: (utterance: string) => Plan | null | Promise<Plan | null>;
+  profile?: Partial<Record<ProfileKey, string>>;
 }) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
@@ -91,6 +94,10 @@ function setup({
       pressKey: async (k, m) => void log.push(`key ${[...m, k].join('+')}`),
       scroll: async (d, a) => void log.push(`scroll ${d} ${a}`),
       pressElement: async (l) => void log.push(`press ${l}`),
+      focusField: async (label) => {
+        if (label === 'Nowhere') throw new HelperRequestError('element_not_found', 'none');
+        log.push(`focus ${label}`);
+      },
       pressPosition: async (k, i) => {
         if (i === 9) {
           throw new HelperRequestError('element_not_found', 'nothing there');
@@ -111,6 +118,7 @@ function setup({
     endCommands,
     engine: new CommandEngine(commands),
     settleMs: () => 0,
+    profileValue: (key) => profile?.[key] ?? null,
     ...(interpret
       ? {
           interpret: async (utterance: string) => {
@@ -309,6 +317,74 @@ describe('UtterancePipeline: your own words (the interpreter)', () => {
     await expect(t.pipeline.deliver(said('do the thing'), 'command')).rejects.toBeInstanceOf(
       CommandNotUnderstood,
     );
+  });
+});
+
+describe('UtterancePipeline: fill in my details', () => {
+  const said = (text: string) => segment(text);
+  const fillPlan = (...steps: Array<[string, string]>): Plan => {
+    const plan = toPlan({ steps: steps.map(([fill, from]) => ({ fill, from })) });
+    if (!plan) throw new Error('bad test plan');
+    return plan;
+  };
+  const profile = { name: 'Keshav Reddy', email: 'keshav@example.com', phone: '+91 98765 43210' };
+
+  it('puts the cursor in each field and types the saved fact', async () => {
+    const t = setup({
+      contexts: [slack],
+      profile,
+      interpret: () => fillPlan(['Full name', 'name'], ['Email', 'email'], ['Mobile', 'phone']),
+    });
+    await t.pipeline.deliver(said('fill in my details'), 'command');
+    expect(t.log).toEqual([
+      'interpret fill in my details',
+      'focus Full name',
+      'insert Keshav Reddy',
+      'focus Email',
+      'insert keshav@example.com',
+      'focus Mobile',
+      'insert +91 98765 43210',
+    ]);
+  });
+
+  it('says what is missing when a fact is not saved, and types nothing', async () => {
+    const t = setup({
+      contexts: [slack],
+      profile: { name: 'Keshav Reddy' },
+      interpret: () => fillPlan(['Email', 'email']),
+    });
+    const error = await t.pipeline.deliver(said('fill in my email'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toBe('Your email is not saved yet. Add it in About me.');
+    expect(t.log.some((line) => line.startsWith('insert') || line.startsWith('focus'))).toBe(false);
+  });
+
+  it('says when there is no such field on screen', async () => {
+    const t = setup({ contexts: [slack], profile, interpret: () => fillPlan(['Nowhere', 'name']) });
+    const error = await t.pipeline.deliver(said('fill in my name'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toBe('There is no field called “Nowhere” on screen.');
+    expect(t.log.some((line) => line.startsWith('insert'))).toBe(false);
+  });
+
+  it('never types into a password field, even one the cursor lands in', async () => {
+    const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
+    // Before: refused at once. After the cursor moves into a password field: refused before pasting.
+    for (const contexts of [[password], [slack, slack, password]]) {
+      const t = setup({ contexts, profile, interpret: () => fillPlan(['Email', 'email']) });
+      await t.pipeline.deliver(said('fill in my email'), 'command').catch(() => undefined);
+      expect(t.log.some((line) => line.startsWith('insert'))).toBe(false);
+    }
+  });
+
+  it('is refused in a meeting app', async () => {
+    const t = setup({
+      contexts: [context('us.zoom.xos')],
+      profile,
+      interpret: () => fillPlan(['Email', 'email']),
+    });
+    await t.pipeline.deliver(said('fill in my email'), 'command').catch(() => undefined);
+    expect(t.log.some((line) => line.startsWith('insert') || line.startsWith('focus'))).toBe(false);
   });
 });
 

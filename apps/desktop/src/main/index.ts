@@ -28,6 +28,7 @@ import { HistoryRecorder } from './core/history/HistoryRecorder.ts';
 import { PermissionsMonitor } from './core/permissions/PermissionsMonitor.ts';
 import { PreviewChip } from './core/safety/PreviewChip.ts';
 import { openStorage, type Storage } from './core/storage/index.ts';
+import type { ProfileKey } from '../shared/profile.ts';
 import type { UserSettings } from '../shared/settings.ts';
 import { createIpcHandlers, UserMessageError } from './ipcHandlers.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
@@ -210,7 +211,17 @@ const pipeline = new UtterancePipeline({
     } catch {
       // Without the screen the interpreter can still open apps and press keys.
     }
-    return interpreter.interpret({ utterance, appName: context.appName, screen });
+    // Only which facts are saved goes to the AI (by name); the values stay on this Mac.
+    const profileKeys = Object.keys(storage?.profile.all() ?? {}) as ProfileKey[];
+    return interpreter.interpret({ utterance, appName: context.appName, screen, profileKeys });
+  },
+  profileValue: (key) => {
+    try {
+      return storage?.profile.all()[key] ?? null;
+    } catch (error) {
+      warn('could not read your details', error);
+      return null;
+    }
   },
   style: (bundleId) => {
     try {

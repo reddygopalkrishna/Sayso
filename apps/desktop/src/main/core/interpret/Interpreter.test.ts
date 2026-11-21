@@ -83,6 +83,19 @@ describe('prompts', () => {
     );
   });
 
+  it('tells the AI which facts are saved by name, and nothing else about them', () => {
+    const user = buildUserPrompt({ ...request, profileKeys: ['name', 'email'] });
+    expect(user).toContain('Saved facts you may fill from: name, email');
+    expect(user).not.toContain('@');
+    expect(buildUserPrompt(request)).toContain('Saved facts you may fill from: (none)');
+  });
+
+  it('explains the fill step and that the AI never sees values', () => {
+    const system = buildSystemPrompt();
+    expect(system).toContain('{"fill":"<EXACT field name');
+    expect(system).toContain('you never see or write its value');
+  });
+
   it('drops browser tab titles and caps the list', () => {
     const many = Array.from({ length: 80 }, (_, i) => ({
       label: `Item ${i}`,

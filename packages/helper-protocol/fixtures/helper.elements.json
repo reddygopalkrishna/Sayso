@@ -1,1 +1,9 @@
-{ "v": 1, "type": "elements", "id": "e-1", "items": [{ "label": "Reply", "role": "button" }, { "label": "Search mail", "role": "field" }] }
+{
+  "v": 1,
+  "type": "elements",
+  "id": "e-1",
+  "items": [
+    { "label": "Reply", "role": "button" },
+    { "label": "Search mail", "role": "field" }
+  ]
+}

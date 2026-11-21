@@ -111,6 +111,11 @@ struct FakeTranscriber: Transcribing {
         if let error { throw error }
         pressed.append(label)
     }
+    private(set) var focused: [String] = []
+    func focusField(label: String) async throws {
+        if let error { throw error }
+        focused.append(label)
+    }
     private(set) var positions: [String] = []
     func pressPosition(kind: PositionKind, index: Int) async throws {
         if let error { throw error }
@@ -376,6 +381,16 @@ struct Harness {
         #expect(h.out.messages == [.done(id: "e-1"), .done(id: "e-2")])
         await h.send(#"{"v":1,"type":"shutdown"}"#)
         #expect(h.escape.states.last == false)
+    }
+
+    @Test func focusesAFieldOnRequest() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"focusField","id":"f-1","label":"Email"}"#)
+        #expect(h.presser.focused == ["Email"])
+        #expect(h.out.messages == [.done(id: "f-1")])
+        h.presser.error = ServiceError(code: HelperErrorCode.elementNotFound, message: "none")
+        await h.send(#"{"v":1,"type":"focusField","id":"f-2","label":"Passport"}"#)
+        #expect(h.out.messages.last == .error(id: "f-2", code: HelperErrorCode.elementNotFound, msg: "none"))
     }
 
     @Test func readsTheScreenOnRequest() async {

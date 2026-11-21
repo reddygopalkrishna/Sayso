@@ -18,6 +18,8 @@ export interface CommandActions {
   pressElement(label: string): Promise<void>;
   /** The Nth item of a kind on screen, counted from the top (-1: the last). */
   pressPosition(kind: PositionKind, index: number): Promise<void>;
+  /** Puts the cursor in the text field called `label` (never a password field). */
+  focusField(label: string): Promise<void>;
   listApps(): Promise<AppInfo[]>;
   openApp(bundleId: string): Promise<void>;
   activateApp(bundleId: string): Promise<void>;
@@ -39,6 +41,10 @@ export class HelperActions implements TextInserter, KeyPresser, CommandActions {
   /** Press a visible button, link or menu item by its label (Accessibility). */
   async pressElement(label: string): Promise<void> {
     await this.helper.request({ type: 'pressElement', label }, { timeoutMs: 3_000 });
+  }
+
+  async focusField(label: string): Promise<void> {
+    await this.helper.request({ type: 'focusField', label }, { timeoutMs: 3_000 });
   }
 
   async pressPosition(kind: PositionKind, index: number): Promise<void> {

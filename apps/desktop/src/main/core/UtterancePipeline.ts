@@ -5,6 +5,7 @@ import { applyDictionary, type DictionaryTerm } from './cleanup/dictionary.ts';
 import { applyStyle } from './cleanup/style.ts';
 import { afterTypeWord, fixWebAddresses, typeLiterally } from './cleanup/webAddress.ts';
 import type { Plan, PlanStep } from './interpret/plan.ts';
+import type { ProfileKey } from '../../shared/profile.ts';
 import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
 import { parsePosition } from '@sayso/command-grammar';
@@ -71,6 +72,8 @@ export interface UtterancePipelineOptions {
    * only of the app's own commands (or null). Its steps go through the same safety checks.
    */
   interpret?: (utterance: string, context: AppContext) => Promise<Plan | null>;
+  /** A saved fact about the person ("email"), or null when it is not saved. Never leaves this Mac. */
+  profileValue?: (key: ProfileKey) => string | null;
   /** Default or chill for the app in front. Chill: no capitals, minimal punctuation. */
   style?: (bundleId: string | null) => Style;
   /** Your snippets: when the whole dictation is a trigger, its text is typed as saved, no AI. */
@@ -266,7 +269,9 @@ export class UtterancePipeline {
       command =
         step.kind === 'command'
           ? await this.runCommand(step.match, { failOnRefusal: true, allowConfirm: true })
-          : await this.typeStep(step.text);
+          : step.kind === 'fill'
+            ? await this.fillStep(step.label, step.key)
+            : await this.typeStep(step.text);
       if (command.result !== 'ran') break;
     }
     this.opts.onOutcome?.({
@@ -302,6 +307,33 @@ export class UtterancePipeline {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * "Fill in my details": puts the cursor in the field called `label`, then types the saved fact.
+   * The value comes from this Mac, never from the AI. Refused in a password field, before and after
+   * the cursor moves, and in meetings.
+   */
+  private async fillStep(label: string, key: ProfileKey): Promise<CommandOutcome> {
+    const live = await this.opts.readContext();
+    this.assertCanInsert(live);
+    if (isMeetingApp(live.bundleId)) throw new CommandRefused('meeting_app', live.appName);
+    const value = this.opts.profileValue?.(key) ?? null;
+    if (value === null) {
+      throw new CommandFailed(`Your ${key} is not saved yet. Add it in About me.`);
+    }
+    try {
+      await this.opts.actions.focusField(label);
+    } catch (error) {
+      if (error instanceof HelperRequestError && error.code === 'element_not_found') {
+        throw new CommandFailed(`There is no field called “${label}” on screen.`, { cause: error });
+      }
+      throw error;
+    }
+    // A short wait for the field to take the cursor; insert() checks for a password field again.
+    await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
+    await this.insert(value);
+    return { id: 'fill', result: 'ran' };
   }
 
   /** A "type …" step of a plan: typed as said, with the same checks as typing by voice. */
