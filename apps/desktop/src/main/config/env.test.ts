@@ -22,6 +22,7 @@ describe('loadConfig', () => {
       cleanupLevel: 'light',
       pauseMs: 600,
       previewMs: 1000,
+      pageWaitMs: 1800,
       historyKeep: 50,
       style: 'default',
       holdKey: 'fn',
@@ -51,6 +52,7 @@ describe('loadConfig', () => {
       cleanupLevel: 'full',
       pauseMs: 600,
       previewMs: 1000,
+      pageWaitMs: 1800,
       historyKeep: 50,
       style: 'default',
       holdKey: 'fn',
@@ -82,6 +84,16 @@ describe('loadConfig', () => {
     ['9000', 1000],
   ])('SAYSO_PREVIEW_MS=%s → %i ms', (value, expected) => {
     expect(loadConfig(files(`SAYSO_PREVIEW_MS=${value}`), {}).previewMs).toBe(expected);
+  });
+
+  it.each([
+    ['0', 0], // no extra wait
+    ['2500', 2500],
+    ['-1', 1800],
+    ['x', 1800],
+    ['20000', 1800],
+  ])('SAYSO_PAGE_WAIT_MS=%s → %i ms', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_PAGE_WAIT_MS=${value}`), {}).pageWaitMs).toBe(expected);
   });
 
   it.each([

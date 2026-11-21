@@ -282,6 +282,7 @@ const pipeline = new UtterancePipeline({
   }),
   pauseMs: () => config.pauseMs,
   previewMs: () => config.previewMs,
+  pageWaitMs: () => config.pageWaitMs,
   onFailure: (failure) => historyRecorder.recordFailure(failure, Date.now() - deliverStartedAt),
   onOutcome: (outcome) => {
     const { mode, segment, context, routing, cleanup, inserted, command } = outcome;

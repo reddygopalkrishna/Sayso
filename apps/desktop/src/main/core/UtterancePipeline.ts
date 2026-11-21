@@ -12,6 +12,7 @@ import { parsePosition } from '@sayso/command-grammar';
 import { HelperRequestError } from '../helper/HelperProcess.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
+import { DEFAULT_PAGE_WAIT_MS, loadsPage, type StepEffect } from './commands/pageLoad.ts';
 import type { AppContext } from './context/HelperContext.ts';
 import type { KnownApp, OpenResolution } from './resolver/AppResolver.ts';
 import type { ChipResult } from './safety/PreviewChip.ts';
@@ -29,7 +30,11 @@ import type { TranscriptSegment } from './stt/types.ts';
 export type PipelineMode = 'dictation' | 'command';
 
 export type CommandOutcome =
-  | { id: string; result: 'ran' }
+  | {
+      id: string;
+      result: 'ran';
+      /** The step loads a page: wait longer before the next one. */ loadsPage?: true;
+    }
   /** The user pressed Esc on the preview chip. In dictation the spoken word was typed instead. */
   | { id: string; result: 'cancelled' }
   | { id: string; result: 'skipped'; reason: string }
@@ -67,6 +72,8 @@ export interface UtterancePipelineOptions {
   };
   /** Pause between chained steps, so the screen can update first. Default 300 ms. */
   settleMs?: () => number;
+  /** Pause after a step that loads a page (Enter in a browser, a click, opening a site). Default 1.8 s. */
+  pageWaitMs?: () => number;
   /**
    * "Say it in your own words": for a command-mode sentence no exact command matched, a plan made
    * only of the app's own commands (or null). Its steps go through the same safety checks.
@@ -264,8 +271,13 @@ export class UtterancePipeline {
     // failure throws and stops the chain; a cancel, a skip or a wait for "yes" stops it.
     let command: CommandOutcome | null = null;
     for (const [index, step] of planned.entries()) {
-      if (index > 0)
-        await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
+      if (index > 0) {
+        const pageLoaded = command?.result === 'ran' && command.loadsPage === true;
+        const wait = pageLoaded
+          ? (this.opts.pageWaitMs?.() ?? DEFAULT_PAGE_WAIT_MS)
+          : (this.opts.settleMs?.() ?? 300);
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
       command =
         step.kind === 'command'
           ? await this.runCommand(step.match, { failOnRefusal: true, allowConfirm: true })
@@ -381,8 +393,10 @@ export class UtterancePipeline {
       waiting.match.args,
     );
     if (decision.kind === 'refuse') throw new CommandRefused(decision.reason, live.appName);
-    await this.perform(waiting.match.command.action, waiting.match.args, live);
-    return { id: waiting.match.command.id, result: 'ran' };
+    const loads = await this.perform(waiting.match.command.action, waiting.match.args, live);
+    return loads
+      ? { id: waiting.match.command.id, result: 'ran', loadsPage: true }
+      : { id: waiting.match.command.id, result: 'ran' };
   }
 
   private clearPending(): void {
@@ -424,29 +438,36 @@ export class UtterancePipeline {
       if (again.kind === 'refuse') return { id: spec.id, result: 'skipped', reason: again.reason };
     }
 
-    await this.perform(spec.action, match.args, target);
-    return { id: spec.id, result: 'ran' };
+    const loads = await this.perform(spec.action, match.args, target);
+    return loads ? { id: spec.id, result: 'ran', loadsPage: true } : { id: spec.id, result: 'ran' };
   }
 
+  /** Runs one action. Returns true when it probably loaded a page (see pageLoad.ts). */
   private async perform(
     action: CommandAction,
     args: Readonly<Record<string, string>>,
     target: AppContext,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const { actions, resolver } = this.opts;
+    let effect: StepEffect = { type: 'other' };
     switch (action.type) {
       case 'contextual_send':
       case 'keyPress': {
         const stroke = keyStrokeFor(action, target.bundleId);
         await actions.pressKey(stroke.key, stroke.modifiers);
-        return;
+        effect =
+          action.type === 'contextual_send'
+            ? { type: 'contextual_send' }
+            : { type: 'keyPress', key: stroke.key, modifiers: stroke.modifiers ?? [] };
+        break;
       }
       case 'scroll':
         await actions.scroll(action.direction, action.amount);
-        return;
+        break;
       case 'pressElement':
         await actions.pressElement(requiredArg(args, 'label'));
-        return;
+        effect = { type: 'pressElement' };
+        break;
       case 'pressPosition': {
         const position = parsePosition(requiredArg(args, 'position'));
         if (!position) throw new CommandFailed('Say which one, like “the first result”.');
@@ -458,27 +479,30 @@ export class UtterancePipeline {
           }
           throw error;
         }
-        return;
+        effect = { type: 'pressPosition' };
+        break;
       }
       case 'openTarget': {
         const resolved = await resolver.resolveOpen(requiredArg(args, 'target'));
         if (resolved.type === 'app') await actions.openApp(resolved.bundleId);
         else await actions.openUrl(resolved.url);
-        return;
+        effect = { type: 'openTarget', resolved: resolved.type === 'app' ? 'app' : 'url' };
+        break;
       }
       case 'switchApp': {
         const name = requiredArg(args, 'app');
         const app = await resolver.resolveSwitch(name);
         if (!app) throw new CommandFailed(`${name} is not running.`);
         await actions.activateApp(app.bundleId);
-        return;
+        break;
       }
       case 'cancel':
-        return;
+        break;
       case 'confirmPending':
         // Handled in deliverCommand; a "yes" never reaches the generic path.
         throw new CommandFailed('Nothing is waiting for “yes”.');
     }
+    return loadsPage(effect, target.bundleId);
   }
 }
 

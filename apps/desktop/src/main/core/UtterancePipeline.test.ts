@@ -1,5 +1,5 @@
 import { commands, endCommands } from '@sayso/command-grammar';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { UtterancePipeline, type UtteranceOutcome } from './UtterancePipeline.ts';
 import { TextCleanup } from './cleanup/TextCleanup.ts';
 import type { LLMProvider } from './cleanup/types.ts';
@@ -68,8 +68,12 @@ function setup({
   styles,
   interpret,
   profile,
+  settleMs = 0,
+  pageWaitMs = 0,
 }: Setup & {
   confirmMs?: number;
+  settleMs?: number;
+  pageWaitMs?: number;
   snippets?: Record<string, string>;
   styles?: Record<string, 'default' | 'chill'>;
   interpret?: (utterance: string) => Plan | null | Promise<Plan | null>;
@@ -117,7 +121,8 @@ function setup({
     },
     endCommands,
     engine: new CommandEngine(commands),
-    settleMs: () => 0,
+    settleMs: () => settleMs,
+    pageWaitMs: () => pageWaitMs,
     profileValue: (key) => profile?.[key] ?? null,
     ...(interpret
       ? {
@@ -869,5 +874,82 @@ describe('UtterancePipeline: your dictionary also fixes spoken commands', () => 
     const t = setup({ contexts: [slack], dictionary: [{ phrase: 'Kairo', spokenAs: 'kai row' }] });
     await t.pipeline.deliver(segment('click kai row'), 'command');
     expect(t.log).toEqual(['chip Click “kairo” 1000', 'press kairo']);
+  });
+});
+
+describe('UtterancePipeline: waiting for pages to load between steps', () => {
+  const safari = context('com.apple.Safari');
+  afterEach(() => vi.useRealTimers());
+  /** What was done, without the preview-chip lines. */
+  const actions = (log: readonly string[]): string[] => log.filter((l) => !l.startsWith('chip '));
+
+  /** Runs a chain with fake timers; returns the log after each of the given waits. */
+  async function logsAfter(text: string, ctx: AppContext, waits: number[]): Promise<string[][]> {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [ctx], settleMs: 300, pageWaitMs: 1_800 });
+    const done = t.pipeline.deliver(segment(text), 'command');
+    await vi.advanceTimersByTimeAsync(0);
+    const seen: string[][] = [actions(t.log)];
+    for (const ms of waits) {
+      await vi.advanceTimersByTimeAsync(ms);
+      seen.push(actions(t.log));
+    }
+    await vi.advanceTimersByTimeAsync(5_000);
+    await done;
+    return seen;
+  }
+
+  it.each([
+    ['enter in a browser', 'enter, scroll down', 'key enter'],
+    ['send in a browser', 'send it, scroll down', 'key enter'],
+    ['a click in a browser', 'click Sign in, scroll down', 'press sign in'],
+    ['open the first result', 'open the first result, scroll down', 'position result 1'],
+    ['opening a website', 'open github, scroll down', 'openUrl https://github.com'],
+  ])('%s: the next step waits 1.8 s', async (_name, text, first) => {
+    const [at0, at1799, at1800] = await logsAfter(text, safari, [1_799, 1]);
+    expect(at0).toEqual([first]);
+    expect(at1799).toEqual([first]);
+    expect(at1800).toEqual([first, 'scroll down 600']);
+  });
+
+  it.each([
+    ['new tab in a browser', 'new tab, scroll down', 'key cmd+t'],
+    ['scrolling', 'scroll down, scroll up', 'scroll down 600'],
+    ['going back', 'go back, scroll down', 'key cmd+leftBracket'],
+    ['opening an app', 'open Slack, scroll down', 'openApp com.tinyspeck.slackmacgap'],
+  ])('%s: the next step waits only the short 0.3 s', async (_name, text, first) => {
+    const [at0, at299, at300] = await logsAfter(text, safari, [299, 1]);
+    expect(at0).toEqual([first]);
+    expect(at299).toEqual([first]);
+    expect(at300?.length).toBe(2);
+  });
+
+  it('enter outside a browser is quick (a chat is not a page load)', async () => {
+    const [at0, , at300] = await logsAfter(
+      'enter, scroll down',
+      context('com.tinyspeck.slackmacgap'),
+      [299, 1],
+    );
+    expect(at0).toEqual(['key enter']);
+    expect(at300?.length).toBe(2);
+  });
+
+  it('a page wait of 0 turns the longer wait off', async () => {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [safari], settleMs: 0, pageWaitMs: 0 });
+    const done = t.pipeline.deliver(segment('enter, scroll down'), 'command');
+    await vi.advanceTimersByTimeAsync(0);
+    await done;
+    expect(actions(t.log)).toEqual(['key enter', 'scroll down 600']);
+  });
+
+  it('waits nothing after the last step', async () => {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [safari], settleMs: 300, pageWaitMs: 1_800 });
+    let finished = false;
+    const done = t.pipeline.deliver(segment('enter'), 'command').then(() => (finished = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(finished).toBe(true);
+    await done;
   });
 });
