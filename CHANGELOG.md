@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 02:45 · "Type … hit enter" in one breath (`11ec363`)
+- **Why:** the founder's log: "Type AWS, hit enter" (and "send it") typed the words "AWS, hit enter" because the pause rule keeps a trailing command as text unless it follows a pause of 0.6 s or more.
+- **What:** text the person explicitly asked to type in hands-free ("type …", or the words after a lone "type") now waives that pause, so "type AWS hit enter" types AWS and presses Enter (through the same safety gate and preview chip). Typing mode ("start typing") and the held-key dictation keep the pause rule, so a story that happens to end in "send it" is not sent.
+- **Tested:** unit tests (1,632 desktop; this commit's own files also checked against the last commit). **Not tried by voice yet.**
+- **Seen in the same log, fine:** "next." ran next field, "Open new tab" ran twice, speech 410–515 ms. "Type my name" typed nothing visible because no name is saved in About me yet (or the field was not focused).
+
 ### 02:25 · Typing mode shows in the pill (`1367155`)
 - **What:** while typing mode is on the pill reads "Typing mode · say “stop typing” to end" (the status now carries `typing`), and typing mode switches itself off on a timer after 3 quiet minutes, so the pill never goes stale.
 - **Tested:** unit tests (1,628 desktop); this commit's own files were also checked on their own against the last commit (typecheck and 135 tests). **Not seen on screen yet.**
