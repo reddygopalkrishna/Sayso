@@ -39,6 +39,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 12:53 · Hands-free, slice 3b: the switch, the pill reminder and the wake word (`b2c21c7`)
+- **Home:** a Hands-free card with a switch, the state in words (Off, Starting, Listening, Stopped), what to say ("type …", "send it", "open Slack", "Sayso, new tab"), and why it stopped. The switch is disabled until the speech model has loaded. Hands-free starts off at every launch, on purpose.
+- **Pill:** while hands-free listens, the pill stays on screen with a quiet "Hands-free" reminder that the microphone is on. A dictation in progress still takes the pill.
+- **Settings:** the wake word (one lowercase word, 2–30 letters or digits); Home shows the current one.
+- **Hands-free is now usable end to end in code:** turn it on in Home, then say "type hello", "send it", "open Slack" or "Sayso, new tab".
+- **Not tried live yet** with a person speaking: restart `pnpm dev`, wait for the speech model, turn hands-free on in Home.
+- Tests: 1,052 desktop tests pass; typecheck and lint clean.
+
 ### 12:51 · Hands-free, slice 3a: decide what to act on (`3fe19b7`)
 - **What it acts on with no wake word:** "type …" (the rest is dictated; a trailing "send" after a pause still sends), "send it" / "enter" / "new line" said alone, and "open …". Any other command needs the wake word first ("Sayso, new tab"; set another with `SAYSO_WAKE_WORD`), or follows within a minute of a recognised trigger. Everything else is ignored, never typed, so a conversation in the room cannot end up in the focused field.
 - **No double typing:** speech said while holding the dictation key is also heard by the hands-free microphone, so an utterance that overlaps a held-key dictation is skipped.
