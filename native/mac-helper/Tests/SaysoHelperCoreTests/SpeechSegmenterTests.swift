@@ -43,6 +43,22 @@ private func segments(of stream: [Float], chunk: Int = 4_800, config: SpeechSegm
 private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
 
 @Suite struct SpeechSegmenterBehaviour {
+    @Test func finishesACommandWithinSevenHundredMillisecondsOfSilence() {
+        var segmenter = SpeechSegmenter()
+        #expect(segmenter.feed(quiet(ms: 600) + speech(ms: 900)).isEmpty)
+        var silenceMs = 0
+        var finished = false
+        while silenceMs < 1_500 {
+            silenceMs += 30
+            if !segmenter.feed(quiet(ms: 30)).isEmpty {
+                finished = true
+                break
+            }
+        }
+        #expect(finished)
+        #expect(silenceMs > 500 && silenceMs <= 700)
+    }
+
     @Test func silenceMakesNoSegments() {
         #expect(segments(of: quiet(ms: 5_000)).isEmpty)
     }
@@ -134,5 +150,36 @@ private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
         // The sentence said over the background is an utterance of its own, about its own length.
         #expect(out.contains { ms($0) >= 1_400 && ms($0) <= 3_000 })
     }
-}
 
+    @Test func aNoisyRoomThatStartsSuddenlyDoesNotMakeLongSegments() {
+        // Seen live: a room louder than the fixed minimum (a video playing, a fan, typing) made one
+        // 9-15 s "utterance" of noise, so a command inside it ran 10 s late.
+        let noise: (Int) -> [Float] = { ms in
+            (0..<(16 * ms)).map { 0.04 * Float(sinTone(Double($0) * 50 / 16_000)) }
+        }
+        let out = segments(of: quiet(ms: 500) + noise(6_000) + speech(ms: 1_000) + noise(4_000))
+        #expect(out.allSatisfy { ms($0) < 4_000 }, "longest \(out.map { ms($0) })")
+        // The spoken command is still an utterance of its own, ending soon after it.
+        #expect(out.contains { ms($0) >= 900 && ms($0) <= 3_000 })
+    }
+
+    @Test func speechOverBackgroundEndsWhenTheSpeechEnds() {
+        let noise: (Int) -> [Float] = { ms in
+            (0..<(16 * ms)).map { 0.04 * Float(sinTone(Double($0) * 50 / 16_000)) }
+        }
+        var segmenter = SpeechSegmenter()
+        _ = segmenter.feed(noise(10_000))
+        _ = segmenter.feed(speech(ms: 1_000))
+        var silenceMs = 0
+        var finished = false
+        while silenceMs < 3_000 {
+            silenceMs += 30
+            if !segmenter.feed(noise(30)).isEmpty {
+                finished = true
+                break
+            }
+        }
+        #expect(finished)
+        #expect(silenceMs <= 900, "ended \(silenceMs) ms after the speech")
+    }
+}

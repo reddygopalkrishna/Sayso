@@ -1,5 +1,5 @@
 /// Cuts a continuous microphone stream (16 kHz mono) into utterances: speech starts, and about a
-/// second of silence ends it. Pure logic, so it is unit-tested with synthetic signals; the helper
+/// two-thirds of a second of silence ends it. Pure logic, so it is unit-tested with synthetic signals; the helper
 /// feeds it whatever the microphone delivers, in chunks of any size.
 public struct SpeechSegmenter: Sendable {
     public struct Config: Sendable {
@@ -13,7 +13,7 @@ public struct SpeechSegmenter: Sendable {
         /// …and stays speech while it is this many times louder (so a sentence is not cut mid-word).
         public var continueRatio: Float = 2.0
         /// Silence that ends an utterance.
-        public var endSilenceMs = 1_000
+        public var endSilenceMs = 650
         /// Shorter than this (a click, a cough) is dropped.
         public var minSpeechMs = 300
         /// A longer utterance is cut here and the rest becomes the next one.
@@ -22,6 +22,8 @@ public struct SpeechSegmenter: Sendable {
         public var preRollMs = 300
         /// Silence kept after the last word.
         public var tailMs = 300
+        /// How many recent frames the lowest level is taken over (50 frames is 1.5 s).
+        public var minWindowFrames = 50
         /// Loud frames in a row before speech counts as started (ignores one-frame bumps).
         public var startFrames = 3
 
@@ -33,6 +35,9 @@ public struct SpeechSegmenter: Sendable {
     private var pending: [Float] = []
     private var preRoll: [[Float]] = []
     private var noiseFloor: Float = 0.003
+    /// The last second and a half of frame levels. Speech dips between words; a steady noise
+    /// does not, so the lowest recent level is the room's noise even when it started suddenly.
+    private var recentLevels: [Float] = []
     private var loudRun = 0
     private var loudFrames: [[Float]] = []
 
@@ -69,6 +74,7 @@ public struct SpeechSegmenter: Sendable {
         preRoll.removeAll()
         loudRun = 0
         loudFrames.removeAll()
+        recentLevels.removeAll()
         return finished
     }
 
@@ -78,8 +84,14 @@ public struct SpeechSegmenter: Sendable {
         // slowly (about 6 s) when it gets louder, so a steady fan or music becomes "silence"
         // while speech, which comes and goes, stays above it.
         noiseFloor = level < noiseFloor ? 0.9 * noiseFloor + 0.1 * level : 0.995 * noiseFloor + 0.005 * level
+        recentLevels.append(level)
+        if recentLevels.count > config.minWindowFrames { recentLevels.removeFirst() }
+        // A room that was already noisy when listening began (a video, a fan, typing) would
+        // otherwise be heard as one 9-15 s "utterance" until the slow estimate caught up.
+        let steady = recentLevels.count >= config.minWindowFrames ? (recentLevels.min() ?? 0) : 0
+        let floor = max(noiseFloor, steady)
         let ratio = inSegment ? config.continueRatio : config.speechRatio
-        let loud = level > max(config.minThreshold, noiseFloor * ratio)
+        let loud = level > max(config.minThreshold, floor * ratio)
 
         if !inSegment {
             if loud {
