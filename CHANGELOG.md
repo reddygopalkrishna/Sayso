@@ -39,6 +39,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 12:47 · Hands-free, slice 2: continuous listening in the helper (`ad5258b`)
+- **What:** two new helper requests, `startListening` and `stopListening`. While listening, the microphone stays on, the speech segmenter cuts the stream into utterances, and each one is transcribed on this Mac, in order, and reported as a `heard` event. Nothing is saved. Stopping still reports the utterance in progress; starting twice is a no-op; a microphone problem comes back as an error.
+- **Also:** a new `StreamingMic` in the helper (the held-key recorder is unchanged), the TypeScript schemas, fixtures and start and stop actions, and a pass-through for `heard` events.
+- **Checked live** with the real microphone and speech model: start and stop were answered, and a quiet room produced no false utterances. The first model load on a fresh helper took 171 s here, so stopping can wait while an utterance is queued behind it; slice 3 only turns hands-free on once the model is ready.
+- **Not visible yet:** the app does not listen for these events yet (slice 3: trigger rules, the switch and the indicator).
+- Tests: 52 helper, 989 desktop, 62 protocol and 17 grammar tests pass; typecheck and lint clean.
+
 ### 12:39 · Hands-free, slice 1: cut the microphone stream into utterances (`c5dc803`)
 - **What:** a new helper component, `SpeechSegmenter`, turns a continuous microphone stream into separate utterances: it learns the room's noise level, starts after three loud frames in a row (keeping 300 ms from before, so the first word is not clipped), and ends after one second of silence (keeping a 300 ms tail). Clicks and coughs under 300 ms are dropped; an utterance over 30 s is cut and the rest continues.
 - **Why:** hands-free mode (toggle on, then just speak) needs to know where each sentence starts and ends. This is the first of three slices in `docs/PLAN_INFINA_PARITY.md`: (1) this, (2) continuous listening in the helper and the protocol, (3) the app side with the trigger rules, the switch and the indicator.
