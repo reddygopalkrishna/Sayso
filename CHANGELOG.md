@@ -3,6 +3,8 @@
 What changed in Sayso, when, and what is still pending. Newest first. Times are IST (+05:30).
 Each entry names the commit so you can see the exact code with `git show <commit>`.
 
+On 21 Nov 2026 the history was rewritten for the first push: every commit was re-dated to that day and has a new commit name, so the commit names in the entries below no longer match this repository. The code and the descriptions are unchanged; the dates and times in the entries are when the work was done.
+
 ## In progress
 
 - **Stage B of docs/PLAN_INFINA_PARITY.md:** test "click Profile" in Google Cloud Console by hand after a restart (the code is in; not yet tried in Chrome).
