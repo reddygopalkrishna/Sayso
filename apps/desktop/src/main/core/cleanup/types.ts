@@ -22,12 +22,16 @@ export interface LLMProvider {
    * the real one is faster. Must be cheap, must never throw and must not send any text.
    */
   warmUp?(): void;
+  /** Optional: which provider produced the latest answer (differs from `name` for a chain). */
+  lastUsed?(): string;
 }
 
 export class LLMError extends Error {
   constructor(
     message: string,
     readonly status: number | null = null,
+    /** From a Retry-After header: how long to leave this provider alone, in ms. */
+    readonly retryAfterMs: number | null = null,
   ) {
     super(message);
     this.name = 'LLMError';

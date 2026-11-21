@@ -17,6 +17,8 @@ export interface HistoryCleanup {
   method: CleanupMethodName;
   /** Time the cleanup step took, in ms. */
   ms: number;
+  /** Which AI answered (e.g. "groq", "gemini"), when the method is llm; absent on older rows. */
+  provider?: string;
 }
 
 export interface HistoryEntry {

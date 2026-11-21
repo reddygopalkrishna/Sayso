@@ -40,6 +40,10 @@ describe('GeminiProvider', () => {
     const system = body.systemInstruction.parts[0]?.text ?? '';
     expect(system).toContain('spelled exactly like this when the speaker says them: Sayso.');
     expect(system).toContain('Never replace a different, ordinary word');
+    // Firmer fidelity rule (measured on Groq: long dictations were paraphrased without it).
+    expect(system).toContain(
+      'Do not paraphrase, merge or reorder sentences, or drop any idea, question or hedge',
+    );
     // Formatting rules: lists only when enumerated, no invented lead-in, spoken line breaks, emails.
     expect(system).toContain('numbered list');
     expect(system).toContain('never invent a lead-in');

@@ -42,6 +42,10 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE utterance_history ADD COLUMN cleanup_method TEXT;
   ALTER TABLE utterance_history ADD COLUMN cleanup_ms INTEGER;
   `,
+  // 3: which AI answered (groq, gemini), now that there can be two.
+  `
+  ALTER TABLE utterance_history ADD COLUMN cleanup_provider TEXT;
+  `,
 ];
 
 export function schemaVersion(db: Db): number {

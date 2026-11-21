@@ -23,6 +23,7 @@ interface Row {
   latency_ms: number | null;
   cleanup_method: string | null;
   cleanup_ms: number | null;
+  cleanup_provider: string | null;
 }
 
 function parseAction(json: string | null): HistoryAction | null {
@@ -49,7 +50,11 @@ function toEntry(row: Row): HistoryEntry {
     cleanup:
       row.cleanup_method === null
         ? null
-        : { method: row.cleanup_method as CleanupMethodName, ms: Number(row.cleanup_ms ?? 0) },
+        : {
+            method: row.cleanup_method as CleanupMethodName,
+            ms: Number(row.cleanup_ms ?? 0),
+            ...(row.cleanup_provider ? { provider: row.cleanup_provider } : {}),
+          },
   };
 }
 
@@ -78,8 +83,8 @@ export class HistoryRepo {
       this.db.run(
         `INSERT INTO utterance_history
            (id, created_at, app_bundle_id, app_name, mode, raw_text, final_text, actions_json, outcome, latency_ms,
-            cleanup_method, cleanup_ms)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            cleanup_method, cleanup_ms, cleanup_provider)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         saved.id,
         saved.createdAt,
         saved.appBundleId,
@@ -92,6 +97,7 @@ export class HistoryRepo {
         saved.latencyMs === null ? null : Math.round(saved.latencyMs),
         saved.cleanup ? saved.cleanup.method : null,
         saved.cleanup ? Math.round(saved.cleanup.ms) : null,
+        saved.cleanup?.provider ?? null,
       );
       this.prune(keep);
     });

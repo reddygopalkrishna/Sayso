@@ -24,6 +24,9 @@ describe('loadConfig', () => {
       previewMs: 1000,
       historyKeep: 50,
       skipAi: true,
+      groqApiKey: null,
+      fastModel: 'qwen/qwen3.8-27b',
+      aiProvider: 'auto',
     });
     expect(loadConfig(paths, { GEMINI_API_KEY: 'env' }).geminiApiKey).toBe('env');
   });
@@ -43,6 +46,9 @@ describe('loadConfig', () => {
       previewMs: 1000,
       historyKeep: 50,
       skipAi: true,
+      groqApiKey: null,
+      fastModel: 'qwen/qwen3.8-27b',
+      aiProvider: 'auto',
     });
   });
 
@@ -87,6 +93,35 @@ describe('loadConfig', () => {
     ['maybe', true],
   ])('SAYSO_SKIP_AI=%s → %s', (value, expected) => {
     expect(loadConfig(files(`SAYSO_SKIP_AI=${value}`), {}).skipAi).toBe(expected);
+  });
+
+  it('reads the Groq key without copying it into process.env', () => {
+    const before = process.env['GROQ_API_KEY'];
+    const config = loadConfig(files('GROQ_API_KEY=gsk_secret\nGEMINI_API_KEY=g'), {});
+    expect(config.groqApiKey).toBe('gsk_secret');
+    expect(config.geminiApiKey).toBe('g');
+    expect(process.env['GROQ_API_KEY']).toBe(before);
+    expect(loadConfig(files('GROQ_API_KEY='), {}).groqApiKey).toBeNull();
+  });
+
+  it.each([
+    ['openai/gpt-oss-120b', 'openai/gpt-oss-120b'],
+    ['llama-3.1-8b-instant', 'llama-3.1-8b-instant'],
+    ['', 'qwen/qwen3.8-27b'],
+    ['has space', 'qwen/qwen3.8-27b'],
+    ['bad;rm -rf', 'qwen/qwen3.8-27b'],
+  ])('SAYSO_FAST_MODEL=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_FAST_MODEL=${value}`), {}).fastModel).toBe(expected);
+  });
+
+  it.each([
+    ['gemini', 'gemini'],
+    ['GROQ', 'groq'],
+    ['auto', 'auto'],
+    ['', 'auto'],
+    ['openai', 'auto'],
+  ])('SAYSO_AI_PROVIDER=%j → %s', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_AI_PROVIDER=${value}`), {}).aiProvider).toBe(expected);
   });
 
   it('ignores an empty key and an unknown level', () => {

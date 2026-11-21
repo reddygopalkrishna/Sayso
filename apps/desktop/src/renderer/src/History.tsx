@@ -10,7 +10,7 @@ const seconds = (ms: number): string => `${(ms / 1000).toFixed(1)} s`;
 export function cleanupLabel(c: HistoryCleanup): string {
   switch (c.method) {
     case 'llm':
-      return `AI ${seconds(c.ms)}`;
+      return `${c.provider ? providerName(c.provider) : 'AI'} ${seconds(c.ms)}`;
     case 'local':
       return 'no AI needed';
     case 'fallback':
@@ -21,6 +21,10 @@ export function cleanupLabel(c: HistoryCleanup): string {
       return 'raw';
   }
 }
+
+/** "groq" → "Groq". */
+const providerName = (provider: string): string =>
+  provider.charAt(0).toUpperCase() + provider.slice(1);
 
 const percent = (share: number | undefined): string => `${Math.round((share ?? 0) * 100)}%`;
 
@@ -45,6 +49,8 @@ export function SpeedSummary({ stats }: { stats: HistoryStats }): React.JSX.Elem
           AI skipped {percent(stats.share.local)} · AI used {percent(stats.share.llm)}
           {stats.aiMedianMs !== null && ` (median ${seconds(stats.aiMedianMs)})`}
           {(stats.share.fallback ?? 0) > 0 && ` · AI unavailable ${percent(stats.share.fallback)}`}
+          {stats.byProvider.length > 0 &&
+            ` · ${stats.byProvider.map((p) => `${providerName(p.provider)} ${seconds(p.medianMs)} (${p.count})`).join(', ')}`}
         </p>
       )}
     </section>

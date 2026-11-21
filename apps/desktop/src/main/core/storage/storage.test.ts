@@ -161,6 +161,26 @@ describe('schema upgrade 1 → 2 (how each dictation was cleaned up)', () => {
   });
 });
 
+describe('schema upgrade 2 → 3 (which AI answered)', () => {
+  it('keeps rows saved before, with their cleanup info and no provider', () => {
+    const db = openDb(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 2));
+    expect(schemaVersion(db)).toBe(2);
+    db.run(
+      `INSERT INTO utterance_history (id, created_at, mode, raw_text, final_text, outcome, latency_ms, cleanup_method, cleanup_ms)
+       VALUES ('v2', 5, 'dictation', 'um hi', 'Hi.', 'done', 1200, 'llm', 900)`,
+    );
+    migrate(db);
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length);
+    expect(new HistoryRepo(db, { keep: () => 50 }).recent()).toMatchObject([
+      { id: 'v2', cleanup: { method: 'llm', ms: 900 } },
+    ]);
+    expect(new HistoryRepo(db, { keep: () => 50 }).recent()[0]?.cleanup).not.toHaveProperty(
+      'provider',
+    );
+  });
+});
+
 describe('HistoryRepo', () => {
   it('returns newest first, with the action decoded', () => {
     let t = 1000;
@@ -229,6 +249,16 @@ describe('HistoryRepo', () => {
       { method: 'local', ms: 2 },
       { method: 'llm', ms: 913 },
     ]);
+  });
+
+  it('stores which AI answered, and leaves it out when unknown', () => {
+    let t = 0;
+    const history = new HistoryRepo(memoryDb(), { keep: () => 50, now: () => t++ });
+    history.record(entry({ cleanup: { method: 'llm', ms: 240, provider: 'groq' } }));
+    history.record(entry({ cleanup: { method: 'llm', ms: 900 } }));
+    const [newest, oldest] = history.recent();
+    expect(oldest?.cleanup).toEqual({ method: 'llm', ms: 240, provider: 'groq' });
+    expect(newest?.cleanup).toEqual({ method: 'llm', ms: 900 });
   });
 
   it('can be cleared at any time', () => {

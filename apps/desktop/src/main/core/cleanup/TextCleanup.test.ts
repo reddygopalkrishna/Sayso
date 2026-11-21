@@ -186,6 +186,26 @@ describe('TextCleanup', () => {
     });
   });
 
+  it('records which AI answered (a chain reports the one that did)', async () => {
+    const llm = Object.assign(new FakeLLM(async () => 'Hello there.'), {
+      lastUsed: () => 'gemini',
+    });
+    expect((await cleanup(llm).clean({ rawText: 'um hello there', ...slack })).provider).toBe(
+      'gemini',
+    );
+    const plain = new FakeLLM(async () => 'Hello there.');
+    expect((await cleanup(plain).clean({ rawText: 'um hello there', ...slack })).provider).toBe(
+      'fake',
+    );
+  });
+
+  it('records no AI provider when the AI was not used', async () => {
+    const llm = new FakeLLM(async () => 'x');
+    expect(
+      (await cleanup(llm, 'light').clean({ rawText: 'hello', ...slack })).provider,
+    ).toBeUndefined();
+  });
+
   it('never sends literal apps to the LLM', async () => {
     const llm = new FakeLLM(async () => 'should not be used');
     const result = await cleanup(llm).clean({

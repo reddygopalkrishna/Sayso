@@ -159,6 +159,8 @@ describe('how each row was cleaned up', () => {
 
   it.each([
     [{ method: 'llm', ms: 940 }, 'AI 0.9 s'],
+    [{ method: 'llm', ms: 240, provider: 'groq' }, 'Groq 0.2 s'],
+    [{ method: 'llm', ms: 910, provider: 'gemini' }, 'Gemini 0.9 s'],
     [{ method: 'local', ms: 1 }, 'no AI needed'],
     [{ method: 'fallback', ms: 2500 }, 'AI unavailable, local rules'],
     [{ method: 'light', ms: 1 }, 'local rules'],
@@ -181,6 +183,10 @@ describe('SpeedSummary', () => {
     medianMs: 1100,
     p95Ms: 2400,
     aiMedianMs: 900,
+    byProvider: [
+      { provider: 'groq', count: 8, medianMs: 240 },
+      { provider: 'gemini', count: 2, medianMs: 910 },
+    ],
     share: { llm: 0.6, local: 0.3, fallback: 0.1 },
     withCleanup: 10,
     ...over,
@@ -195,6 +201,7 @@ describe('SpeedSummary', () => {
     expect(out).toContain('AI used 60%');
     expect(out).toContain('median 0.9 s');
     expect(out).toContain('AI unavailable 10%');
+    expect(out).toContain('Groq 0.2 s (8), Gemini 0.9 s (2)');
   });
 
   it('stays quiet until there are a few dictations to talk about', () => {

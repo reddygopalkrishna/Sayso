@@ -30,7 +30,13 @@ export class HistoryRecorder {
       action,
       outcome: result,
       latencyMs: segment.sttMs + elapsedMs,
-      cleanup: cleanup ? { method: cleanup.method, ms: Math.round(cleanup.ms) } : null,
+      cleanup: cleanup
+        ? {
+            method: cleanup.method,
+            ms: Math.round(cleanup.ms),
+            ...(cleanup.provider ? { provider: cleanup.provider } : {}),
+          }
+        : null,
     });
   }
 

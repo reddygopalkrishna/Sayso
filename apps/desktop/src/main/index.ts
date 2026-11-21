@@ -8,7 +8,7 @@ import { commands, endCommands } from '@sayso/command-grammar';
 import { HelperActions } from './core/actions/HelperActions.ts';
 import { TextCleanup } from './core/cleanup/TextCleanup.ts';
 import type { DictionaryTerm } from './core/cleanup/dictionary.ts';
-import { GeminiProvider } from './core/cleanup/gemini.ts';
+import { buildProvider } from './core/cleanup/providers.ts';
 import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
 import { AppResolver } from './core/resolver/AppResolver.ts';
@@ -56,15 +56,13 @@ const helper = new HelperProcess({
   env: { SAYSO_MODELS_DIR: join(app.getPath('userData'), 'models') },
 });
 
-const provider = config.geminiApiKey
-  ? new GeminiProvider({ apiKey: config.geminiApiKey, model: config.geminiModel })
-  : null;
-status.update({
-  cleanup: {
-    level: config.cleanupLevel,
-    provider: provider ? `${provider.name} · ${provider.model}` : null,
-  },
-});
+// Groq first when there is a key (about 0.2 s), Gemini as the fallback; see docs/PLAN_FAST_CLEANUP.md.
+const {
+  provider,
+  label: providerLabel,
+  timeoutMs: cleanupTimeoutMs,
+} = buildProvider(config, (message) => console.warn(message));
+status.update({ cleanup: { level: config.cleanupLevel, provider: providerLabel } });
 
 const stt = new HelperWhisperSTT(helper);
 const actions = new HelperActions(helper);
@@ -126,6 +124,7 @@ const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
   cleanup: new TextCleanup({
     provider,
+    timeoutMs: cleanupTimeoutMs,
     level: () => config.cleanupLevel,
     skipWhenClean: () => config.skipAi,
     dictionary: readDictionary,

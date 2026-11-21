@@ -25,6 +25,8 @@ export interface CleanupResult {
   fallbackReason?: string;
   /** Why the AI was skipped, when method is 'local'. */
   note?: string;
+  /** Which AI produced the text (e.g. "groq"), when method is 'llm'. */
+  provider?: string;
 }
 
 export interface TextCleanupOptions {
@@ -107,7 +109,10 @@ export class TextCleanup {
       if (invented) {
         return done(light, 'fallback', `the AI added the dictionary word “${invented.phrase}”`);
       }
-      return done(checked.text, 'llm');
+      return {
+        ...done(checked.text, 'llm'),
+        provider: this.opts.provider.lastUsed?.() ?? this.opts.provider.name,
+      };
     } catch (error) {
       return done(light, 'fallback', error instanceof Error ? error.message : String(error));
     } finally {

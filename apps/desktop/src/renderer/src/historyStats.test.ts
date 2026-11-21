@@ -16,8 +16,8 @@ const row = (over: Partial<HistoryEntry> = {}): HistoryEntry => ({
   cleanup: null,
   ...over,
 });
-const withCleanup = (method: CleanupMethodName, ms: number, latencyMs = 1000) =>
-  row({ latencyMs, cleanup: { method, ms } });
+const withCleanup = (method: CleanupMethodName, ms: number, latencyMs = 1000, provider?: string) =>
+  row({ latencyMs, cleanup: { method, ms, ...(provider ? { provider } : {}) } });
 
 describe('percentile (nearest rank)', () => {
   it.each([
@@ -40,6 +40,7 @@ describe('summarize', () => {
       medianMs: null,
       p95Ms: null,
       aiMedianMs: null,
+      byProvider: [],
       share: {},
       withCleanup: 0,
     });
@@ -74,5 +75,24 @@ describe('summarize', () => {
     const stats = summarize([withCleanup('fallback', 2500), withCleanup('llm', 800)]);
     expect(stats.aiMedianMs).toBe(800);
     expect(stats.share.fallback).toBeCloseTo(0.5);
+  });
+
+  it('median AI time per provider, fastest first, only where the AI ran and the provider is known', () => {
+    const row = (provider: string | undefined, ms: number, method: CleanupMethodName = 'llm') =>
+      withCleanup(method, ms, 1000, provider);
+    const stats = summarize([
+      row('gemini', 900),
+      row('groq', 200),
+      row('groq', 300),
+      row('groq', 250),
+      row('gemini', 1100),
+      row(undefined, 500), // an older row without a provider
+      row('groq', 2500, 'fallback'), // a failed call is not AI time
+      row('groq', 1, 'local'),
+    ]);
+    expect(stats.byProvider).toEqual([
+      { provider: 'groq', count: 3, medianMs: 250 },
+      { provider: 'gemini', count: 2, medianMs: 900 }, // nearest rank: the lower of two
+    ]);
   });
 });

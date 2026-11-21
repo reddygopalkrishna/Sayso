@@ -96,6 +96,36 @@ describe('HistoryRecorder: outcomes', () => {
   });
 });
 
+describe('HistoryRecorder: which AI answered', () => {
+  it('records the provider when the AI produced the text', () => {
+    const { recorder, rows } = setup();
+    recorder.recordOutcome(
+      outcome({
+        cleanup: {
+          text: 'Hello there.',
+          method: 'llm',
+          tone: 'casual',
+          ms: 240.4,
+          provider: 'groq',
+        },
+      }),
+      100,
+    );
+    expect(rows[0]?.cleanup).toEqual({ method: 'llm', ms: 240, provider: 'groq' });
+  });
+
+  it('records no provider when the AI was not used', () => {
+    const { recorder, rows } = setup();
+    recorder.recordOutcome(
+      outcome({
+        cleanup: { text: 'Hi.', method: 'local', tone: 'casual', ms: 1, note: 'short and clean' },
+      }),
+      100,
+    );
+    expect(rows[0]?.cleanup).toEqual({ method: 'local', ms: 1 });
+  });
+});
+
 describe('HistoryRecorder: failures', () => {
   const failure = (error: unknown): PipelineFailure => ({
     mode: 'dictation',
