@@ -39,6 +39,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 13:25 · Choose the language you speak (`bdcf42b`)
+- **Settings → "Language you speak":** English (default), Telugu, Hindi, Tamil, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Urdu, Spanish, French, German, Portuguese, or "Detect it each time" (good for mixing languages, slightly less accurate). Changes apply at once, no restart.
+- **How:** the helper switches the speech model's language at runtime (new `setLanguage` message); the app sends it on connect and on a change. `SAYSO_STT_LANGUAGE` still sets the starting language.
+- **AI cleanup** now writes in the language and script you spoke (Telugu stays in Telugu script), keeps mixed languages mixed, and never translates.
+- **Limits:** voice commands and hands-free words ("send", "open", "type") stay in English. Not tried by voice in Telugu yet: restart `pnpm dev`, pick Telugu in Settings, and dictate.
+- Why: Infina is English only; this is one of our openings (`docs/COMPETITOR_INFINA.md` §6).
+- Tests: 1,098 desktop, 64 protocol and 55 helper tests pass; typecheck and lint clean. Live: the real helper accepts codes and null, and rejects "telugu".
+
 ### 13:07 · Hands-free fixes: microphone warnings, loud rooms, a log line per utterance (`bdaed8e`)
 - **Warnings flood:** the hands-free microphone ran its audio callback in a way Swift flags as a data race, so the log filled with "data race detected" lines. Fixed the same way the held-key recorder already does it; a live check shows no warnings.
 - **Loud room:** the utterance detector only learned the room's noise during silence, so a steady fan, music or TV counted as one endless sentence and nothing was acted on. It now learns the room level all the time (down fast, up over a few seconds); speech, which rises and falls, stays above it.
