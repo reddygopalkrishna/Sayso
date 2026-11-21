@@ -37,7 +37,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
-### 23:16 · Fix: the AI turned the word "dictionary" into "Sayso"; "open X" is now remembered automatically
+### 23:16 · Fix: the AI turned the word "dictionary" into "Sayso"; "open X" is now remembered automatically (`aa8a534`)
 - **Bug found in your own History:** you said "I opened dictionary tab" and "listed on dictionary tab" and Sayso typed "…Sayso tab" each time. The cleanup prompt called your word list a "dictionary", so when you said that ordinary word the AI took it as a pointer to the list and swapped it for your word. Reproduced against Gemini (empty list: kept; list with Sayso: replaced), then fixed by wording the prompt without the word "dictionary" and telling the AI never to put one of your names where it was not said. Verified live on your exact sentence and five more.
 - **Safety net:** your spelling fixes ("say so" → Sayso) are made locally before the AI runs, so the AI never needs to add one of your words. If its answer contains one that was not in what you said, the answer is discarded and the local cleanup is used (the log says why).
 - **"Open X" is remembered automatically.** You said "open GitHub", it opened the website, and nothing was listed, because only "open GitHub app/website" taught it. Now whatever "open …" opens (an app or a known website) is remembered and shown on the Dictionary tab at once (the list refreshes live), and the same words open the same thing next time. Web searches and typed-out domains are not remembered. Say "open GitHub app" or "open GitHub website" to change a choice, or Forget it on the tab.
