@@ -40,6 +40,10 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 16:49 · Handover document (`a595667`)
+- **What:** `docs/HANDOVER.md` for whoever continues in this folder: the rules, what exists, and what to do next in order: the approved WhatsApp live test (up to 3 messages to one contact, none sent yet; a dry run was interrupted and may have left the name in WhatsApp's search box), the voice-controlled "create an API key" flow the founder described (what already works, what to add: a known-site entry for OpenAI's platform, risky-label entries for revoke, no key ever read or logged), the things never tested by voice, and the other open items. Also how to test against real apps through the helper without the microphone. `docs/STATUS.md` points to it.
+- **Not done:** no code changed; the WhatsApp test and the API-key flow are described, not run.
+
 ### 16:42 · All the ways of saying "sign in" pick the button (`e7fa07b`)
 - **What:** the interpreter prompt now says that "sign in", "sign me in", "log in", "log me in", "login", "get me in" and "let me in" all mean pressing the sign-in button, to click the exact screen name closest in meaning whichever word the button uses, never to type a name or password, and to give nothing if no such button is on screen.
 - **Tested in code:** the prompt carries all seven phrases and the click-only and no-button rules; a click on "Login", "Log in", "Sign in", "Sign In" and "login" is an accepted plan. (The model's choice itself is only tested live.)
