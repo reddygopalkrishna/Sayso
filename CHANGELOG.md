@@ -39,6 +39,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 12:39 · Hands-free, slice 1: cut the microphone stream into utterances (`c5dc803`)
+- **What:** a new helper component, `SpeechSegmenter`, turns a continuous microphone stream into separate utterances: it learns the room's noise level, starts after three loud frames in a row (keeping 300 ms from before, so the first word is not clipped), and ends after one second of silence (keeping a 300 ms tail). Clicks and coughs under 300 ms are dropped; an utterance over 30 s is cut and the rest continues.
+- **Why:** hands-free mode (toggle on, then just speak) needs to know where each sentence starts and ends. This is the first of three slices in `docs/PLAN_INFINA_PARITY.md`: (1) this, (2) continuous listening in the helper and the protocol, (3) the app side with the trigger rules, the switch and the indicator.
+- **Not wired yet:** nothing listens continuously yet, so there is no visible change.
+- Tests: 11 new Swift tests with synthetic signals (silence, sentences, pauses, clicks, a steady hum, any chunk size, long speech, stopping mid-utterance); 42 helper tests pass.
+
 ### 12:37 · Choose the key you hold to dictate (`3f0149e`)
 - **Settings tab:** "Key to hold to dictate": Fn (default), Right Option, Right Command or Right Control. Shift with it still gives commands; a shortcut pressed while it is held still cancels the dictation. Pick another key if a second dictation app (for example Wispr Flow) also uses Fn, otherwise both type everything you say.
 - **How:** the helper tells the right-hand keys from their left twins by the device-dependent flag bits, so the left Command or Option never starts a dictation. The app sends the key when the helper connects, after a helper restart, and on a change: no restart needed. `SAYSO_HOLD_KEY` sets the starting key.
