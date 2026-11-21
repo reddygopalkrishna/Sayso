@@ -24,7 +24,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-14
 
-### 10:01 · Docs and skills: smaller start for every session (no app code changed)
+### 10:01 · Docs and skills: smaller start for every session, no app code changed (`9c077dd`)
 - CLAUDE.md cut from about 15 KB to about 2.5 KB. It is now a short index and the rules; the repo detail moved to `docs/REPO_MAP.md`, and the status to `docs/STATUS.md`. Every session reads these first, so the start costs far fewer tokens.
 - Added the `sayso-testing` skill (test commands, fixtures, the required cases for the pause rule, commands and SafetyGate). `build-step` now points to STATUS and REPO_MAP.
 - Moved the superseded `EARLY_PLAN.md`, the Buildathon submission and its deck out of the repo (kept in `../Sayso-archive/`).
