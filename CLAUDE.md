@@ -21,14 +21,17 @@ Voice dictation + actions for the desktop: speak, and the computer types clean t
 - Prefer Grep and reading line ranges over reading whole files.
 
 ## Repo state
-Phase 0 progress: **step 1 done** (monorepo, Electron + React scaffold, Swift helper with the stdio handshake). Next: step 2 (Fn → WhisperKit → paste).
+Phase 0 progress: **steps 1–2 done** (scaffold; Fn hold → mic → WhisperKit → paste with the listening pill). Next: step 3 (Gemini cleanup behind `LLMProvider`).
 
 What exists and is non-obvious:
 - `packages/helper-protocol` ships TS source (no build step). It holds zod schemas (`src/messages.ts`), the NDJSON codec, a generated `schema/messages.schema.json` (`pnpm --filter @sayso/helper-protocol gen:schema`; a test fails if it is stale) and `fixtures/*.json`. **Both** Vitest and the Swift tests decode those fixtures; when you add a message, add it in `messages.ts`, `native/mac-helper/Sources/SaysoHelperCore/Message.swift` and a fixture.
-- Channels: stdin/stdout are NDJSON only; stderr is free-form helper logs; audio (step 2) goes on a separate fd 3 pipe with length-prefixed frames. The helper sends `ready` first and exits on `shutdown` or stdin EOF.
-- `apps/desktop/src/main/helper/HelperProcess.ts` owns the child process: handshake, `ping()`, restart with backoff (1 s doubling to 30 s), clean stop. It takes injectable `spawn`/`exists` for tests. Helper path: `SAYSO_HELPER_PATH`, else `native/mac-helper/.build/debug/SaysoHelper` in dev.
-- `src/shared/` is imported by main, preload and renderer (IPC channel names, `HelperStatus`). The preload is the only renderer API (`window.sayso`, typed in `src/preload/api.d.ts`).
-- The Swift helper reads stdin on a background thread and keeps `RunLoop.main` free for CGEventTap/AVAudioEngine.
+- Protocol shape: requests carry an `id` and get exactly one reply with that id (`pong` / `done` / `transcript` / `error`); events (`hotkey`, `fnListener`, `sttStatus`, `log`) are unsolicited. Recording start/stop/cancel reuse the **utterance id** (`u-N`). **Audio never crosses the pipe**: WhisperKit runs in the helper, which returns text plus word timings in ms.
+- Main process: `HelperProcess` (spawn, `request()`, restart with backoff, stop) → `core/stt/HelperWhisperSTT` (the `STTProvider`; strips Whisper non-speech markers like `[BLANK_AUDIO]`) → `core/dictation/DictationController` (state machine: holds < 250 ms are taps, Fn+other key cancels, Fn released before the mic is up is handled, 5 min cap) → `deliver(segment)` in `main/index.ts`. **Steps 3–4 plug in at `deliver`**: router/pause rule on the raw segment, then cleanup, then insert.
+- `StatusHub` holds `AppStatus` (`src/shared/status.ts`), pushed to every window over IPC. The renderer is one bundle; `#pill` selects the listening pill, a non-focusable `type: 'panel'` window, so the target app keeps focus and receives the paste.
+- Swift helper targets: `SaysoHelperCore` (protocol, `MessageLoop`, `FnTracker`, service protocols; no OS frameworks, fully unit-tested with fakes) and `SaysoHelperMac` (thin adapters: `FnEventTap`, `MicRecorder`, `WhisperTranscriber`, `PasteInserter`). It reads stdin on a background thread and keeps `RunLoop.main` for the event tap.
+- Helper env: `SAYSO_WHISPER_MODEL` (default `openai_whisper-large-v3-v20240930_turbo_632MB`), `SAYSO_STT_LANGUAGE` (default `en`, `auto` to detect), `SAYSO_MODELS_DIR` (set by the app to `~/Library/Application Support/Sayso/models`). The first run downloads the model (~600 MB), then compiles it for the Neural Engine.
+- macOS permissions in dev are granted to whatever launched the app (Terminal, iTerm, or the editor), not to "Sayso": that app needs **Accessibility** (Fn listener + paste) and **Microphone**. Set System Settings → Keyboard → "Press 🌐 key to" → **Do Nothing**, or Fn also opens the emoji picker / dictation.
+- Deferred on purpose: the 300 ms mic pre-roll (the engine starts on Fn down), smart spacing between consecutive utterances (needs the AX text before the caret), and ⌘V uses the ANSI V key code (non-QWERTY layouts are not handled yet).
 - Versions: TypeScript is pinned to `~6.0` because typescript-eslint does not support TS 7 yet. `apps/desktop` is CommonJS (the sandboxed preload must be CJS), so its config files are `.mts`.
 
 ## Platform decision
@@ -98,7 +101,7 @@ Run from the repo root.
 - Dev: `pnpm dev` (builds with electron-vite and launches the app; needs the helper built first)
 - Tests (all TS): `pnpm test`. Single: `pnpm --filter desktop exec vitest run src/main/helper/HelperProcess.test.ts -t "<name>"`
 - Typecheck / lint / format: `pnpm typecheck`, `pnpm lint`, `pnpm format`
-- Helper: `pnpm helper:build`, `pnpm helper:test`. Smoke test: `echo '{"v":1,"type":"ping","id":"1"}' | native/mac-helper/.build/debug/SaysoHelper`
+- Helper: `pnpm helper:build`, `pnpm helper:test` (a script, because with only the Command Line Tools SwiftPM needs the Swift Testing plugin path passed explicitly; use it instead of a bare `swift test`). Smoke test: `echo '{"v":1,"type":"ping","id":"1"}' | native/mac-helper/.build/debug/SaysoHelper`
 
 ## Architecture (big picture)
 One utterance flows:

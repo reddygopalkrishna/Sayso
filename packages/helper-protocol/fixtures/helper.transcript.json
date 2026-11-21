@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "type": "transcript",
+  "id": "u-1",
+  "text": "send me a flower",
+  "words": [
+    { "text": "send", "startMs": 120, "endMs": 380, "p": 0.98 },
+    { "text": "me", "startMs": 400, "endMs": 520, "p": 0.97 },
+    { "text": "a", "startMs": 540, "endMs": 580, "p": 0.95 },
+    { "text": "flower", "startMs": 600, "endMs": 980, "p": 0.99 }
+  ],
+  "audioMs": 1200,
+  "sttMs": 310,
+  "model": "openai_whisper-large-v3-v20240930_turbo_632MB"
+}

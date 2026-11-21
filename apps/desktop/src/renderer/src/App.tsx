@@ -1,51 +1,102 @@
-import { useEffect, useState } from 'react';
-import type { HelperStatus } from '../../shared/helper-status.ts';
+import type { AppStatus, HelperStatus, SttStatus } from '../../shared/status.ts';
+import { useStatus } from './useStatus.ts';
 
-function describe(status: HelperStatus | null): { label: string; detail: string; dot: string } {
-  switch (status?.state) {
+type Row = { label: string; detail: string; tone: 'ok' | 'warn' | 'bad' | 'idle' };
+
+const dot: Record<Row['tone'], string> = {
+  ok: 'bg-emerald-500',
+  warn: 'bg-amber-500',
+  bad: 'bg-red-500',
+  idle: 'bg-neutral-400 animate-pulse',
+};
+
+function helperRow(h: HelperStatus): Row {
+  switch (h.state) {
     case 'connected':
-      return {
-        label: 'Helper connected',
-        detail: `v${status.helperVersion} · ${status.os}`,
-        dot: 'bg-emerald-500',
-      };
+      return { label: 'Helper connected', detail: `v${h.helperVersion} · ${h.os}`, tone: 'ok' };
     case 'crashed':
       return {
         label: 'Helper crashed',
-        detail: `${status.reason}; retrying in ${Math.round(status.retryInMs / 1000)} s`,
-        dot: 'bg-red-500',
+        detail: `${h.reason}; retrying in ${Math.round(h.retryInMs / 1000)} s`,
+        tone: 'bad',
       };
     case 'missing':
       return {
         label: 'Helper not built',
-        detail: 'Run pnpm helper:build, then restart the app.',
-        dot: 'bg-amber-500',
+        detail: 'Run pnpm helper:build, then restart.',
+        tone: 'warn',
       };
     case 'stopped':
-      return { label: 'Helper stopped', detail: '', dot: 'bg-neutral-400' };
-    default:
-      return { label: 'Starting helper…', detail: '', dot: 'bg-neutral-400 animate-pulse' };
+      return { label: 'Helper stopped', detail: '', tone: 'idle' };
+    case 'starting':
+      return { label: 'Starting helper…', detail: '', tone: 'idle' };
   }
 }
 
-export function App(): React.JSX.Element {
-  const [status, setStatus] = useState<HelperStatus | null>(null);
+function sttRow(s: SttStatus): Row {
+  switch (s.state) {
+    case 'ready':
+      return { label: 'Speech model ready', detail: s.model, tone: 'ok' };
+    case 'loading':
+      return {
+        label: 'Loading speech model…',
+        detail: `${s.model} (first run downloads ~600 MB)`,
+        tone: 'idle',
+      };
+    case 'error':
+      return { label: 'Speech model failed', detail: s.message, tone: 'bad' };
+    case 'unknown':
+      return { label: 'Speech model', detail: 'waiting for helper', tone: 'idle' };
+  }
+}
 
-  useEffect(() => {
-    const unsubscribe = window.sayso.onHelperStatus(setStatus);
-    void window.sayso.getHelperStatus().then(setStatus);
-    return unsubscribe;
-  }, []);
+function fnRow(status: AppStatus): Row {
+  switch (status.fnListener) {
+    case 'active':
+      return { label: 'Fn listener on', detail: 'Hold Fn and speak.', tone: 'ok' };
+    case 'unavailable':
+      return {
+        label: 'Fn listener off',
+        detail: 'Turn on Accessibility for Sayso in System Settings → Privacy & Security.',
+        tone: 'warn',
+      };
+    case 'unknown':
+      return { label: 'Fn listener', detail: 'waiting for helper', tone: 'idle' };
+  }
+}
 
-  const { label, detail, dot } = describe(status);
+function StatusRow({ row }: { row: Row }): React.JSX.Element {
   return (
-    <main className="flex h-screen flex-col items-center justify-center gap-3 bg-neutral-50 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
-      <h1 className="text-2xl font-semibold tracking-tight">Sayso</h1>
-      <div className="flex items-center gap-2 text-sm">
-        <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
-        <span>{label}</span>
+    <li className="flex items-start gap-3">
+      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${dot[row.tone]}`} />
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{row.label}</p>
+        {row.detail && <p className="truncate text-xs text-neutral-500">{row.detail}</p>}
       </div>
-      {detail && <p className="text-xs text-neutral-500">{detail}</p>}
+    </li>
+  );
+}
+
+export function App(): React.JSX.Element {
+  const status = useStatus();
+  return (
+    <main className="flex h-screen flex-col gap-5 bg-neutral-50 p-6 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
+      <h1 className="text-2xl font-semibold tracking-tight">Sayso</h1>
+      {status && (
+        <>
+          <ul className="flex flex-col gap-3">
+            <StatusRow row={helperRow(status.helper)} />
+            <StatusRow row={sttRow(status.stt)} />
+            <StatusRow row={fnRow(status)} />
+          </ul>
+          {status.lastText && (
+            <section className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
+              <p className="text-xs text-neutral-500">Last inserted</p>
+              <p className="mt-1 line-clamp-3 text-sm">{status.lastText}</p>
+            </section>
+          )}
+        </>
+      )}
     </main>
   );
 }

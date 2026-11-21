@@ -8,8 +8,10 @@ import {
   PROTOCOL_VERSION,
   type AppMessage,
   type HelperMessage,
+  type ReplyMessage,
+  type RequestBody,
 } from '@sayso/helper-protocol';
-import type { HelperStatus } from '../../shared/helper-status.ts';
+import type { HelperStatus } from '../../shared/status.ts';
 
 /** The parts of a ChildProcess we use, so tests can pass a fake. */
 export interface ChildLike {
@@ -29,7 +31,9 @@ export interface Logger {
 
 export interface HelperProcessOptions {
   binaryPath: string;
-  spawn?: (path: string) => ChildLike;
+  /** Extra environment variables for the helper (merged over process.env by the default spawn). */
+  env?: Record<string, string>;
+  spawn?: (path: string, env: Record<string, string>) => ChildLike;
   exists?: (path: string) => boolean;
   logger?: Logger;
   readyTimeoutMs?: number;
@@ -39,16 +43,42 @@ export interface HelperProcessOptions {
   shutdownGraceMs?: number;
 }
 
-type Pending = { resolve: () => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
+export interface RequestOptions {
+  /** Use this id instead of a generated one (e.g. an utterance id shared by start/stop). */
+  id?: string;
+  timeoutMs?: number;
+}
 
-const defaultSpawn = (path: string): ChildLike =>
-  nodeSpawn(path, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+/** Sends a request to the helper and resolves with its reply. Implemented by HelperProcess. */
+export interface HelperRequester {
+  request(body: RequestBody, options?: RequestOptions): Promise<ReplyMessage>;
+}
+
+/** The helper answered a request with an `error` message, or the request failed in transport. */
+export class HelperRequestError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'HelperRequestError';
+  }
+}
+
+type Pending = {
+  resolve: (reply: ReplyMessage) => void;
+  reject: (e: Error) => void;
+  timer: NodeJS.Timeout;
+};
+
+const defaultSpawn = (path: string, env: Record<string, string>): ChildLike =>
+  nodeSpawn(path, [], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...env } });
 
 /**
- * Owns the native helper child process: spawn, handshake, request/response, crash restart with
+ * Owns the native helper child process: spawn, handshake, request/reply, crash restart with
  * capped exponential backoff, and clean shutdown. Product logic stays out of here.
  */
-export class HelperProcess {
+export class HelperProcess implements HelperRequester {
   private readonly opts: Required<Omit<HelperProcessOptions, 'logger'>> & { logger: Logger };
   private child: ChildLike | null = null;
   private current: HelperStatus = { state: 'stopped' };
@@ -63,6 +93,7 @@ export class HelperProcess {
 
   constructor(options: HelperProcessOptions) {
     this.opts = {
+      env: {},
       spawn: defaultSpawn,
       exists: existsSync,
       logger: console,
@@ -84,6 +115,7 @@ export class HelperProcess {
     return () => this.statusListeners.delete(listener);
   }
 
+  /** Every valid message from the helper, including events such as `hotkey` and `sttStatus`. */
   onMessage(listener: (m: HelperMessage) => void): () => void {
     this.messageListeners.add(listener);
     return () => this.messageListeners.delete(listener);
@@ -114,22 +146,36 @@ export class HelperProcess {
     });
   }
 
-  /** Round trip to the helper; resolves with the latency in ms. */
-  async ping(): Promise<number> {
-    const started = performance.now();
-    const id = `p-${this.nextId++}`;
-    await new Promise<void>((resolve, reject) => {
+  /**
+   * Sends a request and resolves with the reply carrying the same id. Rejects with
+   * HelperRequestError if the helper answers `error`, times out, is not connected, or exits.
+   */
+  request(body: RequestBody, options: RequestOptions = {}): Promise<ReplyMessage> {
+    const id = options.id ?? `r-${this.nextId++}`;
+    return new Promise<ReplyMessage>((resolve, reject) => {
       if (this.current.state !== 'connected') {
-        reject(new Error(`helper not connected (${this.current.state})`));
+        reject(
+          new HelperRequestError('not_connected', `helper not connected (${this.current.state})`),
+        );
+        return;
+      }
+      if (this.pending.has(id)) {
+        reject(new HelperRequestError('duplicate_id', `request ${id} is already pending`));
         return;
       }
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`ping ${id} timed out`));
-      }, this.opts.requestTimeoutMs);
+        reject(new HelperRequestError('timeout', `${body.type} ${id} timed out`));
+      }, options.timeoutMs ?? this.opts.requestTimeoutMs);
       this.pending.set(id, { resolve, reject, timer });
-      this.send({ v: PROTOCOL_VERSION, type: 'ping', id });
+      this.send({ ...body, v: PROTOCOL_VERSION, id } as AppMessage);
     });
+  }
+
+  /** Round trip to the helper; resolves with the latency in ms. */
+  async ping(): Promise<number> {
+    const started = performance.now();
+    await this.request({ type: 'ping' });
     return performance.now() - started;
   }
 
@@ -143,7 +189,7 @@ export class HelperProcess {
     this.setStatus({ state: 'starting' });
     let child: ChildLike;
     try {
-      child = this.opts.spawn(path);
+      child = this.opts.spawn(path, this.opts.env);
     } catch (error) {
       this.handleExit(`spawn failed: ${String(error)}`);
       return;
@@ -190,30 +236,45 @@ export class HelperProcess {
           os: message.os,
         });
         break;
-      case 'pong': {
-        const waiting = this.pending.get(message.id);
-        if (waiting) {
-          clearTimeout(waiting.timer);
-          this.pending.delete(message.id);
-          waiting.resolve();
-        }
+      case 'pong':
+      case 'done':
+      case 'transcript':
+        this.settle(message.id, message);
         break;
-      }
+      case 'error':
+        if (message.id) this.settle(message.id, message);
+        else this.opts.logger.warn(`[helper error ${message.code}] ${message.msg}`);
+        break;
       case 'log':
         this.opts.logger.info(`[helper:${message.level}] ${message.msg}`);
         break;
-      case 'error':
-        this.opts.logger.warn(`[helper error ${message.code}] ${message.msg}`);
+      case 'hotkey':
+      case 'fnListener':
+      case 'sttStatus':
         break;
     }
     for (const listener of this.messageListeners) listener(message);
+  }
+
+  private settle(id: string, reply: ReplyMessage): void {
+    const waiting = this.pending.get(id);
+    if (!waiting) {
+      this.opts.logger.warn(`reply for unknown request ${id} (${reply.type})`);
+      return;
+    }
+    clearTimeout(waiting.timer);
+    this.pending.delete(id);
+    if (reply.type === 'error') waiting.reject(new HelperRequestError(reply.code, reply.msg));
+    else waiting.resolve(reply);
   }
 
   private handleExit(reason: string): void {
     this.clearTimers();
     for (const [id, waiting] of this.pending) {
       clearTimeout(waiting.timer);
-      waiting.reject(new Error(`helper exited before answering ${id}`));
+      waiting.reject(
+        new HelperRequestError('helper_exited', `helper exited before answering ${id}`),
+      );
     }
     this.pending.clear();
     if (this.stopping) {

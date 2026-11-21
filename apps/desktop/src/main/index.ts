@@ -1,8 +1,19 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { IPC } from '../shared/helper-status.ts';
+import { IPC } from '../shared/status.ts';
+import { StatusHub } from './StatusHub.ts';
+import { HelperTextInserter } from './core/actions/HelperTextInserter.ts';
+import { DictationController } from './core/dictation/DictationController.ts';
+import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
 import { resolveHelperPath } from './helper/binaryPath.ts';
+import { createMainWindow } from './windows/mainWindow.ts';
+import { PillWindow } from './windows/pillWindow.ts';
+
+// Keep settings, models and (later) the database under "Sayso", not the package name.
+app.setPath('userData', join(app.getPath('appData'), 'Sayso'));
+
+const status = new StatusHub();
 
 const helper = new HelperProcess({
   binaryPath: resolveHelperPath({
@@ -11,48 +22,75 @@ const helper = new HelperProcess({
     appPath: app.getAppPath(),
     resourcesPath: process.resourcesPath,
   }),
+  env: { SAYSO_MODELS_DIR: join(app.getPath('userData'), 'models') },
 });
 
-function createMainWindow(): BrowserWindow {
-  const win = new BrowserWindow({
-    width: 480,
-    height: 320,
-    title: 'Sayso',
-    show: false,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  });
-  win.once('ready-to-show', () => win.show());
+const stt = new HelperWhisperSTT(helper);
+const inserter = new HelperTextInserter(helper);
+const dictation = new DictationController({
+  stt,
+  deliver: async (segment) => {
+    await inserter.insertText(segment.text);
+    status.update({ lastText: segment.text });
+  },
+  log: (msg) => console.info(`[dictation] ${msg}`),
+});
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL'];
-  if (!app.isPackaged && devUrl) void win.loadURL(devUrl);
-  else void win.loadFile(join(__dirname, '../renderer/index.html'));
-  return win;
-}
+helper.onStatus((helperStatus) => {
+  status.update({ helper: helperStatus });
+  if (helperStatus.state !== 'connected') {
+    stt.updateStatus(null);
+    dictation.reset(`helper ${helperStatus.state}`);
+    status.update({ stt: { state: 'unknown' }, fnListener: 'unknown' });
+  }
+});
+
+helper.onMessage((message) => {
+  switch (message.type) {
+    case 'hotkey':
+      dictation.handleHotkey(message.phase);
+      break;
+    case 'fnListener':
+      console.info(`[helper] Fn listener ${message.state}`);
+      status.update({ fnListener: message.state });
+      break;
+    case 'sttStatus':
+      console.info(
+        `[stt] ${message.model}: ${message.state}${message.msg ? ` (${message.msg})` : ''}`,
+      );
+      stt.updateStatus(message);
+      status.update({
+        stt:
+          message.state === 'error'
+            ? { state: 'error', model: message.model, message: message.msg ?? 'unknown error' }
+            : { state: message.state, model: message.model },
+      });
+      break;
+    default:
+      break;
+  }
+});
+
+dictation.onState((dictationState) => status.update({ dictation: dictationState }));
 
 app.whenReady().then(() => {
-  ipcMain.handle(IPC.getHelperStatus, () => helper.status);
-  helper.onStatus((status) => {
+  ipcMain.handle(IPC.getStatus, () => status.current);
+  status.onChange((current) => {
     for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send(IPC.helperStatus, status);
+      if (!win.isDestroyed()) win.webContents.send(IPC.status, current);
     }
   });
-  helper.onStatus((status) => {
-    if (status.state !== 'connected') return;
-    helper.ping().then(
-      (ms) => console.info(`helper ping ${ms.toFixed(1)} ms`),
-      (error: unknown) => console.warn(`helper ping failed: ${String(error)}`),
-    );
-  });
+
+  const pill = new PillWindow();
+  dictation.onState((dictationState) => pill.show(dictationState));
+
   helper.start();
   createMainWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    if (BrowserWindow.getAllWindows().filter((w) => w.isFocusable()).length === 0) {
+      createMainWindow();
+    }
   });
 });
 
@@ -64,6 +102,5 @@ app.on('before-quit', (event) => {
   void helper.stop().finally(() => app.quit());
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+// Sayso keeps running (Fn listening) with no windows open, like other menu-bar style tools.
+app.on('window-all-closed', () => undefined);

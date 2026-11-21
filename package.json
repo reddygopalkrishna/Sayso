@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "helper:build": "swift build --package-path native/mac-helper",
-    "helper:test": "swift test --package-path native/mac-helper"
+    "helper:test": "native/mac-helper/scripts/test.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

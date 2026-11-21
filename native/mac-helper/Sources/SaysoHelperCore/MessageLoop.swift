@@ -18,16 +18,29 @@ public enum LoopOutcome: Equatable, Sendable {
     case stop
 }
 
-/// Handles app → helper messages. OS features (Fn tap, mic, AX) plug in here in later steps.
+/// Executes app requests against the OS services and reports events. Holds no product logic.
 @MainActor
 public final class MessageLoop {
-    public static let helperVersion = "0.1.0"
+    public static let helperVersion = "0.2.0"
 
     private let writer: LineWriter
     private let osDescription: String
+    private let recorder: AudioRecording
+    private let transcriber: Transcribing
+    private let inserter: TextInserting
+    private var recordingID: String?
 
-    public init(writer: LineWriter, osDescription: String = MessageLoop.currentOS()) {
+    public init(
+        writer: LineWriter,
+        recorder: AudioRecording,
+        transcriber: Transcribing,
+        inserter: TextInserting,
+        osDescription: String = MessageLoop.currentOS()
+    ) {
         self.writer = writer
+        self.recorder = recorder
+        self.transcriber = transcriber
+        self.inserter = inserter
         self.osDescription = osDescription
     }
 
@@ -36,24 +49,103 @@ public final class MessageLoop {
         send(.ready(helperVersion: Self.helperVersion, os: osDescription))
     }
 
-    public func handle(line: String) -> LoopOutcome {
-        if line.trimmingCharacters(in: .whitespaces).isEmpty { return .keepRunning }
+    public func send(_ message: HelperMessage) {
+        writer.write(message.encodedLine())
+    }
+
+    /// Handles one line from stdin. Long work (recording start, transcription, paste) runs in a
+    /// Task; `pending` lets tests await it.
+    @discardableResult
+    public func handle(line: String) -> (LoopOutcome, Task<Void, Never>?) {
+        if line.trimmingCharacters(in: .whitespaces).isEmpty { return (.keepRunning, nil) }
+        let message: AppMessage
         do {
-            switch try AppMessage.decode(line) {
-            case let .ping(id):
-                send(.pong(id: id))
-                return .keepRunning
-            case .shutdown:
-                return .stop
-            }
+            message = try AppMessage.decode(line)
         } catch {
-            send(.error(code: "bad_message", msg: "could not decode line: \(error)"))
-            return .keepRunning
+            send(.error(id: nil, code: HelperErrorCode.badMessage, msg: "could not decode line: \(error)"))
+            return (.keepRunning, nil)
+        }
+        switch message {
+        case let .ping(id):
+            send(.pong(id: id))
+            return (.keepRunning, nil)
+        case .shutdown:
+            if recordingID != nil { recorder.cancel() }
+            return (.stop, nil)
+        case let .recordStart(id):
+            return (.keepRunning, Task { await self.recordStart(id) })
+        case let .recordStop(id):
+            return (.keepRunning, Task { await self.recordStop(id) })
+        case let .recordCancel(id):
+            if recordingID == id {
+                recorder.cancel()
+                recordingID = nil
+            }
+            send(.done(id: id))
+            return (.keepRunning, nil)
+        case let .insertText(id, text):
+            return (.keepRunning, Task { await self.insert(id, text) })
         }
     }
 
-    private func send(_ message: HelperMessage) {
-        writer.write(message.encodedLine())
+    private func recordStart(_ id: String) async {
+        guard recordingID == nil else {
+            send(.error(id: id, code: HelperErrorCode.alreadyRecording, msg: "already recording"))
+            return
+        }
+        recordingID = id
+        do {
+            try await recorder.start()
+            // A cancel may have arrived while the mic was starting.
+            guard recordingID == id else {
+                recorder.cancel()
+                return
+            }
+            send(.done(id: id))
+        } catch {
+            if recordingID == id { recordingID = nil }
+            sendError(id: id, error, fallbackCode: HelperErrorCode.micFailed)
+        }
+    }
+
+    private func recordStop(_ id: String) async {
+        guard recordingID == id else {
+            send(.error(id: id, code: HelperErrorCode.notRecording, msg: "no recording with id \(id)"))
+            return
+        }
+        recordingID = nil
+        let samples = recorder.stop()
+        let audioMs = Double(samples.count) / sampleRate * 1000
+        let clock = ContinuousClock()
+        let started = clock.now
+        do {
+            let transcription = try await transcriber.transcribe(samples)
+            let elapsed = clock.now - started
+            let sttMs = Double(elapsed.components.seconds) * 1000
+                + Double(elapsed.components.attoseconds) / 1e15
+            send(.transcript(
+                id: id, transcription: transcription, audioMs: audioMs, sttMs: sttMs,
+                model: transcriber.modelName))
+        } catch {
+            sendError(id: id, error, fallbackCode: HelperErrorCode.sttFailed)
+        }
+    }
+
+    private func insert(_ id: String, _ text: String) async {
+        do {
+            try await inserter.insert(text)
+            send(.done(id: id))
+        } catch {
+            sendError(id: id, error, fallbackCode: HelperErrorCode.accessibilityDenied)
+        }
+    }
+
+    private func sendError(id: String, _ error: Error, fallbackCode: String) {
+        if let error = error as? ServiceError {
+            send(.error(id: id, code: error.code, msg: error.message))
+        } else {
+            send(.error(id: id, code: fallbackCode, msg: String(describing: error)))
+        }
     }
 
     public nonisolated static func currentOS() -> String {

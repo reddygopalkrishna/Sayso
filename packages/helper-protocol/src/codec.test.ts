@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeAppLine, decodeHelperLine, encode } from './codec.ts';
+import { AppMessageSchema, HelperMessageSchema } from './messages.ts';
 import { buildSchemaDocument } from './schema.ts';
 
 const fixturesDir = new URL('../fixtures/', import.meta.url);
@@ -10,14 +11,16 @@ const fixtures = readdirSync(fixturesDir)
 
 describe('fixtures', () => {
   it('covers every message type', () => {
-    expect(fixtures.map((f) => f.name).sort()).toEqual([
-      'app.ping.json',
-      'app.shutdown.json',
-      'helper.error.json',
-      'helper.log.json',
-      'helper.pong.json',
-      'helper.ready.json',
-    ]);
+    const types = (prefix: string): string[] =>
+      fixtures
+        .filter((f) => f.name.startsWith(prefix))
+        .map((f) => (JSON.parse(f.text) as { type: string }).type);
+    expect(new Set(types('app.'))).toEqual(
+      new Set(AppMessageSchema.options.map((o) => o.shape.type.value)),
+    );
+    expect(new Set(types('helper.'))).toEqual(
+      new Set(HelperMessageSchema.options.map((o) => o.shape.type.value)),
+    );
   });
 
   it.each(fixtures)('$name decodes and round-trips', ({ name, text }) => {
@@ -44,6 +47,11 @@ describe('decodeHelperLine rejects bad input', () => {
     ['extra field', '{"v":1,"type":"pong","id":"a","x":1}'],
     ['bad log level', '{"v":1,"type":"log","level":"loud","msg":"x"}'],
     ['app message on helper channel', '{"v":1,"type":"ping","id":"a"}'],
+    [
+      'word with negative time',
+      '{"v":1,"type":"transcript","id":"a","text":"x","words":[{"text":"x","startMs":-1,"endMs":2,"p":1}],"audioMs":1,"sttMs":1,"model":"m"}',
+    ],
+    ['unknown hotkey phase', '{"v":1,"type":"hotkey","key":"fn","phase":"tap"}'],
   ])('%s', (_label, line) => {
     const result = decodeHelperLine(line);
     expect(result.ok).toBe(false);

@@ -3,7 +3,7 @@ import Testing
 @testable import SaysoHelperCore
 
 /// packages/helper-protocol/fixtures, found relative to this file.
-private let fixturesDir = URL(fileURLWithPath: #filePath)
+let fixturesDir = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent()  // SaysoHelperCoreTests
     .deletingLastPathComponent()  // Tests
     .deletingLastPathComponent()  // mac-helper
@@ -11,37 +11,43 @@ private let fixturesDir = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent()  // repo root
     .appendingPathComponent("packages/helper-protocol/fixtures")
 
-private func fixture(_ name: String) throws -> String {
+func fixture(_ name: String) throws -> String {
     try String(contentsOf: fixturesDir.appendingPathComponent(name), encoding: .utf8)
 }
 
-final class BufferWriter: LineWriter, @unchecked Sendable {
-    private let lock = NSLock()
-    private var storage: [String] = []
-    var lines: [String] { lock.withLock { storage } }
-    func write(_ line: String) { lock.withLock { storage.append(line) } }
+func fixtureNames(prefix: String) throws -> [String] {
+    try FileManager.default.contentsOfDirectory(atPath: fixturesDir.path)
+        .filter { $0.hasPrefix(prefix) && $0.hasSuffix(".json") }
+        .sorted()
 }
 
 @Suite struct SharedFixtures {
-    @Test func appFixturesDecode() throws {
-        #expect(try AppMessage.decode(fixture("app.ping.json")) == .ping(id: "p-1"))
-        #expect(try AppMessage.decode(fixture("app.shutdown.json")) == .shutdown)
+    @Test func everyAppFixtureDecodes() throws {
+        let names = try fixtureNames(prefix: "app.")
+        #expect(names.count == 6)
+        for name in names {
+            #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
+        }
+        #expect(try AppMessage.decode(fixture("app.insertText.json")) == .insertText(id: "i-1", text: "Hello from Sayso"))
     }
 
-    @Test(arguments: ["helper.ready.json", "helper.pong.json", "helper.log.json", "helper.error.json"])
-    func helperFixturesRoundTrip(name: String) throws {
+    @Test func everyHelperFixtureRoundTrips() throws {
+        let names = try fixtureNames(prefix: "helper.")
+        #expect(names.count == 10)
+        for name in names {
+            let message = try HelperMessage.decode(fixture(name))
+            let line = message.encodedLine()
+            #expect(line.hasSuffix("\n"), "\(name)")
+            #expect(!line.dropLast().contains("\n"), "\(name)")
+            #expect(try HelperMessage.decode(line) == message, "\(name)")
+        }
+    }
+
+    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.errorReply.json", "helper.sttStatus.json"])
+    func encodingMatchesFixtureExactly(name: String) throws {
         let message = try HelperMessage.decode(fixture(name))
-        let line = message.encodedLine()
-        #expect(line.hasSuffix("\n"))
-        #expect(!line.dropLast().contains("\n"))
-        #expect(try HelperMessage.decode(line) == message)
-    }
-
-    @Test func encodedReadyMatchesFixtureFields() throws {
-        let line = HelperMessage.ready(helperVersion: "0.1.0", os: "macOS 14.0").encodedLine()
-        let encoded = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? NSDictionary
-        let expected = try JSONSerialization.jsonObject(
-            with: Data(fixture("helper.ready.json").utf8)) as? NSDictionary
+        let encoded = try JSONSerialization.jsonObject(with: Data(message.encodedLine().utf8)) as? NSDictionary
+        let expected = try JSONSerialization.jsonObject(with: Data(fixture(name).utf8)) as? NSDictionary
         #expect(encoded == expected)
     }
 }
@@ -54,38 +60,35 @@ final class BufferWriter: LineWriter, @unchecked Sendable {
         ("{\"v\":1,\"type\":\"explode\"}", ProtocolError.unknownType("explode")),
         ("{\"v\":1,\"type\":\"ping\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"ping\",\"id\":\"\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"insertText\",\"id\":\"a\",\"text\":\"\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"recordStop\"}", ProtocolError.invalidJSON),
     ])
     func rejects(line: String, expected: ProtocolError) {
         #expect(throws: expected) { try AppMessage.decode(line) }
     }
 }
 
-@MainActor @Suite struct MessageLoopBehaviour {
-    @Test func sendsReadyThenAnswersPing() throws {
-        let out = BufferWriter()
-        let loop = MessageLoop(writer: out, osDescription: "macOS 14.0")
-        loop.start()
-        #expect(loop.handle(line: "{\"v\":1,\"type\":\"ping\",\"id\":\"x7\"}") == .keepRunning)
-        #expect(out.lines.count == 2)
-        #expect(try HelperMessage.decode(out.lines[0]) == .ready(helperVersion: MessageLoop.helperVersion, os: "macOS 14.0"))
-        #expect(try HelperMessage.decode(out.lines[1]) == .pong(id: "x7"))
-    }
+@Suite struct FnTrackerBehaviour {
+    enum Input { case fn(Bool), key }
 
-    @Test func stopsOnShutdown() {
-        let loop = MessageLoop(writer: BufferWriter())
-        #expect(loop.handle(line: "{\"v\":1,\"type\":\"shutdown\"}") == .stop)
-    }
-
-    @Test func reportsBadLinesAndKeepsRunning() throws {
-        let out = BufferWriter()
-        let loop = MessageLoop(writer: out)
-        #expect(loop.handle(line: "garbage") == .keepRunning)
-        #expect(loop.handle(line: "   ") == .keepRunning)
-        #expect(out.lines.count == 1)
-        guard case let .error(code, _) = try HelperMessage.decode(out.lines[0]) else {
-            Issue.record("expected an error message")
-            return
+    @Test(arguments: [
+        ([Input.fn(true), .fn(false)], [HotkeyPhase.down, .up]),
+        ([.fn(true), .fn(true), .fn(false), .fn(false)], [.down, .up]),
+        ([.key, .fn(false)], []),
+        ([.fn(true), .key, .key, .fn(false)], [.down, .chord, .up]),
+        ([.fn(true), .key, .fn(false), .fn(true), .key], [.down, .chord, .up, .down, .chord]),
+    ])
+    func phases(inputs: [Input], expected: [HotkeyPhase]) {
+        var tracker = FnTracker()
+        var out: [HotkeyPhase] = []
+        for input in inputs {
+            let phase: HotkeyPhase?
+            switch input {
+            case let .fn(down): phase = tracker.flagsChanged(fnDown: down)
+            case .key: phase = tracker.keyDown()
+            }
+            if let phase { out.append(phase) }
         }
-        #expect(code == "bad_message")
+        #expect(out == expected)
     }
 }

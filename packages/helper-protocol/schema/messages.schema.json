@@ -46,6 +46,108 @@
             "type"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "recordStart"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "recordStop"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "recordCancel"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "insertText"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100000
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "text"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -119,6 +221,198 @@
             },
             "type": {
               "type": "string",
+              "const": "done"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "transcript"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "text": {
+              "type": "string"
+            },
+            "words": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  },
+                  "startMs": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "endMs": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "p": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "text",
+                  "startMs",
+                  "endMs",
+                  "p"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "audioMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "sttMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "text",
+            "words",
+            "audioMs",
+            "sttMs",
+            "model"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "hotkey"
+            },
+            "key": {
+              "type": "string",
+              "const": "fn"
+            },
+            "phase": {
+              "type": "string",
+              "enum": [
+                "down",
+                "up",
+                "chord"
+              ]
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "key",
+            "phase"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "fnListener"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "active",
+                "unavailable"
+              ]
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "state"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "sttStatus"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "loading",
+                "ready",
+                "error"
+              ]
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "msg": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "state",
+            "model"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
               "const": "log"
             },
             "level": {
@@ -152,6 +446,11 @@
             "type": {
               "type": "string",
               "const": "error"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
             },
             "code": {
               "type": "string",

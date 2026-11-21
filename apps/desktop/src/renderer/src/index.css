@@ -1,1 +1,8 @@
 @import 'tailwindcss';
+
+/* The pill window is transparent; only the pill itself is drawn. */
+html.pill,
+html.pill body {
+  background: transparent;
+  overflow: hidden;
+}

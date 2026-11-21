@@ -2,8 +2,8 @@ import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeAppLine, encode, type AppMessage, type HelperMessage } from '@sayso/helper-protocol';
-import type { HelperStatus } from '../../shared/helper-status.ts';
-import { HelperProcess, type ChildLike, type Logger } from './HelperProcess.ts';
+import type { HelperStatus } from '../../shared/status.ts';
+import { HelperProcess, HelperRequestError, type ChildLike, type Logger } from './HelperProcess.ts';
 
 class FakeChild extends EventEmitter implements ChildLike {
   readonly stdin = new PassThrough();
@@ -63,10 +63,13 @@ function setup(overrides: { exists?: boolean } = {}) {
   const children: FakeChild[] = [];
   const logger: Logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const statuses: HelperStatus[] = [];
+  const spawnEnvs: Record<string, string>[] = [];
   const helper = new HelperProcess({
     binaryPath: '/fake/SaysoHelper',
+    env: { SAYSO_MODELS_DIR: '/models' },
     exists: () => overrides.exists ?? true,
-    spawn: () => {
+    spawn: (_path, env) => {
+      spawnEnvs.push(env);
       const child = new FakeChild();
       children.push(child);
       return child;
@@ -84,7 +87,7 @@ function setup(overrides: { exists?: boolean } = {}) {
     if (!child) throw new Error('no child spawned');
     return child;
   };
-  return { helper, children, latest, logger, statuses };
+  return { helper, children, latest, logger, statuses, spawnEnvs };
 }
 
 describe('HelperProcess', () => {
@@ -131,6 +134,7 @@ describe('HelperProcess', () => {
   it('rejects ping on timeout and when not connected', async () => {
     const { helper, latest } = setup();
     await expect(helper.ping()).rejects.toThrow(/not connected/);
+    await expect(helper.ping()).rejects.toBeInstanceOf(HelperRequestError);
     helper.start();
     latest().emitMessage(ready);
     await flush();
@@ -207,5 +211,70 @@ describe('HelperProcess', () => {
     vi.advanceTimersByTime(1_000);
     await stopped;
     expect(child.killedWith).toBe('SIGKILL');
+  });
+
+  it('passes the configured env to the helper', () => {
+    const { helper, spawnEnvs } = setup();
+    helper.start();
+    expect(spawnEnvs).toEqual([{ SAYSO_MODELS_DIR: '/models' }]);
+  });
+
+  async function connected() {
+    const ctx = setup();
+    ctx.helper.start();
+    ctx.latest().emitMessage(ready);
+    await flush();
+    return ctx;
+  }
+
+  it('uses an explicit id and resolves with the matching reply', async () => {
+    const { helper, latest } = await connected();
+    const result = helper.request({ type: 'recordStop' }, { id: 'u-7', timeoutMs: 60_000 });
+    await flush();
+    expect(latest().received.at(-1)).toEqual({ v: 1, type: 'recordStop', id: 'u-7' });
+    const transcript: HelperMessage = {
+      v: 1,
+      type: 'transcript',
+      id: 'u-7',
+      text: 'hi',
+      words: [],
+      audioMs: 500,
+      sttMs: 100,
+      model: 'm',
+    };
+    latest().emitMessage(transcript);
+    await expect(result).resolves.toEqual(transcript);
+  });
+
+  it('rejects with the helper error code when the reply is an error', async () => {
+    const { helper, latest } = await connected();
+    const result = helper.request({ type: 'recordStart' }, { id: 'u-1' });
+    latest().emitMessage({ v: 1, type: 'error', id: 'u-1', code: 'mic_denied', msg: 'off' });
+    await expect(result).rejects.toMatchObject({ code: 'mic_denied', message: 'off' });
+  });
+
+  it('refuses a second pending request with the same id', async () => {
+    const { helper } = await connected();
+    void helper.request({ type: 'recordStart' }, { id: 'u-1' }).catch(() => undefined);
+    await expect(helper.request({ type: 'recordStop' }, { id: 'u-1' })).rejects.toMatchObject({
+      code: 'duplicate_id',
+    });
+  });
+
+  it('rejects pending requests when the helper exits', async () => {
+    const { helper, latest } = await connected();
+    const result = helper.request({ type: 'recordStop' }, { id: 'u-1', timeoutMs: 60_000 });
+    latest().exit(1);
+    await expect(result).rejects.toMatchObject({ code: 'helper_exited' });
+  });
+
+  it('passes events to message listeners', async () => {
+    const { helper, latest } = await connected();
+    const seen: string[] = [];
+    helper.onMessage((m) => seen.push(m.type));
+    latest().emitMessage({ v: 1, type: 'hotkey', key: 'fn', phase: 'down' });
+    latest().emitMessage({ v: 1, type: 'fnListener', state: 'active' });
+    await flush();
+    expect(seen).toEqual(['hotkey', 'fnListener']);
   });
 });
