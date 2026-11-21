@@ -145,7 +145,9 @@ describe('loadConfig', () => {
     ['GROQ', 'groq'],
     ['auto', 'auto'],
     ['', 'auto'],
-    ['openai', 'auto'],
+    ['openai', 'openai'],
+    ['OpenAI', 'openai'],
+    ['somethingelse', 'auto'],
   ])('SAYSO_AI_PROVIDER=%j → %s', (value, expected) => {
     expect(loadConfig(files(`SAYSO_AI_PROVIDER=${value}`), {}).aiProvider).toBe(expected);
   });

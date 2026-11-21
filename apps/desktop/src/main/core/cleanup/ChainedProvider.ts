@@ -75,7 +75,7 @@ export class ChainedProvider implements LLMProvider {
       }
     }
     const answer = await this.fallback.cleanup(request, signal);
-    this.used = this.fallback.name;
+    this.used = this.fallback.lastUsed?.() ?? this.fallback.name;
     return answer;
   }
 

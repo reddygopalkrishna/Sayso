@@ -11,6 +11,13 @@ export interface OpenAICompatOptions {
   model: string;
   /** Extra request fields, e.g. { reasoning_effort: 'none' } to stop a reasoning model thinking. */
   extraBody?: Record<string, unknown>;
+  /** Which field limits the answer length. OpenAI's current models want max_completion_tokens. */
+  tokenField?: 'max_tokens' | 'max_completion_tokens';
+  /**
+   * Some models (OpenAI's reasoning models) refuse temperature 0 with a 400 that names it: retry
+   * once without it. Off by default.
+   */
+  retryWithoutTemperature?: boolean;
   fetch?: typeof fetch;
   /** For tests. */
   now?: () => number;
@@ -39,6 +46,8 @@ export class OpenAICompatProvider implements LLMProvider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly extraBody: Record<string, unknown>;
+  private readonly tokenField: 'max_tokens' | 'max_completion_tokens';
+  private readonly retryWithoutTemperature: boolean;
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
   private lastWarmUp = -Infinity;
@@ -50,6 +59,8 @@ export class OpenAICompatProvider implements LLMProvider {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.model = options.model;
     this.extraBody = options.extraBody ?? {};
+    this.tokenField = options.tokenField ?? 'max_tokens';
+    this.retryWithoutTemperature = options.retryWithoutTemperature ?? false;
     this.fetchImpl = options.fetch ?? fetch;
     this.now = options.now ?? Date.now;
   }
@@ -76,18 +87,10 @@ export class OpenAICompatProvider implements LLMProvider {
     }
   }
 
-  async cleanup(request: CleanupRequest, signal: AbortSignal): Promise<string> {
-    const body = {
-      model: this.model,
-      temperature: 0,
-      // Room for the cleaned text, which is never much longer than the input.
-      max_tokens: Math.min(4096, 128 + Math.ceil(request.rawText.length / 2)),
-      ...this.extraBody,
-      messages: [
-        { role: 'system', content: buildSystemPrompt(request) },
-        { role: 'user', content: buildUserPrompt(request) },
-      ],
-    };
+  private async post(
+    body: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<{ response: Response; json: unknown }> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
@@ -101,6 +104,30 @@ export class OpenAICompatProvider implements LLMProvider {
       throw new LLMError(`${this.name} request failed: ${String(error)}`);
     }
     const json: unknown = await response.json().catch(() => null);
+    return { response, json };
+  }
+
+  async cleanup(request: CleanupRequest, signal: AbortSignal): Promise<string> {
+    const body: Record<string, unknown> = {
+      model: this.model,
+      temperature: 0,
+      // Room for the cleaned text, which is never much longer than the input.
+      [this.tokenField]: Math.min(4096, 128 + Math.ceil(request.rawText.length / 2)),
+      ...this.extraBody,
+      messages: [
+        { role: 'system', content: buildSystemPrompt(request) },
+        { role: 'user', content: buildUserPrompt(request) },
+      ],
+    };
+    let { response, json } = await this.post(body, signal);
+    if (this.retryWithoutTemperature && response.status === 400) {
+      const detail = ErrorSchema.safeParse(json);
+      if (detail.success && /temperature/i.test(detail.data.error.message)) {
+        const withoutTemperature = { ...body };
+        delete withoutTemperature['temperature'];
+        ({ response, json } = await this.post(withoutTemperature, signal));
+      }
+    }
     if (!response.ok) {
       const parsed = ErrorSchema.safeParse(json);
       const detail = parsed.success ? parsed.data.error.message : response.statusText;

@@ -12,7 +12,7 @@ import { buildProvider } from './core/cleanup/providers.ts';
 import { BUILT_IN_TERMS } from './core/cleanup/builtInTerms.ts';
 import { OpenAIChatJson, type ChatJson } from './core/interpret/chatJson.ts';
 import { Interpreter } from './core/interpret/Interpreter.ts';
-import { GROQ_BASE_URL, groqRequestExtras } from './core/cleanup/providers.ts';
+import { GROQ_BASE_URL, OPENAI_BASE_URL, groqRequestExtras } from './core/cleanup/providers.ts';
 import { CommandEngine } from './core/commands/CommandEngine.ts';
 import { readContext } from './core/context/HelperContext.ts';
 import { AppResolver } from './core/resolver/AppResolver.ts';
@@ -192,7 +192,8 @@ if (config.openaiApiKey && config.openaiModel) {
       name: 'openai',
       model: config.openaiModel,
       apiKey: config.openaiApiKey,
-      baseUrl: 'https://api.openai.com/v1',
+      baseUrl: OPENAI_BASE_URL,
+      tokenField: 'max_completion_tokens',
     }),
   );
 }

@@ -19,7 +19,7 @@ export interface AppConfig {
   /** The Groq model; Groq's lineup changes, so this is a setting. */
   fastModel: string;
   /** auto: Groq first when it has a key. gemini / groq: only that one (keeps text away from the other). */
-  aiProvider: 'auto' | 'gemini' | 'groq';
+  aiProvider: 'auto' | 'gemini' | 'groq' | 'openai';
   cleanupLevel: CleanupLevel;
   /** Silence before a trailing "send"/"enter"/"new line" for it to run as a command (pause rule). */
   pauseMs: number;
@@ -92,7 +92,10 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     groqApiKey: merged['GROQ_API_KEY']?.trim() || null,
     // A model id is letters, digits and . _ / : - only; anything else would be a typo or worse.
     fastModel: /^[\w./:-]{1,100}$/.test(fastModel) ? fastModel : DEFAULT_FAST_MODEL,
-    aiProvider: aiProvider === 'gemini' || aiProvider === 'groq' ? aiProvider : 'auto',
+    aiProvider:
+      aiProvider === 'gemini' || aiProvider === 'groq' || aiProvider === 'openai'
+        ? aiProvider
+        : 'auto',
     cleanupLevel: level === 'off' || level === 'light' || level === 'full' ? level : 'full',
     pauseMs: Number.isFinite(pause) && pause >= 200 && pause <= 3000 ? pause : 600,
     previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,

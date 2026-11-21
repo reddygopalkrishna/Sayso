@@ -15,6 +15,8 @@ export interface ChatJsonOptions {
   baseUrl: string;
   /** Extra request fields, e.g. { reasoning_effort: 'none' }. */
   extraBody?: Record<string, unknown>;
+  /** Which field limits the answer length. OpenAI's current models want max_completion_tokens. */
+  tokenField?: 'max_tokens' | 'max_completion_tokens';
   fetch?: typeof fetch;
 }
 
@@ -48,7 +50,7 @@ export class OpenAIChatJson implements ChatJson {
       body: JSON.stringify({
         model: this.model,
         temperature: 0,
-        max_tokens: 400,
+        [this.options.tokenField ?? 'max_tokens']: 400,
         ...extraBody,
         messages: [
           { role: 'system', content: system },

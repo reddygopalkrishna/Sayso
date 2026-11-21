@@ -182,3 +182,60 @@ describe('OpenAICompatProvider.warmUp', () => {
     expect(() => make(throwing).warmUp()).not.toThrow();
   });
 });
+
+describe('OpenAICompatProvider: options for OpenAI itself', () => {
+  const sent = (fetchMock: ReturnType<typeof reply>, index = 0) =>
+    JSON.parse(String(fetchMock.mock.calls[index]?.[1]?.body)) as Record<string, unknown>;
+
+  it('can limit the answer with max_completion_tokens instead of max_tokens', async () => {
+    const fetchMock = ok('Hi.');
+    await make(fetchMock, { tokenField: 'max_completion_tokens' }).cleanup(request, signal());
+    expect(sent(fetchMock)).toHaveProperty('max_completion_tokens');
+    expect(sent(fetchMock)).not.toHaveProperty('max_tokens');
+  });
+
+  it('retries once without temperature when the model refuses it', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              message: "Unsupported value: 'temperature' does not support 0 with this model.",
+            },
+          }),
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ choices: [{ message: { content: 'Hi.' }, finish_reason: 'stop' }] }),
+        ),
+      );
+    await expect(
+      make(fetchMock, { retryWithoutTemperature: true }).cleanup(request, signal()),
+    ).resolves.toBe('Hi.');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sent(fetchMock, 0)).toHaveProperty('temperature', 0);
+    expect(sent(fetchMock, 1)).not.toHaveProperty('temperature');
+  });
+
+  it('does not retry for another 400, or when the option is off', async () => {
+    const other = reply(400, { error: { message: 'bad model' } });
+    await expect(
+      make(other, { retryWithoutTemperature: true }).cleanup(request, signal()),
+    ).rejects.toThrow('400');
+    expect(other).toHaveBeenCalledTimes(1);
+    const temp = reply(400, { error: { message: 'temperature not supported' } });
+    await expect(make(temp).cleanup(request, signal())).rejects.toThrow('400');
+    expect(temp).toHaveBeenCalledTimes(1);
+  });
+
+  it('never puts the key in an error message', async () => {
+    const error = await make(reply(401, { error: { message: 'Incorrect API key provided' } }))
+      .cleanup(request, signal())
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(LLMError);
+    expect(String(error.message)).not.toContain('secret-key');
+  });
+});

@@ -1,9 +1,10 @@
-import { ChainedProvider } from './ChainedProvider.ts';
+import { ChainedProvider, type ChainOptions } from './ChainedProvider.ts';
 import { GeminiProvider } from './gemini.ts';
 import { OpenAICompatProvider } from './openaiCompat.ts';
 import type { LLMProvider } from './types.ts';
 
 export const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+export const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 /** Measured 14 Nov 2026: about 0.2 s, careful on short text. Groq's lineup changes: set SAYSO_FAST_MODEL. */
 export const DEFAULT_FAST_MODEL = 'qwen/qwen3.8-27b';
 
@@ -12,8 +13,11 @@ export interface ProviderConfig {
   geminiModel: string | undefined;
   groqApiKey: string | null;
   fastModel: string;
-  /** auto: Groq first if there is a key, then Gemini. gemini / groq: only that one. */
-  aiProvider: 'auto' | 'gemini' | 'groq';
+  /** auto: Groq, then OpenAI, then Gemini (each only with its key). gemini / groq / openai: only that one. */
+  aiProvider: 'auto' | 'gemini' | 'groq' | 'openai';
+  /** OpenAI is used for cleanup only with a key AND a model (a model name is never guessed). */
+  openaiApiKey?: string | null;
+  openaiModel?: string | null;
 }
 
 /** Reasoning models think before answering, which costs seconds: ask them not to (or to barely). */
@@ -31,13 +35,18 @@ export interface BuiltProvider {
   timeoutMs: number;
 }
 
-/** Picks the AI provider(s) from the config. Groq first when it has a key, Gemini as the fallback. */
+/**
+ * Picks the AI provider(s) from the config: Groq first, then OpenAI (only with a key and a model),
+ * then Gemini, each only when it has what it needs. SAYSO_AI_PROVIDER can force a single one.
+ */
 export function buildProvider(
   config: ProviderConfig,
   log: (message: string) => void = () => undefined,
 ): BuiltProvider {
+  const wants = (name: ProviderConfig['aiProvider']): boolean =>
+    config.aiProvider === 'auto' || config.aiProvider === name;
   const groq =
-    config.groqApiKey && config.aiProvider !== 'gemini'
+    config.groqApiKey && wants('groq')
       ? new OpenAICompatProvider({
           name: 'groq',
           apiKey: config.groqApiKey,
@@ -46,29 +55,44 @@ export function buildProvider(
           extraBody: groqRequestExtras(config.fastModel),
         })
       : null;
+  const openai =
+    config.openaiApiKey && config.openaiModel && wants('openai')
+      ? new OpenAICompatProvider({
+          name: 'openai',
+          apiKey: config.openaiApiKey,
+          baseUrl: OPENAI_BASE_URL,
+          model: config.openaiModel,
+          tokenField: 'max_completion_tokens',
+          retryWithoutTemperature: true,
+        })
+      : null;
   const gemini =
-    config.geminiApiKey && config.aiProvider !== 'groq'
+    config.geminiApiKey && wants('gemini')
       ? new GeminiProvider({ apiKey: config.geminiApiKey, model: config.geminiModel })
       : null;
 
-  if (groq && gemini) {
-    const chain = new ChainedProvider(groq, gemini, {
-      onFallback: ({ from, to, reason, coolingDown }) =>
-        log(
-          `[cleanup] ${from} failed (${reason}); using ${to}${coolingDown ? ' and pausing ' + from : ''}`,
-        ),
+  const available: LLMProvider[] = [groq, openai, gemini].filter(
+    (p): p is NonNullable<typeof p> => p !== null,
+  );
+  const onFallback: ChainOptions['onFallback'] = ({ from, to, reason, coolingDown }) =>
+    log(
+      `[cleanup] ${from} failed (${reason}); using ${to}${coolingDown ? ' and pausing ' + from : ''}`,
+    );
+  // The first gets 1.5 s, a middle one 2 s; the last one still needs its own time.
+  const chainOf = (list: readonly LLMProvider[], isFirst: boolean): LLMProvider => {
+    const [head, ...tail] = list;
+    if (!head) throw new Error('no providers');
+    if (tail.length === 0) return head;
+    return new ChainedProvider(head, chainOf(tail, false), {
+      onFallback,
+      ...(isFirst ? {} : { primaryTimeoutMs: 2_000 }),
     });
-    // The first provider gets 1.5 s; the second still needs its own time.
-    return {
-      provider: chain,
-      label: `${groq.name} · ${groq.model}, then ${gemini.name} · ${gemini.model}`,
-      timeoutMs: 4_000,
-    };
-  }
-  const only = groq ?? gemini;
+  };
+  if (available.length === 0) return { provider: null, label: null, timeoutMs: 2_500 };
+  const chain = chainOf(available, true);
   return {
-    provider: only,
-    label: only ? `${only.name} · ${only.model}` : null,
-    timeoutMs: 2_500,
+    provider: chain,
+    label: available.map((p) => `${p.name} · ${p.model}`).join(', then '),
+    timeoutMs: [2_500, 4_000, 6_000][available.length - 1] ?? 6_000,
   };
 }

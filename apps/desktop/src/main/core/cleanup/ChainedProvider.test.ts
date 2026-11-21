@@ -174,3 +174,25 @@ it('logs through the callback only when the second provider steps in', async () 
   await chain.cleanup(request, live());
   expect(log).not.toHaveBeenCalled();
 });
+
+describe('ChainedProvider: nested (three providers)', () => {
+  it('names the provider that really answered, not the inner chain', async () => {
+    const a = fake('a', fails(new LLMError('down', 500)));
+    const b = fake('b', fails(new LLMError('down', 500)));
+    const c = fake('c', answers('from c'));
+    const chain = new ChainedProvider(a, new ChainedProvider(b, c));
+    await expect(chain.cleanup(request, live())).resolves.toBe('from c');
+    expect(chain.lastUsed()).toBe('c');
+    expect([a.calls, b.calls, c.calls]).toEqual([1, 1, 1]);
+  });
+
+  it('names the middle provider when it answers', async () => {
+    const a = fake('a', fails(new LLMError('down', 500)));
+    const b = fake('b', answers('from b'));
+    const c = fake('c', answers('from c'));
+    const chain = new ChainedProvider(a, new ChainedProvider(b, c));
+    await chain.cleanup(request, live());
+    expect(chain.lastUsed()).toBe('b');
+    expect(c.calls).toBe(0);
+  });
+});
