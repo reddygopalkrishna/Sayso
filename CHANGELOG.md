@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:53 · Benchmark: plain Whisper vs Sayso (`e297b08`)
+- **What:** `pnpm benchmark <folder>` runs the same recordings (a folder with `manifest.json` and wav files) through plain Whisper (`SaysoHelper --transcribe`) and through Sayso's own text steps (built-in names, local cleanup, address formatting; with `--ai` also the AI cleanup and the interpreter). It reports word error rate, Indian names spelled exactly, filler words left, and command success three ways (plain text, exact grammar, with the interpreter). `docs/BENCHMARK.md` explains the measures and how to record real sentences; `scripts/benchmark/make-samples.sh` makes test audio with the macOS `say` voice.
+- **Tested:** the scoring functions and the sample manifest have unit tests (`pnpm benchmark:test`). The harness was run once, live, on 22 synthetic recordings (local rules, no AI): it works end to end. Those numbers are **not** results: a synthetic voice is not a real speaker, and 5 of 12 short command clips came back empty. `--ai` and the interpreter column were not run.
+- **Pending:** real recordings by the founder (and teammates) for the real numbers; the interpreter is measured without a screen.
+- Also: the generated `sample/report.md` was committed by mistake in `e297b08` and is untracked and ignored from this commit on.
+
 ### 15:45 · Voice test script (`b3b72a5`)
 - **What:** `docs/VOICE_TEST.md`: 44 spoken commands across Chrome, Finder, Notes, saved details and forms, free-form sentences (the interpreter), System Settings, and four mishearing checks. Each has the expected result and blank Result and Log line columns, plus a score table. Setup notes say which settings to turn on and that "lock screen" and a real "send" are left out.
 - **Not run yet:** the expected results come from the grammar and the interpreter design, not from live runs. Finding and fixing the real failures waits for the founder to run it and paste the `[dictation]` lines from the "Sayso dev" terminal.
