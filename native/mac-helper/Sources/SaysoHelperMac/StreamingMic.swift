@@ -26,11 +26,10 @@ public final class StreamingMic: ContinuousListening {
         else {
             throw ServiceError(code: HelperErrorCode.micFailed, message: "cannot convert \(inFormat) to 16 kHz mono")
         }
-        let sink = CallbackSink(onSamples)
-        let convert = Converter(converter: converter, outFormat: outFormat)
-        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
-            convert.convert(buffer, into: sink)
-        }
+        input.installTap(
+            onBus: 0, bufferSize: 4096, format: inFormat,
+            block: Self.makeTapBlock(
+                Converter(converter: converter, outFormat: outFormat), CallbackSink(onSamples)))
         engine.prepare()
         do {
             try engine.start()
@@ -39,6 +38,13 @@ public final class StreamingMic: ContinuousListening {
             throw ServiceError(code: HelperErrorCode.micFailed, message: "audio engine failed: \(error.localizedDescription)")
         }
         self.engine = engine
+    }
+
+    /// Built outside the main actor: the tap block runs on the audio thread, never the main one.
+    private nonisolated static func makeTapBlock(_ converter: Converter, _ sink: any SampleSink)
+        -> AVAudioNodeTapBlock
+    {
+        { buffer, _ in converter.convert(buffer, into: sink) }
     }
 
     public func stop() {

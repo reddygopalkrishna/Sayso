@@ -7,6 +7,14 @@ private func speech(ms: Int, amplitude: Float = 0.3) -> [Float] {
     (0..<(16 * ms)).map { amplitude * Float(sinTone(Double($0) * 220 / 16_000)) }
 }
 
+/// Speech-like: 200 ms syllables with short quiet dips between them, as real speech has.
+private func syllables(ms: Int) -> [Float] {
+    (0..<(16 * ms)).map { i in
+        let inDip = (i / 16) % 260 >= 200
+        return (inDip ? 0.01 : 0.3) * Float(sinTone(Double(i) * 220 / 16_000))
+    }
+}
+
 private func quiet(ms: Int) -> [Float] {
     (0..<(16 * ms)).map { 0.002 * Float(sinTone(Double($0) * 97 / 16_000)) }
 }
@@ -81,7 +89,7 @@ private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
     @Test func aVeryLongUtteranceIsCutAndTheRestIsKept() {
         var config = SpeechSegmenter.Config()
         config.maxSegmentMs = 5_000
-        let out = segments(of: speech(ms: 12_000) + quiet(ms: 1_500), config: config)
+        let out = segments(of: syllables(ms: 12_000) + quiet(ms: 1_500), config: config)
         #expect(out.count >= 2)
         #expect(ms(out[0]) <= 5_100)
     }
@@ -107,4 +115,24 @@ private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
         let out = segments(of: hum + speech(ms: 1_200) + quiet(ms: 1_500))
         #expect(out.count == 1)
     }
+
+    @Test func aLongSpeechLikeSentenceIsNotMistakenForBackground() {
+        let out = segments(of: quiet(ms: 500) + syllables(ms: 8_000) + quiet(ms: 1_500))
+        #expect(out.count == 1)
+        #expect(ms(out[0]) >= 8_000)
+    }
+
+    @Test func aLoudSteadyBackgroundIsLearnedSoSentencesStillEnd() {
+        // Music or a fan as loud as -20 dB for 20 s, then a sentence well above it, then the background again.
+        let background: (Int) -> [Float] = { ms in
+            (0..<(16 * ms)).map { 0.1 * Float(sinTone(Double($0) * 50 / 16_000)) }
+        }
+        let out = segments(of: background(20_000) + speech(ms: 1_500, amplitude: 0.9) + background(3_000))
+        // Without learning the background, everything would be one long 30 s "utterance".
+        #expect(out.count >= 1)
+        #expect(out.allSatisfy { ms($0) < 10_000 })
+        // The sentence said over the background is an utterance of its own, about its own length.
+        #expect(out.contains { ms($0) >= 1_400 && ms($0) <= 3_000 })
+    }
 }
+

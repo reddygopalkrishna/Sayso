@@ -92,10 +92,11 @@ export class HandsFreeController {
 
   private async process(message: HeardMessage, arrivedAt: number): Promise<void> {
     if (this.current.state !== 'listening') return;
+    const heardText = `"${message.text.trim()}" (${(message.audioMs / 1000).toFixed(1)} s)`;
     // The held key's own speech is heard by this microphone too: never act on it twice.
     const window = message.audioMs + message.sttMs + HOLD_OVERLAP_MS;
     if (this.deps.holdBusy() || arrivedAt - this.deps.lastHoldAt() < window) {
-      this.deps.log?.('[hands-free] ignored: said while holding the key');
+      this.deps.log?.(`[hands-free] heard ${heardText}: ignored, said while holding the key`);
       return;
     }
     const segment: TranscriptSegment = {
@@ -112,10 +113,15 @@ export class HandsFreeController {
     });
     if (result.triggered) this.awakeUntil = this.now() + AWAKE_MS;
     if (!result.intent) {
-      this.deps.log?.('[hands-free] ignored: not a trigger');
+      this.deps.log?.(
+        `[hands-free] heard ${heardText}: ignored, it does not start with "type", "open" or the wake word`,
+      );
       return;
     }
     const mode: PipelineMode = result.intent.kind === 'dictate' ? 'dictation' : 'command';
+    this.deps.log?.(
+      `[hands-free] heard ${heardText}: ${mode === 'dictation' ? 'typing' : 'command'}`,
+    );
     try {
       await this.deps.deliver(result.intent.segment, mode);
     } catch (error) {

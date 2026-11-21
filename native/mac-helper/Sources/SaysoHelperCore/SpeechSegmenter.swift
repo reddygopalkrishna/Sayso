@@ -8,8 +8,10 @@ public struct SpeechSegmenter: Sendable {
         public var frameMs = 30
         /// Never treat anything quieter than this (RMS) as speech, however still the room is.
         public var minThreshold: Float = 0.015
-        /// Speech must be this many times louder than the room's own noise level.
+        /// Speech must be this many times louder than the room's own noise level to start…
         public var speechRatio: Float = 3.0
+        /// …and stays speech while it is this many times louder (so a sentence is not cut mid-word).
+        public var continueRatio: Float = 2.0
         /// Silence that ends an utterance.
         public var endSilenceMs = 1_000
         /// Shorter than this (a click, a cough) is dropped.
@@ -72,8 +74,12 @@ public struct SpeechSegmenter: Sendable {
 
     private mutating func process(_ frame: [Float]) -> [Float]? {
         let level = rms(frame)
-        let threshold = max(config.minThreshold, noiseFloor * config.speechRatio)
-        let loud = level > threshold
+        // The room's level is learned all the time: it drops fast when it gets quieter and rises
+        // slowly (about 6 s) when it gets louder, so a steady fan or music becomes "silence"
+        // while speech, which comes and goes, stays above it.
+        noiseFloor = level < noiseFloor ? 0.9 * noiseFloor + 0.1 * level : 0.995 * noiseFloor + 0.005 * level
+        let ratio = inSegment ? config.continueRatio : config.speechRatio
+        let loud = level > max(config.minThreshold, noiseFloor * ratio)
 
         if !inSegment {
             if loud {
@@ -93,7 +99,6 @@ public struct SpeechSegmenter: Sendable {
                 if loudRun > 0 { preRoll.append(contentsOf: loudFrames) }
                 loudRun = 0
                 loudFrames.removeAll()
-                noiseFloor = 0.95 * noiseFloor + 0.05 * level
                 preRoll.append(frame)
                 let keep = max(1, config.preRollMs / config.frameMs)
                 if preRoll.count > keep { preRoll.removeFirst(preRoll.count - keep) }
