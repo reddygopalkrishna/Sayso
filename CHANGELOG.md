@@ -39,6 +39,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:19 · The interpreter forgives what speech recognition mishears (`0899fa0`)
+- **From your own log:** "New tab" was heard as "New time" and "Close tab" as "Closed", and the interpreter gave up. It is now told the words come from speech recognition (with examples) and to pick the command or screen name they sound like; it still gives nothing when nothing is close.
+- **Checked live against Groq:** "New time" → new tab; "Closed" → close tab; "Go bag" → go back; "Scroll don" → scroll down; "click sign it" → click Sign in; "New time and search for AWS" → new tab, type AWS (160 to 290 ms). "banana" and a weather question: no plan.
+- Safety unchanged: every step goes through the usual checks (preview chip, "yes?" for risky buttons).
+- Tests: 1,237 desktop tests pass; typecheck and lint clean.
+
 ### 15:18 · Indian places, services and names out of the box (`9b09113`)
 - **What:** a built-in list of what speech-to-text most often gets wrong for Indian speakers: places (Hyderabad, Gachibowli, HITEC City, Visakhapatnam…), payments and banks (UPI, PhonePe, Paytm, Google Pay, NEFT, IFSC, HDFC…), government and identity (Aadhaar, DigiLocker, IRCTC, GST…), apps and companies (Zomato, Swiggy, Rapido, Flipkart, BigBasket, Equal AI…) and common first names, with the usual mishearings ("hydrabad", "phone pe", "aadhar", "i r c t c", "g s t").
 - **Care taken:** no mishearing is an ordinary English word, ordinary sentences are left alone, and your own dictionary still wins.
