@@ -76,6 +76,8 @@ const MISHEARD: ReadonlyMap<string, string> = new Map([
   ['scrolla', 'scroll down'],
   ['new chart', 'new chat'],
   ['new check', 'new chat'],
+  ['a new chat', 'new chat'],
+  ['a new chart', 'new chat'],
 ]);
 
 /** Lowercase words only (letters and digits, single spaces), without politeness words. */
@@ -88,6 +90,8 @@ export function normalizeUtterance(text: string): string {
   for (let i = 0; i < 3; i++) {
     n = n.replace(POLITE_PREFIX, '').replace(POLITE_SUFFIX, '');
   }
+  // "new chart" is never a real thing to say: "click new chart" and "open new chart" mean the chat.
+  n = n.replace(/\bnew chart\b/g, 'new chat');
   return MISHEARD.get(n) ?? n;
 }
 

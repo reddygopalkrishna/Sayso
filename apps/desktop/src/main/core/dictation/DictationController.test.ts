@@ -105,6 +105,13 @@ describe('DictationController', () => {
     expect(states).toEqual(['listening', 'idle']);
   });
 
+  it('a tap does not count as a recent hold (speech right after a double tap is heard)', async () => {
+    const { controller } = setup();
+    expect(controller.lastActiveAt()).toBe(0);
+    await hold(controller, 100);
+    expect(controller.lastActiveAt()).toBe(0);
+  });
+
   it('cancels on an Fn chord (e.g. Fn+Delete)', async () => {
     const { stt, controller, deliver } = setup();
     controller.handleHotkey('down');

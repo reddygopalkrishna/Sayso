@@ -13,6 +13,8 @@ describe('short commands Whisper mishears (seen live)', () => {
     ['Hit tender.', 'enter'],
     ['Scrolla', 'scroll_down'],
     ['New chart?', 'new_chat'],
+    ['A new chat?', 'new_chat'],
+    ['Open New Chart', 'new_chat'],
     ['new chat', 'new_chat'],
     ['Start a new chat.', 'new_chat'],
   ])('%j → %s', (heard, name) => {

@@ -57,6 +57,8 @@ export class DictationController {
   private state: Internal = { phase: 'idle' };
   /** When a held-key utterance was last in progress (hands-free ignores that speech). */
   private lastActive = 0;
+  /** What `lastActive` was before the current press began, so a mere tap can undo its mark. */
+  private lastActiveBeforePress = 0;
   private seq = 0;
   private readonly listeners = new Set<(s: DictationState) => void>();
   private maxTimer: NodeJS.Timeout | null = null;
@@ -126,6 +128,7 @@ export class DictationController {
       this.fail(readiness.message);
       return;
     }
+    this.lastActiveBeforePress = this.lastActive;
     const id = `u-${++this.seq}`;
     const startedAt = this.now();
     this.set({ phase: 'starting', id, startedAt, then: null, command: false });
@@ -195,6 +198,9 @@ export class DictationController {
     this.clearMaxTimer();
     this.log(`utterance ${id} cancelled (${reason})`);
     this.set({ phase: 'idle' });
+    // A tap (too short to dictate) is not a hold: speech right after it, such as a command said just
+    // after the double tap that turns hands-free on, must not be taken for the held key's own speech.
+    if (reason === 'tap') this.lastActive = this.lastActiveBeforePress;
     await this.opts.stt.cancel(id);
   }
 

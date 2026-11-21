@@ -68,6 +68,9 @@ describe('typeLiterally (the hold key\'s "type …")', () => {
 describe('BUILT_IN_TERMS: AI tool names', () => {
   it.each([
     ['i used cloud code today', 'i used Claude Code today'],
+    ['open charged gpt', 'open ChatGPT'],
+    ['open to rgbt', 'open ChatGPT'],
+    ['open charge gpt', 'open ChatGPT'],
     ['codex and claude code both work', 'Codex and Claude Code both work'],
     ['i code x on mac', 'i Codex on mac'],
     ['the cloud is down', 'the cloud is down'],
