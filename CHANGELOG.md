@@ -39,6 +39,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-16
 
+### 19:18 · System commands: take a screenshot, lock screen (`4d6c97f`)
+- **"take a screenshot"** sends ⇧⌘3 (saves a full-screen screenshot to the Desktop). Safe: runs at once.
+- **"lock screen"** sends ⌃⌘Q. It shows the preview chip first, so Esc can stop it.
+- **Not tried live:** lock screen would lock the Mac; screenshot writes a file. Volume and dark mode are still to do (they need media keys or AppleScript).
+- Tests: typecheck and lint clean; 901 desktop tests and 17 grammar tests pass.
+
 ### 19:17 · Risky buttons ask "yes?" first (`9f08c8b`)
 - **What:** "click Delete" (and other risky labels such as Pay, Sign out, Publish) no longer gets refused. The pill shows "Say “yes” to press …" for 8 seconds. Only "yes" (or "yes do it", "yes go ahead", "yes click it", "confirm") within that time presses the button, and only if the same app is still in front.
 - **Cancelling:** Esc, any other command, or the timeout drops the wait. A late "yes" does nothing.
