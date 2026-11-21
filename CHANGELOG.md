@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 00:46 · Hands-free keeps a soft first word (`8b2efcb`)
+- **Why:** after the noise fix, the next live log was healthy (utterances 1.1–1.5 s, speech 400–440 ms, "Open Chrome", "Open WhatsApp", "New tab" all ran) but "type Codex" arrived as "Codex": the soft "t" of "type" was clipped, so it was ignored.
+- **What:** the helper keeps 0.5 s of audio from before speech is noticed (was 0.3 s) and counts speech as started after 2 loud frames (was 3).
+- **Tested:** new helper test (a soft 0.4 s word start is kept), 89 helper tests pass. **Not tried live.** Restart `pnpm dev`.
+- **Still slow by design:** an action runs about 1.1 s after you stop speaking (0.65 s waiting to be sure you are done, about 0.4 s to turn speech into text).
+
 ### 00:40 · Hands-free: noisy rooms no longer make long utterances (`b3a867d`)
 - **Why:** the founder's log showed hands-free "utterances" of 9–15 s for two words ("Open Chrome." heard after 12.9 s). The helper's room-noise estimate started at "silent room" and took about 6 s to catch up, so a room that was already noisy (video, fan, typing) was cut into long chunks of noise, and a command inside one ran about 10 s late.
 - **What:** the room's level is now also the lowest level of the last 1.5 s. Speech has dips between words, steady noise does not, so noise is learned within about 1.5 s and the utterance ends 0.65 s after the last word. The 0.65 s end-of-speech silence (was 1 s) from the working folder is included with its test.
