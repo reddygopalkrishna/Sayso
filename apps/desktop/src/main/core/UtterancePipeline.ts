@@ -6,6 +6,8 @@ import { applyStyle } from './cleanup/style.ts';
 import { afterTypeWord, fixWebAddresses, typeLiterally } from './cleanup/webAddress.ts';
 import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
+import { parsePosition } from '@sayso/command-grammar';
+import { HelperRequestError } from '../helper/HelperProcess.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
 import { fillLabel, type InstantMatch } from './commands/CommandEngine.ts';
 import type { AppContext } from './context/HelperContext.ts';
@@ -366,6 +368,19 @@ export class UtterancePipeline {
       case 'pressElement':
         await actions.pressElement(requiredArg(args, 'label'));
         return;
+      case 'pressPosition': {
+        const position = parsePosition(requiredArg(args, 'position'));
+        if (!position) throw new CommandFailed('Say which one, like “the first result”.');
+        try {
+          await actions.pressPosition(position.kind, position.index);
+        } catch (error) {
+          if (error instanceof HelperRequestError && error.code === 'element_not_found') {
+            throw new CommandFailed(`There is no ${position.spoken} on screen.`, { cause: error });
+          }
+          throw error;
+        }
+        return;
+      }
       case 'openTarget': {
         const resolved = await resolver.resolveOpen(requiredArg(args, 'target'));
         if (resolved.type === 'app') await actions.openApp(resolved.bundleId);

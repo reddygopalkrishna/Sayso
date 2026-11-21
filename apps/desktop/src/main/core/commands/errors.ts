@@ -21,8 +21,8 @@ export class CommandRefused extends Error {
 
 /** The command was understood and allowed, but could not be carried out. */
 export class CommandFailed extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'CommandFailed';
   }
 }

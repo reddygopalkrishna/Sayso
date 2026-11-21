@@ -10,6 +10,7 @@ import type { AppContext } from './context/HelperContext.ts';
 import { resolveOpen, resolveSwitch, type KnownApp } from './resolver/AppResolver.ts';
 import type { ChipResult } from './safety/PreviewChip.ts';
 import { SafetyRefusal } from './safety/SafetyGate.ts';
+import { HelperRequestError } from '../helper/HelperProcess.ts';
 import type { TranscriptSegment, TranscriptWord } from './stt/types.ts';
 
 /** "hello there" then, if given, a trailing word after `gapMs`. */
@@ -87,6 +88,12 @@ function setup({
       pressKey: async (k, m) => void log.push(`key ${[...m, k].join('+')}`),
       scroll: async (d, a) => void log.push(`scroll ${d} ${a}`),
       pressElement: async (l) => void log.push(`press ${l}`),
+      pressPosition: async (k, i) => {
+        if (i === 9) {
+          throw new HelperRequestError('element_not_found', 'nothing there');
+        }
+        log.push(`position ${k} ${i}`);
+      },
       listApps: async () => [],
       openApp: async (id) => void log.push(`openApp ${id}`),
       activateApp: async (id) => void log.push(`activate ${id}`),
@@ -201,6 +208,40 @@ describe('UtterancePipeline', () => {
     const { pipeline, log } = setup({ contexts: [context('us.zoom.xos')] });
     await pipeline.deliver(segment('see you soon', send));
     expect(log).toEqual(['llm see you soon send', 'insert See you soon send.']);
+  });
+});
+
+describe('UtterancePipeline: position commands', () => {
+  const said = (text: string) => segment(text);
+  const run = async (text: string) => {
+    const t = setup({ contexts: [slack] });
+    await t.pipeline.deliver(said(text), 'command');
+    return t;
+  };
+
+  it.each([
+    ['open the third email', 'row 3'],
+    ['open the first result', 'result 1'],
+    ['click the second link', 'link 2'],
+    ['open first result', 'result 1'],
+    ['go to the last message', 'row -1'],
+    ['select the 2nd one', 'any 2'],
+  ])('%j opens %s, after the preview chip', async (text, expected) => {
+    const { log } = await run(text);
+    expect(log.at(-1)).toBe(`position ${expected}`);
+    expect(log[0]).toMatch(/^chip Open the /);
+  });
+
+  it('"open the App Store" still opens the app, it is not a position', async () => {
+    const { log } = await run('open the app store');
+    expect(log.some((line) => line.startsWith('position'))).toBe(false);
+  });
+
+  it('says plainly when there is no such item on screen', async () => {
+    const t = setup({ contexts: [slack] });
+    const error = await t.pipeline.deliver(said('open the ninth email'), 'command').catch((e) => e);
+    expect(error).toBeInstanceOf(CommandFailed);
+    expect(error.message).toBe('There is no ninth email on screen.');
   });
 });
 

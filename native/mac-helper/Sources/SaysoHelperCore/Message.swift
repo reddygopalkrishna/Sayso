@@ -103,6 +103,7 @@ public enum AppMessage: Equatable, Sendable {
     case stopListening(id: String)
     case scroll(id: String, direction: ScrollDirection, amount: Int)
     case pressElement(id: String, label: String)
+    case pressPosition(id: String, kind: PositionKind, index: Int)
     case listApps(id: String)
     case openApp(id: String, bundleId: String)
     case activateApp(id: String, bundleId: String)
@@ -149,6 +150,11 @@ public enum AppMessage: Equatable, Sendable {
         case "captureEscape":
             struct E: Decodable { let enabled: Bool }
             return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
+        case "pressPosition":
+            struct P: Decodable { let kind: PositionKind; let index: Int }
+            let p = try field(P.self, data)
+            guard p.index == -1 || (1...50).contains(p.index) else { throw ProtocolError.invalidJSON }
+            return .pressPosition(id: try requestID(data), kind: p.kind, index: p.index)
         case "setLanguage":
             struct L: Decodable { let language: String? }
             let code = try field(L.self, data).language

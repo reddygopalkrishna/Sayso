@@ -13,7 +13,7 @@ Written 15 Nov 2026. Source of the gaps: the Screen Recording of 15 Nov 11:49 (6
 ## Stages
 - **Stage A: measure.** Test matrix below. Each run records pass, wrong target, not found, or slow (over 1 s), plus the app name.
 - **Stage B: make single commands reliable.** Done: web accessibility on, focused window first, short not-found message in the pill, one retry on the first click in a new web app. Still to test by hand in Chrome.
-- **Stage C: Phase 1 features in order.** Done and committed: chained commands (bb883f9), go back / go forward (b497890), "yes?" before risky buttons (9f08c8b), take a screenshot and lock screen (4d6c97f). Still to do: volume and dark mode (media keys or AppleScript in the helper), position commands ("open the third email"), the WhatsApp recipe, hands-free with the wake word. None of these is tried live yet.
+- **Stage C: Phase 1 features in order.** Done and committed: chained commands, go back / go forward, "yes?" before risky buttons, screenshot and lock screen, hands-free (4 slices), and position commands ("open the first result", "open the third email": live-checked in Chrome on a Google search). Still to do: volume and dark mode, the WhatsApp recipe, Telugu/Hindi command words.
 - **Stage D: quick wins.** Done and committed (21 Nov): snippets, a Settings tab, Style (Default or Chill, everywhere and per app), and the choice of hold key (Fn, Right Option, Right Command, Right Control). None is tried live yet.
 - **Stage E: demos** of real tasks for posting.
 

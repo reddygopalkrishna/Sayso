@@ -25,6 +25,7 @@ Update this file at the end of every step. Keep it under 80 lines.
 - Phase 2: first real users (backend, accounts, signing). Do not start before Phase 1.
 
 ## Open decisions
+- **Hosting and AI credits (21 Nov 2026):** the founder has AWS credits (could host the Phase 2 backend instead of Cloudflare) and $250 of OpenAI API credits (could add OpenAI as an AI cleanup provider, or power smart tasks later). Decide in Phase 2.
 - Product name (shortlist: Vaani, Kairo). Code uses `sayso` until chosen.
 - Free tier word limit.
 - **SQLite driver:** the plan says better-sqlite3; the code uses Node's built-in `node:sqlite` behind `core/storage/db.ts`. Reason: Electron 45 runs Node 24 (ABI 150) and the test runner Node 26 (ABI 147), so one compiled better-sqlite3 cannot serve both, and `node:sqlite` has nothing to compile. Switching back means rewriting that one file. Confirm or revert.

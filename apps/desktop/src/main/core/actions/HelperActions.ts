@@ -1,3 +1,4 @@
+import type { PositionKind } from '@sayso/command-grammar';
 import type { HoldKeyName } from '../../../shared/settings.ts';
 import type { AppInfo, Key, Modifier } from '@sayso/helper-protocol';
 import type { HelperRequester } from '../../helper/HelperProcess.ts';
@@ -15,6 +16,8 @@ export interface KeyPresser {
 export interface CommandActions {
   scroll(direction: 'up' | 'down', amount: number): Promise<void>;
   pressElement(label: string): Promise<void>;
+  /** The Nth item of a kind on screen, counted from the top (-1: the last). */
+  pressPosition(kind: PositionKind, index: number): Promise<void>;
   listApps(): Promise<AppInfo[]>;
   openApp(bundleId: string): Promise<void>;
   activateApp(bundleId: string): Promise<void>;
@@ -36,6 +39,10 @@ export class HelperActions implements TextInserter, KeyPresser, CommandActions {
   /** Press a visible button, link or menu item by its label (Accessibility). */
   async pressElement(label: string): Promise<void> {
     await this.helper.request({ type: 'pressElement', label }, { timeoutMs: 3_000 });
+  }
+
+  async pressPosition(kind: PositionKind, index: number): Promise<void> {
+    await this.helper.request({ type: 'pressPosition', kind, index }, { timeoutMs: 4_000 });
   }
 
   async listApps(): Promise<AppInfo[]> {

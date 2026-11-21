@@ -18,6 +18,8 @@ export const CommandActionSchema = z.discriminatedUnion('type', [
       amount: z.number().int().min(50).max(5000),
     })
     .strict(),
+  /** Open or click the Nth item on screen; the `{position}` argument is "third email", "first result". */
+  z.object({ type: z.literal('pressPosition') }).strict(),
   /** Press a visible button, link or menu item; the label is the `{label}` argument. */
   z.object({ type: z.literal('pressElement') }).strict(),
   /** Open an app or website; the name is the `{target}` argument (resolved by the AppResolver). */
@@ -50,6 +52,7 @@ const phrase = z
 /** The argument each action takes from the end of the phrase (none for the others). */
 const ACTION_ARGUMENT: Partial<Record<CommandAction['type'], string>> = {
   pressElement: 'label',
+  pressPosition: 'position',
   openTarget: 'target',
   switchApp: 'app',
 };

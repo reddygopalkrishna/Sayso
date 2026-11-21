@@ -464,6 +464,47 @@
             },
             "type": {
               "type": "string",
+              "const": "pressPosition"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "result",
+                "link",
+                "row",
+                "button",
+                "any"
+              ]
+            },
+            "index": {
+              "type": "integer",
+              "minimum": -1,
+              "maximum": 50
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "kind",
+            "index"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
               "const": "listApps"
             },
             "id": {

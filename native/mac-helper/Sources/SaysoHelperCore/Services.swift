@@ -80,6 +80,9 @@ public protocol ElementPressing: AnyObject {
     /// Presses the button, link or menu item called `label` in the frontmost app.
     /// Throws `ServiceError` (element_not_found / accessibility_denied).
     func press(label: String) async throws
+    /// Opens or clicks the Nth item of a kind in the front window, counted from the top (-1: the
+    /// last). Throws `ServiceError` (element_not_found / accessibility_denied).
+    func pressPosition(kind: PositionKind, index: Int) async throws
 }
 
 @MainActor

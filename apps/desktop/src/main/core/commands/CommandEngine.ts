@@ -1,4 +1,4 @@
-import { phraseArgument, type CommandSpec } from '@sayso/command-grammar';
+import { parsePosition, phraseArgument, type CommandSpec } from '@sayso/command-grammar';
 
 export interface InstantMatch {
   command: CommandSpec;
@@ -18,6 +18,15 @@ interface Compiled {
   literalWords: number;
   argName: string | null;
 }
+
+/**
+ * Arguments that must make sense to count: "open the third email" is a position, but "open the
+ * App Store" is not, so it stays "open" an app. A phrase whose argument passes its check wins over
+ * an equally long phrase without a check.
+ */
+const ARGUMENT_CHECKS: Readonly<Record<string, (value: string) => boolean>> = {
+  position: (value) => parsePosition(value) !== null,
+};
 
 /** Fuzzy matching only for phrases this long, and only above this similarity. */
 const FUZZY_MIN_LENGTH = 5;
@@ -145,7 +154,15 @@ export class CommandEngine {
       if (!c.argName || !n.startsWith(`${c.literal} `)) continue;
       const arg = cleanArgument(c.argName, n.slice(c.literal.length + 1));
       if (arg === '') continue;
-      if (!best || c.literal.length > best.c.literal.length) best = { c, arg };
+      const check = ARGUMENT_CHECKS[c.argName];
+      if (check && !check(arg)) continue;
+      const longer = !best || c.literal.length > best.c.literal.length;
+      const sameButChecked =
+        best !== null &&
+        c.literal.length === best.c.literal.length &&
+        check !== undefined &&
+        ARGUMENT_CHECKS[best.c.argName ?? ''] === undefined;
+      if (longer || sameButChecked) best = { c, arg };
     }
     return best && this.build(best.c, best.arg, 1);
   }
@@ -162,6 +179,8 @@ export class CommandEngine {
         heard = words.slice(0, c.literalWords).join(' ');
         arg = cleanArgument(c.argName, words.slice(c.literalWords).join(' '));
         if (arg === '') continue;
+        const check = ARGUMENT_CHECKS[c.argName];
+        if (check && !check(arg)) continue;
       } else {
         heard = n;
       }

@@ -111,6 +111,11 @@ struct FakeTranscriber: Transcribing {
         if let error { throw error }
         pressed.append(label)
     }
+    private(set) var positions: [String] = []
+    func pressPosition(kind: PositionKind, index: Int) async throws {
+        if let error { throw error }
+        positions.append("\(kind.rawValue) \(index)")
+    }
 }
 
 @MainActor final class FakePermissions: PermissionControlling {
@@ -362,6 +367,17 @@ struct Harness {
         #expect(h.out.messages == [.done(id: "e-1"), .done(id: "e-2")])
         await h.send(#"{"v":1,"type":"shutdown"}"#)
         #expect(h.escape.states.last == false)
+    }
+
+    @Test func pressesTheNthItemOnRequest() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"pressPosition","id":"n-1","kind":"row","index":3}"#)
+        await h.send(#"{"v":1,"type":"pressPosition","id":"n-2","kind":"result","index":-1}"#)
+        #expect(h.presser.positions == ["row 3", "result -1"])
+        #expect(h.out.messages == [.done(id: "n-1"), .done(id: "n-2")])
+        h.presser.error = ServiceError(code: HelperErrorCode.elementNotFound, message: "No such item on screen.")
+        await h.send(#"{"v":1,"type":"pressPosition","id":"n-3","kind":"link","index":9}"#)
+        #expect(h.out.messages.last == .error(id: "n-3", code: HelperErrorCode.elementNotFound, msg: "No such item on screen."))
     }
 
     @Test func changesTheSpokenLanguageOnRequest() async {

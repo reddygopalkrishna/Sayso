@@ -167,6 +167,12 @@ public final class MessageLoop {
                     try await self.elementPresser.press(label: label)
                 }
             })
+        case let .pressPosition(id, kind, index):
+            return (.keepRunning, Task {
+                await self.perform(id, fallbackCode: HelperErrorCode.elementNotFound) {
+                    try await self.elementPresser.pressPosition(kind: kind, index: index)
+                }
+            })
         case let .captureEscape(id, enabled):
             escapeCapture.setCapture(enabled)
             send(.done(id: id))

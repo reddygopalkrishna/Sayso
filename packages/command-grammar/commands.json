@@ -136,6 +136,24 @@
       "blockedIn": []
     },
     {
+      "id": "open_position",
+      "label": "Open the {position}",
+      "phrases": [
+        "open the {position}",
+        "open {position}",
+        "click the {position}",
+        "click on the {position}",
+        "go to the {position}",
+        "select the {position}"
+      ],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "pressPosition"
+      },
+      "safety": "normal",
+      "blockedIn": []
+    },
+    {
       "id": "click",
       "label": "Click “{label}”",
       "phrases": [

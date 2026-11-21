@@ -118,6 +118,26 @@ export const SetHoldKeySchema = z
   .object({ v, type: z.literal('setHoldKey'), id, key: HoldKeySchema })
   .strict();
 
+/**
+ * Open or click the Nth item of a kind in the front window, counted from the top: search results,
+ * links, rows (emails, messages, list items), buttons, or "any" (results, then rows, then links).
+ * `index` is 1-based, or -1 for the last. Answered with `done`, or `element_not_found`.
+ */
+export const PressPositionSchema = z
+  .object({
+    v,
+    type: z.literal('pressPosition'),
+    id,
+    kind: z.enum(['result', 'link', 'row', 'button', 'any']),
+    index: z
+      .number()
+      .int()
+      .min(-1)
+      .max(50)
+      .refine((n) => n !== 0),
+  })
+  .strict();
+
 /** Scroll the view under the pointer by `amount` pixels. Answered with `done`. */
 export const ScrollSchema = z
   .object({
@@ -191,6 +211,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   SetLanguageSchema,
   ScrollSchema,
   PressElementSchema,
+  PressPositionSchema,
   ListAppsSchema,
   OpenAppSchema,
   ActivateAppSchema,
