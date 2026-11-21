@@ -16,6 +16,20 @@ describe('stripNonSpeech', () => {
   });
 });
 
+describe('stripNonSpeech: phrases Whisper invents from silence', () => {
+  it.each([
+    ['Thanks for watching!', ''],
+    ['Thank you for watching.', ''],
+    ['Please subscribe', ''],
+    ['Subtitles by the Amara.org community', ''],
+    ['Thank you', 'Thank you'],
+    ['Thanks for watching the demo with me today', 'Thanks for watching the demo with me today'],
+    ['open youtube and subscribe to the channel list', 'open youtube and subscribe to the channel list'],
+  ])('%j → %j', (input, expected) => {
+    expect(stripNonSpeech(input)).toBe(expected);
+  });
+});
+
 describe('cleanWords', () => {
   it('trims words and drops non-speech fragments', () => {
     const w = (text: string, startMs: number) => ({ text, startMs, endMs: startMs + 100, p: 0.9 });

@@ -3,7 +3,7 @@ import type { HandsFreeStatus } from '../../../shared/status.ts';
 import { cleanWords, stripNonSpeech } from '../stt/normalize.ts';
 import type { TranscriptSegment } from '../stt/types.ts';
 import type { PipelineMode } from '../UtterancePipeline.ts';
-import { classifyHeard } from './triggers.ts';
+import { classifyHeard, isStopListening } from './triggers.ts';
 
 /** How long Sayso stays awake after a trigger: commands then work without the wake word. */
 const AWAKE_MS = 60_000;
@@ -106,6 +106,11 @@ export class HandsFreeController {
       sttMs: message.sttMs,
       model: message.model,
     };
+    if (isStopListening(segment.text)) {
+      this.deps.log?.(`[hands-free] heard ${heardText}: turning hands-free off`);
+      await this.disable();
+      return;
+    }
     const result = classifyHeard(segment, {
       wakeWord: this.deps.wakeWord().toLowerCase(),
       awake: this.now() < this.awakeUntil,

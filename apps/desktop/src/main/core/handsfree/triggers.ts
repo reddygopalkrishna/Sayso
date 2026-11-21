@@ -33,6 +33,17 @@ const normText = (text: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/**
+ * "Stop listening", "turn off hands-free", "hands-free off", "go to sleep": turns hands-free off by
+ * voice. Whole utterance only, so a sentence that merely contains these words is not a stop.
+ */
+const STOP_LISTENING =
+  /^(?:(?:please|ok|okay|hey)\s+)?(?:(?:stop|quit|exit|end|pause)\s+(?:listening|hands\s?free(?:\s+mode)?)|(?:turn|switch)\s+(?:off|of)\s+(?:hands\s?free(?:\s+mode)?|listening)|(?:turn|switch)\s+(?:hands\s?free(?:\s+mode)?|listening)\s+off|hands\s?free(?:\s+mode)?\s+off|go\s+to\s+sleep|disable\s+hands\s?free(?:\s+mode)?)$/;
+
+export function isStopListening(text: string): boolean {
+  return STOP_LISTENING.test(normText(text));
+}
+
 /** Removes the first word and the punctuation after it ("Type, hello" → "hello"). */
 function afterFirstWord(segment: TranscriptSegment): TranscriptSegment {
   const text = segment.text.replace(/^\s*[^\s]+[\s,:;.\-–—]*/u, '').trimStart();

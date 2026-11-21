@@ -2,7 +2,7 @@ import { commands } from '@sayso/command-grammar';
 import { describe, expect, it } from 'vitest';
 import { CommandEngine } from '../commands/CommandEngine.ts';
 import type { TranscriptSegment } from '../stt/types.ts';
-import { classifyHeard } from './triggers.ts';
+import { classifyHeard, isStopListening } from './triggers.ts';
 
 const engine = new CommandEngine(commands);
 const isCommand = (text: string): boolean => engine.matchChain(text) !== null;
@@ -99,5 +99,29 @@ describe('classifyHeard: conversation is never typed', () => {
 
   it('awake does not turn conversation into a command', () => {
     expect(classify('hello how are you', true).intent).toBeNull();
+  });
+});
+
+describe('isStopListening', () => {
+  it.each([
+    'Stop listening.',
+    'stop hands-free',
+    'Turn off hands free',
+    'turn hands-free off',
+    'Hands-free off',
+    'Go to sleep',
+    'Okay, stop listening!',
+    'disable hands free mode',
+  ])('%j turns hands-free off', (text) => {
+    expect(isStopListening(text)).toBe(true);
+  });
+  it.each([
+    'stop',
+    'type stop listening',
+    'open Slack and stop listening to music',
+    'turn off the lights',
+    'scroll down',
+  ])('%j does not', (text) => {
+    expect(isStopListening(text)).toBe(false);
   });
 });

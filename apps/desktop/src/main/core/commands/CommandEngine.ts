@@ -59,6 +59,23 @@ const GENERIC_ARGUMENT = new Set([
   'there',
 ]);
 
+/**
+ * Mishearings of short commands, seen live ("NewTek", "NewTown", "He tender"). Applied only when
+ * they are the whole utterance, so a sentence that happens to contain these words is untouched.
+ */
+const MISHEARD: ReadonlyMap<string, string> = new Map([
+  ['newtek', 'new tab'],
+  ['new tek', 'new tab'],
+  ['new tech', 'new tab'],
+  ['newtown', 'new tab'],
+  ['new temp', 'new tab'],
+  ['new tub', 'new tab'],
+  ['he tender', 'hit enter'],
+  ['hit tender', 'hit enter'],
+  ['hit ender', 'hit enter'],
+  ['scrolla', 'scroll down'],
+]);
+
 /** Lowercase words only (letters and digits, single spaces), without politeness words. */
 export function normalizeUtterance(text: string): string {
   let n = text
@@ -69,7 +86,7 @@ export function normalizeUtterance(text: string): string {
   for (let i = 0; i < 3; i++) {
     n = n.replace(POLITE_PREFIX, '').replace(POLITE_SUFFIX, '');
   }
-  return n;
+  return MISHEARD.get(n) ?? n;
 }
 
 function cleanArgument(name: string, rest: string): string {

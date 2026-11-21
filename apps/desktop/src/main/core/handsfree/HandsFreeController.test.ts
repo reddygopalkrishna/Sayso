@@ -53,6 +53,18 @@ function setup(over: { sttReady?: boolean; startFails?: boolean; holdBusy?: bool
   };
 }
 
+describe('HandsFreeController: voice off switch', () => {
+  it('"stop listening" turns hands-free off and does nothing else', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('Stop listening.'));
+    expect(t.controller.status).toEqual({ state: 'off' });
+    expect(t.log).toEqual(['start', 'stop']);
+    await t.controller.handleHeard(heard('new tab'));
+    expect(t.log).toEqual(['start', 'stop']);
+  });
+});
+
 describe('HandsFreeController: on and off', () => {
   it('turns listening on and off', async () => {
     const t = setup();
