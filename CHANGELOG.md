@@ -5,7 +5,7 @@ Each entry names the commit so you can see the exact code with `git show <commit
 
 ## In progress
 
-- **Stage B of docs/PLAN_INFINA_PARITY.md:** show "not found" in the pill, and one retry after a short wait on the first click in a new app. Then test "click Profile" in Google Cloud Console by hand.
+- **Stage B of docs/PLAN_INFINA_PARITY.md:** test "click Profile" in Google Cloud Console by hand after a restart (the code is in; not yet tried in Chrome).
 
 ## Pending (later)
 
@@ -38,6 +38,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-15
+
+### 14:06 · Click not-found shows a short message; first click in a web app retries once (`39bf851`)
+- **Not-found message:** a click that finds nothing already reached the pill; the text is now short ("Couldn't find “X” on screen.") so it fits.
+- **First-click retry:** when a web app (Chrome, ChatGPT, Claude…) was just switched on for accessibility, a miss waits 200 ms and searches once more, because its tree may still be building.
+- **Competitor notes:** `docs/COMPETITOR_INFINA.md` section 10 holds our recording's results, Infina's UI (v1.45.21) and the Instagram reel.
+- Tests: helper 26 Swift tests pass; TypeScript typecheck passes (no TypeScript changed). Live: a missing label returns "not found" in about 1 s.
+- Not yet tested: clicks in Chrome (Google Cloud "Profile") and the pill text in a real run. Your running Sayso keeps the old helper until restart.
 
 ### 13:03 · Click reliability for Chrome and Electron apps; the parity plan (`f0fc936`)
 - **Why clicks failed:** Chrome, ChatGPT, Claude, Slack and WhatsApp build their accessibility tree only when asked, so "click Profile" searched an almost empty tree. The helper now asks once per app, then searches the focused window before the whole app.
