@@ -118,6 +118,8 @@ public final class MessageLoop {
             return (.keepRunning, Task { await self.recordStart(id) })
         case let .recordStop(id):
             return (.keepRunning, Task { await self.recordStop(id) })
+        case let .recordStopAudio(id):
+            return (.keepRunning, Task { await self.recordStopAudio(id) })
         case let .recordCancel(id):
             if recordingID == id {
                 recorder.cancel()
@@ -324,6 +326,27 @@ public final class MessageLoop {
         } catch {
             sendError(id: id, error, fallbackCode: HelperErrorCode.sttFailed)
         }
+    }
+
+    /// Stops the recording and returns the audio itself (cloud speech, off by default).
+    private func recordStopAudio(_ id: String) async {
+        guard recordingID == id else {
+            send(.error(id: id, code: HelperErrorCode.notRecording, msg: "no recording with id \(id)"))
+            return
+        }
+        recordingID = nil
+        let samples = recorder.stop()
+        recorder.prepare()
+        var pcm = Data(capacity: samples.count * 2)
+        for sample in samples {
+            let clipped = max(-1, min(1, sample))
+            let value = Int16(clipped * 32767)
+            pcm.append(UInt8(truncatingIfNeeded: value))
+            pcm.append(UInt8(truncatingIfNeeded: value >> 8))
+        }
+        send(.audio(
+            id: id, pcm16: pcm.base64EncodedString(),
+            audioMs: Double(samples.count) / sampleRate * 1000))
     }
 
     private func insert(_ id: String, _ text: String) async {

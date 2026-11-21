@@ -15,6 +15,7 @@ const defaults: UserSettings = {
   wakeWord: 'sayso',
   language: 'en',
   interpret: true,
+  cloudSpeech: false,
 };
 const settings = {
   current: () => defaults,

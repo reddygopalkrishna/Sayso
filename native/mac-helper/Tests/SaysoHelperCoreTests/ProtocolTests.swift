@@ -24,7 +24,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 24)
+        #expect(names.count == 25)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
@@ -40,7 +40,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 
     @Test func everyHelperFixtureRoundTrips() throws {
         let names = try fixtureNames(prefix: "helper.")
-        #expect(names.count == 19)
+        #expect(names.count == 20)
         for name in names {
             let message = try HelperMessage.decode(fixture(name))
             let line = message.encodedLine()
@@ -50,7 +50,7 @@ func fixtureNames(prefix: String) throws -> [String] {
         }
     }
 
-    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.heard.json", "helper.elements.json", "helper.errorReply.json", "helper.sttStatus.json", "helper.contextEmpty.json", "helper.contextSecure.json", "helper.context.json"])
+    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.heard.json", "helper.audio.json", "helper.elements.json", "helper.errorReply.json", "helper.sttStatus.json", "helper.contextEmpty.json", "helper.contextSecure.json", "helper.context.json"])
     func encodingMatchesFixtureExactly(name: String) throws {
         let message = try HelperMessage.decode(fixture(name))
         let encoded = try JSONSerialization.jsonObject(with: Data(message.encodedLine().utf8)) as? NSDictionary

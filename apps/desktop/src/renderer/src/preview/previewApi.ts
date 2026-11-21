@@ -54,6 +54,7 @@ let settings: UserSettings = {
   wakeWord: 'sayso',
   language: 'en',
   interpret: true,
+  cloudSpeech: false,
 };
 
 const history: HistoryEntry[] = [

@@ -271,6 +271,25 @@ export function SettingsForm({
             </span>
           </label>
 
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              aria-label="Cloud speech"
+              checked={values.cloudSpeech}
+              onChange={(e) => onChange({ cloudSpeech: e.target.checked })}
+            />
+            <span>
+              <span className="font-medium">Cloud speech (optional)</span>
+              <span className="block text-xs text-neutral-500">
+                Off by default: your voice is turned into text on this Mac and never leaves it.
+                Turn this on to send each recording to OpenAI instead, which is faster and more
+                accurate on short phrases and names, but needs the internet and an OpenAI key, and
+                the audio leaves your Mac. Hands-free listening stays on this Mac either way.
+              </span>
+            </span>
+          </label>
+
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium">
               Preview time — <output aria-label="Preview time">{seconds(values.previewMs)}</output>

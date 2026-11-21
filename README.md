@@ -40,7 +40,7 @@ Everything here is built. "By hand" means someone has tried it on a real Mac; "i
 
 ## Privacy
 
-- **Audio never leaves your Mac.** Speech-to-text runs on-device, and hands-free audio is not saved.
+- **Audio stays on your Mac by default.** Speech-to-text runs on-device, and hands-free audio is not saved. The one exception is an optional **Cloud speech** setting (off by default, needs an OpenAI key): when you turn it on, each held-key recording is sent to OpenAI for transcription, which is faster and more accurate on short phrases and names. Hands-free listening always stays on the Mac.
 - **Text to an AI, only when needed.** Short, clean dictation is fixed locally with no AI call. Longer text goes to Groq (or Gemini) for cleanup, with only the names from your dictionary that were actually said.
 - **"Understand my own words"** sends the sentence you said, the app's name and up to 40 button and link names (browser tab titles removed). Never page text or what you typed. Only when no exact command matched, never in password fields or meeting apps (Zoom, Teams, FaceTime). Turn it off in Settings.
 - **About me** values stay on this Mac. The AI is told which kinds of fact are saved, never their values.

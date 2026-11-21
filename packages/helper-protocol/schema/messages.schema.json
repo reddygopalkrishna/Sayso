@@ -104,6 +104,30 @@
             },
             "type": {
               "type": "string",
+              "const": "recordStopAudio"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
               "const": "recordCancel"
             },
             "id": {
@@ -879,6 +903,44 @@
             "audioMs",
             "sttMs",
             "model"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "audio"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "pcm16": {
+              "type": "string"
+            },
+            "sampleRate": {
+              "type": "number",
+              "const": 16000
+            },
+            "audioMs": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "pcm16",
+            "sampleRate",
+            "audioMs"
           ],
           "additionalProperties": false
         },

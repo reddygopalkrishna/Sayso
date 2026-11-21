@@ -237,6 +237,28 @@ struct Harness {
         #expect(model == "fake-model")
     }
 
+    @Test func recordStopAudioReturnsThePcmWithoutTranscribing() async {
+        let h = Harness()
+        h.recorder.samples = [0, 1, -1, 0.5]
+        await h.send(#"{"v":1,"type":"recordStart","id":"u-2"}"#)
+        await h.send(#"{"v":1,"type":"recordStopAudio","id":"u-2"}"#)
+        #expect(h.out.messages.count == 2)
+        guard case let .audio(id, pcm16, audioMs) = h.out.messages[1] else {
+            Issue.record("expected audio, got \(h.out.messages)")
+            return
+        }
+        #expect(id == "u-2")
+        let bytes = [UInt8](Data(base64Encoded: pcm16) ?? Data())
+        #expect(bytes == [0, 0, 255, 127, 1, 128, 255, 63])
+        #expect(audioMs == 0.25)
+    }
+
+    @Test func recordStopAudioWithoutARecordingIsAnError() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"recordStopAudio","id":"nope"}"#)
+        #expect(h.out.messages == [.error(id: "nope", code: HelperErrorCode.notRecording, msg: "no recording with id nope")])
+    }
+
     @Test func rejectsSecondRecordStartAndUnknownStop() async {
         let h = Harness()
         await h.send(#"{"v":1,"type":"recordStart","id":"u-1"}"#)

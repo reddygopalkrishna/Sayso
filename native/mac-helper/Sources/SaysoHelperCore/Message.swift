@@ -92,6 +92,7 @@ public enum AppMessage: Equatable, Sendable {
     case shutdown
     case recordStart(id: String)
     case recordStop(id: String)
+    case recordStopAudio(id: String)
     case recordCancel(id: String)
     case insertText(id: String, text: String)
     case getContext(id: String)
@@ -120,6 +121,7 @@ public enum AppMessage: Equatable, Sendable {
         case "shutdown": return .shutdown
         case "recordStart": return .recordStart(id: try requestID(data))
         case "recordStop": return .recordStop(id: try requestID(data))
+        case "recordStopAudio": return .recordStopAudio(id: try requestID(data))
         case "recordCancel": return .recordCancel(id: try requestID(data))
         case "insertText":
             struct T: Decodable { let text: String }
@@ -258,6 +260,8 @@ public enum HelperMessage: Equatable, Sendable {
     case pong(id: String)
     case done(id: String)
     case transcript(id: String, transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
+    /// The recording as 16 kHz mono 16-bit little-endian PCM, base64 (cloud speech only).
+    case audio(id: String, pcm16: String, audioMs: Double)
     /// One utterance heard while listening continuously (hands-free). Not an answer to a request.
     case heard(transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
     case context(id: String, context: AppContext)
@@ -301,6 +305,12 @@ public enum HelperMessage: Equatable, Sendable {
             f["audioMs"] = .double(audioMs)
             f["sttMs"] = .double(sttMs)
             f["model"] = .string(model)
+        case let .audio(id, pcm16, audioMs):
+            f["type"] = "audio"
+            f["id"] = .string(id)
+            f["pcm16"] = .string(pcm16)
+            f["sampleRate"] = .int(16_000)
+            f["audioMs"] = .double(audioMs)
         case let .heard(transcription, audioMs, sttMs, model):
             f["type"] = "heard"
             f["text"] = .string(transcription.text)
@@ -390,6 +400,10 @@ public enum HelperMessage: Equatable, Sendable {
             return .transcript(
                 id: t.id, transcription: Transcription(text: t.text, words: t.words),
                 audioMs: t.audioMs, sttMs: t.sttMs, model: t.model)
+        case "audio":
+            struct A: Decodable { let id: String; let pcm16: String; let audioMs: Double }
+            let a = try field(A.self, data)
+            return .audio(id: a.id, pcm16: a.pcm16, audioMs: a.audioMs)
         case "heard":
             struct T: Decodable {
                 let text: String; let words: [Word]

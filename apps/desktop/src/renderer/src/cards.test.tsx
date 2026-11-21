@@ -40,6 +40,7 @@ describe('Settings grouped into cards', () => {
         wakeWord: 'sayso',
         language: 'en',
         interpret: true,
+        cloudSpeech: false,
       }}
       message={null}
       saved={false}

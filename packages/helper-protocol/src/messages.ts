@@ -6,9 +6,9 @@
  * - stdout (helper → app): newline-delimited JSON, one HelperMessage per line. Nothing else may be
  *   written to stdout.
  * - stderr (helper → app): free-form diagnostics, logged by the app, never parsed.
- * - Audio never crosses the pipe: speech-to-text (WhisperKit) runs inside the helper. If a cloud
- *   STT fallback is added, audio will use a separate fd 3 pipe with length-prefixed frames so
- *   binary data never mixes with JSON lines.
+ * - Audio stays in the helper: speech-to-text (WhisperKit) runs there. The one exception is the
+ *   optional cloud speech setting (off by default): then `recordStopAudio` returns the recording
+ *   as one base64 `audio` line, for a short held-key utterance.
  *
  * Requests (messages with an `id`) are answered with exactly one reply carrying the same `id`:
  * `pong`, `done`, `transcript`, `context`, `apps`, `permissions`, or `error`. Events (`ready`, `hotkey`, `escape`, `fnListener`, `sttStatus`, `log`, and
@@ -32,6 +32,13 @@ export const ShutdownSchema = z.object({ v, type: z.literal('shutdown') }).stric
 export const RecordStartSchema = z.object({ v, type: z.literal('recordStart'), id }).strict();
 /** Stop capturing and transcribe. Answered with `transcript`. */
 export const RecordStopSchema = z.object({ v, type: z.literal('recordStop'), id }).strict();
+/**
+ * Stop capturing and hand the audio back instead of transcribing it (optional cloud speech,
+ * off by default). Answered with `audio`.
+ */
+export const RecordStopAudioSchema = z
+  .object({ v, type: z.literal('recordStopAudio'), id })
+  .strict();
 /** Stop capturing and discard the audio. Answered with `done`. */
 export const RecordCancelSchema = z.object({ v, type: z.literal('recordCancel'), id }).strict();
 /** Insert text into the focused field (paste, then restore the clipboard). Answered with `done`. */
@@ -214,6 +221,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   ShutdownSchema,
   RecordStartSchema,
   RecordStopSchema,
+  RecordStopAudioSchema,
   RecordCancelSchema,
   InsertTextSchema,
   GetContextSchema,
@@ -267,6 +275,21 @@ export const TranscriptSchema = z
     audioMs: z.number().nonnegative(),
     sttMs: z.number().nonnegative(),
     model: z.string().min(1),
+  })
+  .strict();
+
+/**
+ * The answer to `recordStopAudio`: the recording as 16-bit little-endian mono PCM at 16 kHz,
+ * base64. Only sent when the user turns on cloud speech.
+ */
+export const AudioSchema = z
+  .object({
+    v,
+    type: z.literal('audio'),
+    id,
+    pcm16: z.string(),
+    sampleRate: z.literal(16_000),
+    audioMs: z.number().nonnegative(),
   })
   .strict();
 
@@ -389,6 +412,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   PongSchema,
   DoneSchema,
   TranscriptSchema,
+  AudioSchema,
   HeardSchema,
   ElementsSchema,
   ContextSchema,
@@ -406,6 +430,7 @@ export type AppMessage = z.infer<typeof AppMessageSchema>;
 export type HelperMessage = z.infer<typeof HelperMessageSchema>;
 export type ReadyMessage = z.infer<typeof ReadySchema>;
 export type TranscriptMessage = z.infer<typeof TranscriptSchema>;
+export type AudioMessage = z.infer<typeof AudioSchema>;
 export type HeardMessage = z.infer<typeof HeardSchema>;
 export type ElementsMessage = z.infer<typeof ElementsSchema>;
 export type ScreenItem = ElementsMessage['items'][number];
@@ -430,7 +455,7 @@ export type ReplyMessage = Extract<
   HelperMessage,
   {
     type:
-      'pong' | 'done' | 'transcript' | 'context' | 'apps' | 'elements' | 'permissions' | 'error';
+      'pong' | 'done' | 'transcript' | 'audio' | 'context' | 'apps' | 'elements' | 'permissions' | 'error';
   }
 >;
 

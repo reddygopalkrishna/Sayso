@@ -41,6 +41,10 @@ export interface AppConfig {
   language: Language;
   /** Understand your own words with an AI when no exact command matches. On by default. */
   interpret: boolean;
+  /** Optional cloud speech (audio goes to OpenAI). Off unless SAYSO_CLOUD_SPEECH is on. */
+  cloudSpeech: boolean;
+  /** OpenAI speech model (default whisper-1, which returns word times). */
+  openaiSttModel: string | null;
   /** OpenAI key and model for interpreting (both needed; used after Groq, or alone). */
   openaiApiKey: string | null;
   openaiModel: string | null;
@@ -118,6 +122,12 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     interpret: !['off', 'false', '0', 'no'].includes(
       (merged['SAYSO_INTERPRET'] ?? '').trim().toLowerCase(),
     ),
+    cloudSpeech: ['on', 'true', '1', 'yes'].includes(
+      (merged['SAYSO_CLOUD_SPEECH'] ?? '').trim().toLowerCase(),
+    ),
+    openaiSttModel: /^[\w./:-]{1,100}$/.test((merged['OPENAI_STT_MODEL'] ?? '').trim())
+      ? (merged['OPENAI_STT_MODEL'] ?? '').trim()
+      : null,
     openaiApiKey: merged['OPENAI_API_KEY']?.trim() || null,
     // A model id is letters, digits and . _ / : - only.
     openaiModel: /^[\w./:-]{1,100}$/.test((merged['OPENAI_MODEL'] ?? '').trim())

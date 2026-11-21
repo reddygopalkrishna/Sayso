@@ -237,6 +237,7 @@ describe('SettingsForm', () => {
     wakeWord: 'sayso',
     language: 'en',
     interpret: true,
+    cloudSpeech: false,
   } as const;
   const noop = () => undefined;
   const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
@@ -296,6 +297,7 @@ describe('Style in Settings', () => {
           wakeWord: 'sayso',
           language: 'en',
           interpret: true,
+          cloudSpeech: false,
         }}
         message={null}
         saved={false}
@@ -357,6 +359,7 @@ describe('Hold key in Settings', () => {
           wakeWord: 'sayso',
           language: 'en',
           interpret: true,
+          cloudSpeech: false,
         }}
         message={null}
         saved={false}
@@ -462,6 +465,7 @@ describe('Language in Settings', () => {
           wakeWord: 'sayso',
           language,
           interpret: true,
+          cloudSpeech: false,
         }}
         message={null}
         saved={false}
@@ -500,6 +504,7 @@ describe('Understand my own words in Settings', () => {
           wakeWord: 'sayso',
           language: 'en',
           interpret,
+          cloudSpeech: false,
         }}
         message={null}
         saved={false}
@@ -644,5 +649,35 @@ describe('Home cards', () => {
     ]) {
       expect(out).toContain(text);
     }
+  });
+});
+
+describe('Cloud speech in Settings', () => {
+  it('is an off-by-default checkbox that says the audio leaves the Mac', () => {
+    const page = html(
+      <SettingsForm
+        values={{
+          pauseMs: 600,
+          previewMs: 1000,
+          cleanupLevel: 'full',
+          skipAi: true,
+          historyKeep: 50,
+          style: 'default',
+          holdKey: 'fn',
+          wakeWord: 'sayso',
+          language: 'en',
+          interpret: true,
+          cloudSpeech: false,
+        }}
+        message={null}
+        saved={false}
+        onChange={() => undefined}
+        onSave={() => undefined}
+        onReset={() => undefined}
+      />,
+    );
+    expect(page).toContain('Cloud speech (optional)');
+    expect(page).toContain('the audio leaves your Mac');
+    expect(page).not.toMatch(/aria-label="Cloud speech"[^>]*checked/);
   });
 });

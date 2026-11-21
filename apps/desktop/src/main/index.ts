@@ -20,6 +20,7 @@ import { DictationController } from './core/dictation/DictationController.ts';
 import { describeError } from './core/dictation/errors.ts';
 import { applyDictionary } from './core/cleanup/dictionary.ts';
 import { HandsFreeController } from './core/handsfree/HandsFreeController.ts';
+import { CloudSTT, RoutedSTT } from './core/stt/CloudSTT.ts';
 import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
 import { resolveHelperPath } from './helper/binaryPath.ts';
@@ -87,6 +88,7 @@ const settingsNow = (): UserSettings => ({
   wakeWord: config.wakeWord,
   language: config.language,
   interpret: config.interpret,
+  cloudSpeech: config.cloudSpeech,
 });
 const startingSettings = settingsNow();
 // Tells the helper which key is held to dictate (on connect, after a restart, and on a change).
@@ -111,7 +113,24 @@ const refreshCleanupStatus = (): void =>
     holdKey: config.holdKey,
   });
 
-const stt = new HelperWhisperSTT(helper);
+const localStt = new HelperWhisperSTT(helper);
+const cloudStt = new CloudSTT(helper, {
+  apiKey: () => config.openaiApiKey,
+  ...(config.openaiSttModel ? { model: config.openaiSttModel } : {}),
+  language: () => (config.language === 'auto' ? null : config.language),
+  // Names only (built-in list plus your own dictionary), so they are spelled right.
+  vocabulary: () => [
+    ...BUILT_IN_TERMS.map((t) => t.phrase),
+    ...(storage?.dictionary.list().map((t) => t.phrase) ?? []),
+  ],
+});
+// On-device unless Cloud speech is on in Settings AND there is an OpenAI key.
+const stt = new RoutedSTT(
+  localStt,
+  cloudStt,
+  () => config.cloudSpeech && Boolean(config.openaiApiKey),
+  () => helper.status.state === 'connected',
+);
 const actions = new HelperActions(helper);
 
 // The local database (history, dictionary, remembered choices). Opened in whenReady, once this
@@ -362,7 +381,7 @@ helper.onStatus((helperStatus) => {
   } else permissions.reset();
   if (helperStatus.state !== 'connected') {
     handsFree.reset(`helper ${helperStatus.state}`);
-    stt.updateStatus(null);
+    localStt.updateStatus(null);
     dictation.reset(`helper ${helperStatus.state}`);
     status.update({ stt: { state: 'unknown' }, fnListener: 'unknown' });
   }
@@ -388,7 +407,7 @@ helper.onMessage((message) => {
       console.info(
         `[stt] ${message.model}: ${message.state}${message.msg ? ` (${message.msg})` : ''}`,
       );
-      stt.updateStatus(message);
+      localStt.updateStatus(message);
       status.update({
         stt:
           message.state === 'error'

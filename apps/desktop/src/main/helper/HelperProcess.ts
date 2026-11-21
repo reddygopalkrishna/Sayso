@@ -239,6 +239,7 @@ export class HelperProcess implements HelperRequester {
       case 'pong':
       case 'done':
       case 'transcript':
+      case 'audio':
       case 'context':
       case 'apps':
       case 'elements':
