@@ -19,6 +19,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Hand-test the remaining settings links:** the Microphone and Accessibility panes (Keyboard settings and the History tab are confirmed working; the pane addresses are not yet checked for the other two), and the "Allow microphone" / "Show the macOS prompt" buttons on a Mac where a permission is still off.
 - **SQLite driver (decision):** the plan says better-sqlite3; the code uses Node's built-in `node:sqlite` because one compiled better-sqlite3 cannot match both Electron's Node 24 and the test runner's Node 26. One file (`core/storage/db.ts`) to change if you prefer better-sqlite3.
 - **From the Infina recordings (14 Nov):** (1) **AI cleanup speed:** theirs adds about 0.2 s, ours 0.8–2 s over the internet; the lever is a small on-device model (Gemma is in the PRD) or a faster hosted path. (2) **Choose the hold key** (Fn, Right Option, Right ⌘, Caps Lock) so Sayso and other dictation apps can coexist. (3) **Per-app style** Default / Chill with a setting. (4) **Snippets** (say a trigger, type the full text). (5) Commands: go back, next window / close this, new chat / previous chat, and "open the second email" or a link by its first words. (6) Onboarding as a short stepper ending with a "try it" step.
+- **Groq lineup and limits:** Groq's model list changes (the account had no small Llama in Nov 2026), so `SAYSO_FAST_MODEL` is a setting and the History speed line shows whether it is still fast; the free tier allows about 7,000 input tokens a minute, so a heavy burst falls back to Gemini (the log says so). A paid Groq tier removes the limit.
 - **Interactive tutorial** ("say send after a pause", PRD onboarding) and a first-run flag; onboarding only shows while a permission is missing.
 - **Dictionary helps Whisper too:** today it only corrects the text after speech-to-text. Passing the words to WhisperKit as prompt tokens could stop the mishearing at the source.
 - **Packaged app permissions:** macOS grants go to Sayso.app, not Terminal; untested until there is a packaged build.
@@ -35,6 +36,16 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Streaming cleanup:** Gemini is called without streaming; fine for paste, but streaming could cut latency.
 - **Model load time:** the first load in a new helper process took 131 s (Neural Engine compile); later loads about 10 s. Show progress in the window.
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
+
+## 2026-11-15
+
+### 00:07 · Faster AI cleanup, step 2: Groq first, Gemini as the fallback (`9057315`)
+- **About 0.2–0.35 s instead of 1–2 s.** Add `GROQ_API_KEY` to `.env` and Sayso tries Groq (Qwen 3.8 27B, reasoning off) first. Live through the real code: 297, 213 and 350 ms for a correction, a numbered list and a long dictation, with your dictionary and the list formatting working as before.
+- **Gemini stays as the safety net.** If Groq errors, is slow (over 1.5 s) or is rate-limited, Gemini answers instead; a broken key was tested and still produced the right text (1.2 s). A rate limit pauses Groq for as long as it asks (30 s by default, at most 60 s), and two failures in a row pause it for 30 s, so a bad spell does not make every dictation wait. The log says when this happens. If you give up (time limit), nothing new is started.
+- **Your choice of where text goes:** with only a Gemini key nothing changes. `SAYSO_AI_PROVIDER=gemini` keeps your text away from Groq even with a Groq key; `groq` uses only Groq. `SAYSO_FAST_MODEL` changes the Groq model. Everything is documented in `.env.example`.
+- **Firmer wording rule** for every AI: keep the speaker's own wording, change only fillers, grammar and punctuation, never paraphrase, merge or drop an idea, question or hedge. (On Groq it brought several long dictations much closer to what you said.)
+- **History shows who answered:** rows read "Groq 0.2 s" or "Gemini 0.9 s", and the Speed line gives each provider's median. Database upgraded to version 3; checked by booting the real app on a copy of your real database (version 1 → 3, all 27 rows intact).
+- Tests: 819 TypeScript (Groq request and error handling incl. Retry-After and reasoning-tag removal, the fallback chain with timeout, cooldown, caller-gave-up and recovery, provider selection incl. forced modes, config, the new database column, the speed statistics). Isolated boot of the app: clean start.
 
 ## 2026-11-14
 
