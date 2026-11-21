@@ -13,7 +13,7 @@ export class HistoryRecorder {
 
   /** `elapsedMs` is the time since the transcript was ready; STT time is added to it. */
   recordOutcome(outcome: UtteranceOutcome, elapsedMs: number): void {
-    const { command, inserted, cleanup, segment, context, mode } = outcome;
+    const { command, inserted, cleanup, segment, context, mode, insertedText } = outcome;
     if (!inserted && !command) return; // nothing happened (only fillers were said)
     let result: HistoryOutcome = 'done';
     if (command?.result === 'cancelled') result = 'cancelled';
@@ -26,7 +26,7 @@ export class HistoryRecorder {
       appName: context.appName,
       mode,
       rawText: segment.text,
-      finalText: inserted ? (cleanup?.text ?? null) : null,
+      finalText: inserted ? (insertedText ?? cleanup?.text ?? null) : null,
       action,
       outcome: result,
       latencyMs: segment.sttMs + elapsedMs,

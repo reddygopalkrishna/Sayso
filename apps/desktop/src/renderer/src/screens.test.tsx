@@ -5,6 +5,7 @@ import type { PermissionsStatus } from '../../shared/status.ts';
 import { cleanupLabel, HistoryRow, SpeedSummary } from './History.tsx';
 import type { HistoryStats } from './historyStats.ts';
 import { Onboarding } from './Onboarding.tsx';
+import { SettingsForm } from './Settings.tsx';
 
 const html = (node: React.JSX.Element): string => renderToStaticMarkup(node);
 
@@ -215,5 +216,55 @@ describe('SpeedSummary', () => {
     );
     expect(out).toContain('median 1.1 s');
     expect(out).not.toContain('AI skipped');
+  });
+});
+
+describe('SettingsForm', () => {
+  const values = {
+    pauseMs: 600,
+    previewMs: 1000,
+    cleanupLevel: 'full',
+    skipAi: true,
+    historyKeep: 50,
+  } as const;
+  const noop = () => undefined;
+  const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
+    html(
+      <SettingsForm
+        values={values}
+        message={null}
+        saved={false}
+        onChange={noop}
+        onSave={noop}
+        onReset={noop}
+        {...over}
+      />,
+    );
+
+  it('shows every setting in plain words with its current value', () => {
+    const out = show();
+    expect(out).toContain('Pause before “send”');
+    expect(out).toContain('0.6 s');
+    expect(out).toContain('1.0 s');
+    expect(out).toContain('Text cleanup');
+    expect(out).toContain('Skip the AI for short, clean text');
+    expect(out).toContain('History kept');
+    expect(out).toContain('value="50"');
+    expect(out).toContain('Reset to defaults');
+  });
+
+  it('uses the same limits as the app (sliders and number box)', () => {
+    const out = show();
+    expect(out).toContain('min="200"');
+    expect(out).toContain('max="3000"');
+    expect(out).toContain('max="5000"');
+    expect(out).toContain('max="1000"');
+  });
+
+  it('says "Saved." after a save and shows an error instead when there is one', () => {
+    expect(show({ saved: true })).toContain('Saved.');
+    const failed = show({ saved: true, message: 'That request was not valid.' });
+    expect(failed).toContain('That request was not valid.');
+    expect(failed).not.toContain('Saved.');
   });
 });

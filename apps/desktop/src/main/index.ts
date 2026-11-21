@@ -21,6 +21,7 @@ import { HistoryRecorder } from './core/history/HistoryRecorder.ts';
 import { PermissionsMonitor } from './core/permissions/PermissionsMonitor.ts';
 import { PreviewChip } from './core/safety/PreviewChip.ts';
 import { openStorage, type Storage } from './core/storage/index.ts';
+import type { UserSettings } from '../shared/settings.ts';
 import { createIpcHandlers } from './ipcHandlers.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
 import { Overlay } from './windows/overlay.ts';
@@ -63,6 +64,19 @@ const {
   timeoutMs: cleanupTimeoutMs,
 } = buildProvider(config, (message) => console.warn(message));
 status.update({ cleanup: { level: config.cleanupLevel, provider: providerLabel } });
+
+// The Settings tab edits `config` in place (every part of the app reads it through a closure), and
+// what is saved in the database wins over `.env`, which only gives the starting values.
+const settingsNow = (): UserSettings => ({
+  pauseMs: config.pauseMs,
+  previewMs: config.previewMs,
+  cleanupLevel: config.cleanupLevel,
+  skipAi: config.skipAi,
+  historyKeep: config.historyKeep,
+});
+const startingSettings = settingsNow();
+const refreshCleanupStatus = (): void =>
+  status.update({ cleanup: { level: config.cleanupLevel, provider: providerLabel } });
 
 const stt = new HelperWhisperSTT(helper);
 const actions = new HelperActions(helper);
@@ -122,6 +136,16 @@ function readDictionary(): DictionaryTerm[] {
 
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
+  snippets: {
+    find: (spoken) => {
+      try {
+        return storage?.snippets.find(spoken) ?? null;
+      } catch (error) {
+        warn('could not read snippets', error);
+        return null;
+      }
+    },
+  },
   // A risky button waits for "yes": show the prompt, and catch Esc while it is up.
   onAwaitConfirm: (prompt, ms) => {
     dictation.showPrompt(prompt, ms);
@@ -296,6 +320,8 @@ app.whenReady().then(async () => {
       historyKeep: () => config.historyKeep,
     });
     status.update({ database: { state: 'ok' } });
+    Object.assign(config, storage.settings.get());
+    refreshCleanupStatus();
   } catch (error) {
     console.error('[storage] could not open the local database', error);
     status.update({
@@ -305,6 +331,23 @@ app.whenReady().then(async () => {
 
   const handlers = createIpcHandlers({
     storage: () => storage,
+    settings: {
+      current: settingsNow,
+      apply: (patch) => {
+        if (!storage) throw new Error('The local database is not available.');
+        storage.settings.set(patch);
+        Object.assign(config, patch);
+        refreshCleanupStatus();
+        return settingsNow();
+      },
+      reset: () => {
+        if (!storage) throw new Error('The local database is not available.');
+        storage.settings.reset();
+        Object.assign(config, startingSettings);
+        refreshCleanupStatus();
+        return settingsNow();
+      },
+    },
     requestPermission: async (kind) => {
       // The microphone prompt waits for the user's answer, so allow plenty of time.
       const reply = await helper.request(

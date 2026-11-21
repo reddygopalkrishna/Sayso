@@ -1,4 +1,5 @@
-import type { DictionaryEntry, HistoryEntry, OpenChoice } from '../shared/data.ts';
+import type { DictionaryEntry, HistoryEntry, OpenChoice, Snippet } from '../shared/data.ts';
+import type { SettingsPatch, UserSettings } from '../shared/settings.ts';
 import type { AppStatus, SettingsPane } from '../shared/status.ts';
 
 /** The only surface the renderer can reach (window.sayso). Every call rejects with a plain message. */
@@ -12,6 +13,16 @@ export interface SaysoApi {
   dictionary: {
     list(): Promise<DictionaryEntry[]>;
     add(phrase: string, spokenAs: string | null): Promise<DictionaryEntry>;
+    remove(id: string): Promise<void>;
+  };
+  settings: {
+    get(): Promise<UserSettings>;
+    set(patch: SettingsPatch): Promise<UserSettings>;
+    reset(): Promise<UserSettings>;
+  };
+  snippets: {
+    list(): Promise<Snippet[]>;
+    add(trigger: string, body: string): Promise<Snippet>;
     remove(id: string): Promise<void>;
   };
   openChoices: {

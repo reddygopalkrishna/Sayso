@@ -26,6 +26,16 @@ const api: SaysoApi = {
     add: (phrase, spokenAs) => call(IPC.addDictionary, { phrase, spokenAs }),
     remove: (id) => call(IPC.removeDictionary, id),
   },
+  settings: {
+    get: () => call(IPC.getSettings),
+    set: (patch) => call(IPC.setSettings, patch),
+    reset: () => call(IPC.resetSettings),
+  },
+  snippets: {
+    list: () => call(IPC.listSnippets),
+    add: (trigger, body) => call(IPC.addSnippet, { trigger, body }),
+    remove: (id) => call(IPC.removeSnippet, id),
+  },
   openChoices: {
     list: () => call(IPC.listOpenChoices),
     remove: (phrase) => call(IPC.removeOpenChoice, phrase),

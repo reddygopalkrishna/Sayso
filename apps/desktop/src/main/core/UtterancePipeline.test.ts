@@ -55,7 +55,14 @@ const installedApps: KnownApp[] = [
   { name: 'Claude', bundleId: 'com.anthropic.claudefordesktop', running: true },
 ];
 
-function setup({ contexts, chip = 'proceed', llm, dictionary, confirmMs }: Setup & { confirmMs?: number }) {
+function setup({
+  contexts,
+  chip = 'proceed',
+  llm,
+  dictionary,
+  confirmMs,
+  snippets,
+}: Setup & { confirmMs?: number; snippets?: Record<string, string> }) {
   const log: string[] = [];
   const outcomes: UtteranceOutcome[] = [];
   let reads = 0;
@@ -89,6 +96,15 @@ function setup({ contexts, chip = 'proceed', llm, dictionary, confirmMs }: Setup
     endCommands,
     engine: new CommandEngine(commands),
     settleMs: () => 0,
+    snippets: {
+      find: (spoken) =>
+        snippets?.[
+          spoken
+            .toLowerCase()
+            .replace(/[^a-z0-9 ]/g, '')
+            .trim()
+        ] ?? null,
+    },
     confirmMs: () => confirmMs ?? 8_000,
     onAwaitConfirm: (prompt, ms) => void log.push(`prompt ${prompt} ${ms}`),
     onConfirmEnd: () => void log.push('prompt end'),
@@ -182,6 +198,42 @@ describe('UtterancePipeline', () => {
   });
 });
 
+describe('UtterancePipeline: snippets', () => {
+  const link = { calendly: 'Book a time: https://calendly.com/me' };
+
+  it('types the saved text for a trigger, with no AI', async () => {
+    const { pipeline, log, outcomes } = setup({ contexts: [slack], snippets: link });
+    await pipeline.deliver(segment('Calendly.'));
+    expect(log).toEqual(['insert Book a time: https://calendly.com/me']);
+    expect(outcomes[0]?.inserted).toBe(true);
+    expect(outcomes[0]?.insertedText).toBe('Book a time: https://calendly.com/me');
+    expect(outcomes[0]?.cleanup).toBeNull();
+  });
+
+  it('a trigger inside a longer sentence is just dictation', async () => {
+    const { pipeline, log } = setup({ contexts: [slack], snippets: link });
+    await pipeline.deliver(segment('send me my calendly'));
+    expect(log).toEqual(['llm send me my calendly', 'insert Send me my calendly.']);
+  });
+
+  it('a trigger followed by "send" after a pause types the text, then sends', async () => {
+    const { pipeline, log } = setup({ contexts: [slack], snippets: link });
+    await pipeline.deliver(segment('calendly', send));
+    expect(log).toEqual([
+      'insert Book a time: https://calendly.com/me',
+      'chip Send 1000',
+      'key enter',
+    ]);
+  });
+
+  it('never types a snippet into a password field', async () => {
+    const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
+    const { pipeline, log } = setup({ contexts: [password], snippets: link });
+    await expect(pipeline.deliver(segment('calendly'))).rejects.toBeInstanceOf(SafetyRefusal);
+    expect(log).toEqual([]);
+  });
+});
+
 describe('UtterancePipeline: password fields', () => {
   const password = context('com.apple.Safari', { focusRole: 'AXTextField', secureField: true });
 
@@ -259,9 +311,7 @@ describe('UtterancePipeline: chained commands', () => {
 
   it('runs nothing when any part is not a command', async () => {
     const t = setup({ contexts: [slack] });
-    const error = await t.pipeline
-      .deliver(said('undo, hello there'), 'command')
-      .catch((e) => e);
+    const error = await t.pipeline.deliver(said('undo, hello there'), 'command').catch((e) => e);
     expect(error).toBeInstanceOf(CommandNotUnderstood);
     expect(t.log).toEqual([]);
   });
@@ -394,11 +444,7 @@ describe('UtterancePipeline: command mode', () => {
     await t.pipeline.deliver(said('undo'), 'command');
     const error = await t.pipeline.deliver(said('yes'), 'command').catch((e) => e);
     expect(error).toBeInstanceOf(CommandFailed);
-    expect(t.log).toEqual([
-      'prompt Say “yes” to press “delete” 8000',
-      'prompt end',
-      'key cmd+z',
-    ]);
+    expect(t.log).toEqual(['prompt Say “yes” to press “delete” 8000', 'prompt end', 'key cmd+z']);
   });
 
   it('if the app changed before "yes", nothing is pressed', async () => {

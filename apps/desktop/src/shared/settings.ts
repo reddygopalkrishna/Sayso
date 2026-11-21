@@ -1,0 +1,42 @@
+import { z } from 'zod';
+
+/** What a person can change in the Settings tab. The same limits apply to `.env` values. */
+export const SETTING_LIMITS = {
+  pauseMs: { min: 200, max: 3_000, step: 100 },
+  previewMs: { min: 300, max: 5_000, step: 100 },
+  historyKeep: { min: 0, max: 1_000 },
+} as const;
+
+export const CLEANUP_LEVELS = ['off', 'light', 'full'] as const;
+
+/** Every setting at once, as shown on screen. */
+export interface UserSettings {
+  /** Silence before a trailing "send" / "enter" / "new line" runs as a command. */
+  pauseMs: number;
+  /** How long the preview chip shows before an action runs. */
+  previewMs: number;
+  /** Text cleanup: off (as heard), light (local rules), full (AI). */
+  cleanupLevel: (typeof CLEANUP_LEVELS)[number];
+  /** Skip the AI for short text the local rules can finish. */
+  skipAi: boolean;
+  /** History rows to keep; 0 turns history off. */
+  historyKeep: number;
+}
+
+/** One or more settings to change. Anything else, or any value out of range, is rejected. */
+export const SettingsPatchSchema = z
+  .object({
+    pauseMs: z.number().int().min(SETTING_LIMITS.pauseMs.min).max(SETTING_LIMITS.pauseMs.max),
+    previewMs: z.number().int().min(SETTING_LIMITS.previewMs.min).max(SETTING_LIMITS.previewMs.max),
+    cleanupLevel: z.enum(CLEANUP_LEVELS),
+    skipAi: z.boolean(),
+    historyKeep: z
+      .number()
+      .int()
+      .min(SETTING_LIMITS.historyKeep.min)
+      .max(SETTING_LIMITS.historyKeep.max),
+  })
+  .partial()
+  .strict();
+
+export type SettingsPatch = z.infer<typeof SettingsPatchSchema>;

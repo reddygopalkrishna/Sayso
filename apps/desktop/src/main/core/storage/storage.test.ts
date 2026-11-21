@@ -7,6 +7,8 @@ import { DictionaryError, DictionaryRepo, MAX_ENTRIES } from './DictionaryRepo.t
 import { HistoryRepo, type NewHistoryEntry } from './HistoryRepo.ts';
 import { MIGRATIONS, migrate, schemaVersion } from './migrations.ts';
 import { memoryKey, ResolverMemoryRepo } from './ResolverMemoryRepo.ts';
+import { SettingsRepo } from './SettingsRepo.ts';
+import { MAX_SNIPPETS, normalizeTrigger, SnippetError, SnippetRepo } from './SnippetRepo.ts';
 import { openStorage } from './index.ts';
 
 const dirs: string[] = [];
@@ -47,7 +49,13 @@ describe('migrations', () => {
     const tables = db
       .all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .map((t) => t.name);
-    expect(tables).toEqual(['dictionary_entry', 'resolver_memory', 'utterance_history']);
+    expect(tables).toEqual([
+      'dictionary_entry',
+      'resolver_memory',
+      'setting',
+      'snippet',
+      'utterance_history',
+    ]);
   });
 
   it('is safe to run twice', () => {
@@ -178,6 +186,19 @@ describe('schema upgrade 2 → 3 (which AI answered)', () => {
     expect(new HistoryRepo(db, { keep: () => 50 }).recent()[0]?.cleanup).not.toHaveProperty(
       'provider',
     );
+  });
+});
+
+describe('schema upgrade 3 → 4 (snippets)', () => {
+  it('adds the snippet table and keeps the dictionary and history as they were', () => {
+    const db = openDb(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 3));
+    expect(schemaVersion(db)).toBe(3);
+    new DictionaryRepo(db).upsert('Sayso', 'say so');
+    migrate(db);
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length);
+    expect(new DictionaryRepo(db).list().map((d) => d.phrase)).toEqual(['Sayso']);
+    expect(new SnippetRepo(db).list()).toEqual([]);
   });
 });
 
@@ -363,5 +384,114 @@ describe('ResolverMemoryRepo', () => {
     ['Visual-Studio', 'visual studio'],
   ])('memoryKey(%j) → %j', (input, expected) => {
     expect(memoryKey(input)).toBe(expected);
+  });
+});
+
+describe('SnippetRepo', () => {
+  const repo = () => new SnippetRepo(memoryDb());
+
+  it('adds, lists by trigger and removes', () => {
+    const snippets = repo();
+    snippets.upsert('zoom link', 'https://zoom.us/j/1');
+    const cal = snippets.upsert('Calendly', 'Book here: https://calendly.com/me');
+    expect(snippets.list().map((s) => s.trigger)).toEqual(['Calendly', 'zoom link']);
+    expect(snippets.remove(cal.id)).toBe(true);
+    expect(snippets.remove(cal.id)).toBe(false);
+    expect(snippets.count()).toBe(1);
+  });
+
+  it('keeps line breaks and the exact text', () => {
+    const snippets = repo();
+    snippets.upsert('address', 'Line one\nLine two\t(tab)');
+    expect(snippets.find('address')).toBe('Line one\nLine two\t(tab)');
+  });
+
+  it('finds the whole phrase only, ignoring case and punctuation', () => {
+    const snippets = repo();
+    snippets.upsert('calendly', 'LINK');
+    expect(snippets.find('Calendly.')).toBe('LINK');
+    expect(snippets.find('  CALENDLY  ')).toBe('LINK');
+    expect(snippets.find('send me my calendly')).toBeNull();
+    expect(snippets.find('calendly link')).toBeNull();
+    expect(snippets.find('')).toBeNull();
+  });
+
+  it('the same trigger again (any case) replaces the text instead of duplicating', () => {
+    const snippets = repo();
+    const first = snippets.upsert('Calendly', 'old');
+    const again = snippets.upsert('calendly!', 'new');
+    expect(again.id).toBe(first.id);
+    expect(snippets.count()).toBe(1);
+    expect(snippets.find('calendly')).toBe('new');
+  });
+
+  it.each([
+    ['   ', 'text', /words you will say/],
+    ['!!!', 'text', /words you will say/],
+    ['hello', '   ', /text to insert/],
+    ['x'.repeat(61), 'text', /trigger is longer/],
+    ['hello', 'y'.repeat(2001), /text is longer/],
+    ['hello', 'bad\u0000text', /invalid characters/],
+  ])('rejects %j / %j with a readable message', (trigger, body, message) => {
+    expect(() => repo().upsert(trigger, body)).toThrow(SnippetError);
+    expect(() => repo().upsert(trigger, body)).toThrow(message);
+  });
+
+  it(`stops at ${MAX_SNIPPETS} snippets`, () => {
+    const snippets = repo();
+    for (let i = 0; i < MAX_SNIPPETS; i++) snippets.upsert(`trigger number ${i}`, 'x');
+    expect(() => snippets.upsert('one more', 'x')).toThrow(/Remove some first/);
+    expect(() => snippets.upsert('trigger number 3', 'changed')).not.toThrow();
+  });
+
+  it('normalizeTrigger keeps letters and digits only', () => {
+    expect(normalizeTrigger('  My  Zoom-Link! ')).toBe('my zoom link');
+  });
+});
+
+describe('SettingsRepo', () => {
+  const repo = () => new SettingsRepo(memoryDb());
+
+  it('starts empty, saves changes, and keeps them', () => {
+    const settings = repo();
+    expect(settings.get()).toEqual({});
+    settings.set({ pauseMs: 900, cleanupLevel: 'light', skipAi: false });
+    expect(settings.get()).toEqual({ pauseMs: 900, cleanupLevel: 'light', skipAi: false });
+  });
+
+  it('changing one setting leaves the others', () => {
+    const settings = repo();
+    settings.set({ pauseMs: 900, previewMs: 2000 });
+    settings.set({ pauseMs: 700 });
+    expect(settings.get()).toEqual({ pauseMs: 700, previewMs: 2000 });
+  });
+
+  it('reset clears everything', () => {
+    const settings = repo();
+    settings.set({ historyKeep: 10 });
+    settings.reset();
+    expect(settings.get()).toEqual({});
+  });
+
+  it('ignores a stored value that is out of range or damaged', () => {
+    const db = memoryDb();
+    db.run("INSERT INTO setting (key, value, updated_at) VALUES ('pauseMs', '99999', 1)");
+    db.run("INSERT INTO setting (key, value, updated_at) VALUES ('previewMs', 'not json', 1)");
+    db.run("INSERT INTO setting (key, value, updated_at) VALUES ('mystery', '1', 1)");
+    db.run("INSERT INTO setting (key, value, updated_at) VALUES ('historyKeep', '20', 1)");
+    expect(new SettingsRepo(db).get()).toEqual({ historyKeep: 20 });
+  });
+});
+
+describe('schema upgrade 4 → 5 (settings)', () => {
+  it('adds the setting table and keeps snippets', () => {
+    const db = openDb(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 4));
+    expect(schemaVersion(db)).toBe(4);
+    new SnippetRepo(db).upsert('calendly', 'LINK');
+    migrate(db);
+    expect(schemaVersion(db)).toBe(MIGRATIONS.length);
+    expect(new SnippetRepo(db).find('calendly')).toBe('LINK');
+    expect(new SettingsRepo(db).get()).toEqual({});
   });
 });

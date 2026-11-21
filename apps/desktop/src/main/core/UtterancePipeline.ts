@@ -34,6 +34,8 @@ export interface UtteranceOutcome {
   routing: RoutingDecision | null;
   cleanup: CleanupResult | null;
   inserted: boolean;
+  /** The text typed when it came from a snippet (no cleanup ran); otherwise absent. */
+  insertedText?: string;
   command: CommandOutcome | null;
 }
 
@@ -52,6 +54,8 @@ export interface UtterancePipelineOptions {
   };
   /** Pause between chained steps, so the screen can update first. Default 300 ms. */
   settleMs?: () => number;
+  /** Your snippets: when the whole dictation is a trigger, its text is typed as saved, no AI. */
+  snippets?: { find(spoken: string): string | null };
   /** Time a risky action waits for "yes". Default 8 s. */
   confirmMs?: () => number;
   /** Show the "say yes" prompt (and let Esc cancel it), and clear it again. */
@@ -122,18 +126,25 @@ export class UtterancePipeline {
     });
 
     let cleanup: CleanupResult | null = null;
+    let snippet: string | null = null;
     let inserted = false;
     if (routing.dictation !== '') {
       // Refuse before cleanup so nothing said into a password field is sent to the AI either.
       this.assertCanInsert(context);
-      cleanup = await this.opts.cleanup.clean({
-        rawText: routing.dictation,
-        bundleId: context.bundleId,
-        appName: context.appName,
-      });
-      if (cleanup.text !== '') {
-        await this.insert(cleanup.text);
+      snippet = this.opts.snippets?.find(routing.dictation) ?? null;
+      if (snippet !== null) {
+        await this.insert(snippet);
         inserted = true;
+      } else {
+        cleanup = await this.opts.cleanup.clean({
+          rawText: routing.dictation,
+          bundleId: context.bundleId,
+          appName: context.appName,
+        });
+        if (cleanup.text !== '') {
+          await this.insert(cleanup.text);
+          inserted = true;
+        }
       }
     }
 
@@ -158,6 +169,7 @@ export class UtterancePipeline {
       routing,
       cleanup,
       inserted,
+      ...(snippet !== null ? { insertedText: snippet } : {}),
       command,
     });
   }
@@ -191,7 +203,8 @@ export class UtterancePipeline {
     // failure throws and stops the chain; a cancel, a skip or a wait for "yes" stops it.
     let command: CommandOutcome | null = null;
     for (const [index, step] of steps.entries()) {
-      if (index > 0) await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
+      if (index > 0)
+        await new Promise((resolve) => setTimeout(resolve, this.opts.settleMs?.() ?? 300));
       command = await this.runCommand(step, { failOnRefusal: true, allowConfirm: true });
       if (command.result !== 'ran') break;
     }

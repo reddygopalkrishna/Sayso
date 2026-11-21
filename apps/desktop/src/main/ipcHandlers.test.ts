@@ -1,7 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { SettingsPatch, UserSettings } from '../shared/settings.ts';
 import { IPC } from '../shared/status.ts';
 import { openStorage, type Storage } from './core/storage/index.ts';
 import { createIpcHandlers, SETTINGS_URLS } from './ipcHandlers.ts';
+
+const defaults: UserSettings = {
+  pauseMs: 600,
+  previewMs: 1000,
+  cleanupLevel: 'full',
+  skipAi: true,
+  historyKeep: 50,
+};
+const settings = {
+  current: () => defaults,
+  apply: (patch: SettingsPatch) => ({ ...defaults, ...patch }),
+  reset: () => defaults,
+};
 
 function setup(withStorage = true) {
   const storage: Storage | null = withStorage
@@ -11,6 +25,7 @@ function setup(withStorage = true) {
   const opened: string[] = [];
   const handlers = createIpcHandlers({
     storage: () => storage,
+    settings,
     requestPermission: async (kind) => void requested.push(kind),
     openExternal: async (url) => void opened.push(url),
   });
@@ -21,6 +36,78 @@ function setup(withStorage = true) {
   };
   return { storage, call, requested, opened };
 }
+
+describe('settings over IPC', () => {
+  it('reads the current settings', async () => {
+    const { call } = setup();
+    expect(await call(IPC.getSettings)).toEqual({ ok: true, value: defaults });
+  });
+
+  it('applies a valid change', async () => {
+    const { call } = setup();
+    expect(await call(IPC.setSettings, { pauseMs: 900, cleanupLevel: 'light' })).toEqual({
+      ok: true,
+      value: { ...defaults, pauseMs: 900, cleanupLevel: 'light' },
+    });
+  });
+
+  it.each([
+    ['too short a pause', { pauseMs: 50 }],
+    ['too long a preview', { previewMs: 99_999 }],
+    ['an unknown level', { cleanupLevel: 'extreme' }],
+    ['a fraction of a row', { historyKeep: 2.5 }],
+    ['an unknown setting', { apiKey: 'x' }],
+    ['a wrong type', { skipAi: 'yes' }],
+  ])('refuses %s', async (_label, patch) => {
+    const { call } = setup();
+    expect(await call(IPC.setSettings, patch)).toEqual({
+      ok: false,
+      error: 'That request was not valid.',
+    });
+  });
+
+  it('resets to the starting values', async () => {
+    const { call } = setup();
+    expect(await call(IPC.resetSettings)).toEqual({ ok: true, value: defaults });
+  });
+});
+
+describe('snippets over IPC', () => {
+  it('adds, lists and removes', async () => {
+    const { call } = setup();
+    const added = await call(IPC.addSnippet, {
+      trigger: 'calendly',
+      body: 'https://calendly.com/me',
+    });
+    expect(added).toMatchObject({
+      ok: true,
+      value: { trigger: 'calendly', body: 'https://calendly.com/me' },
+    });
+    expect(await call(IPC.listSnippets)).toMatchObject({
+      ok: true,
+      value: [{ trigger: 'calendly' }],
+    });
+    const id = (added as { value: { id: string } }).value.id;
+    expect(await call(IPC.removeSnippet, id)).toEqual({ ok: true, value: true });
+    expect(await call(IPC.listSnippets)).toEqual({ ok: true, value: [] });
+  });
+
+  it('shows a readable message for input it rejects', async () => {
+    const { call } = setup();
+    expect(await call(IPC.addSnippet, { trigger: '  ', body: 'text' })).toEqual({
+      ok: false,
+      error: 'Type the words you will say.',
+    });
+  });
+
+  it('refuses a malformed request', async () => {
+    const { call } = setup();
+    expect(await call(IPC.addSnippet, { trigger: 'x' })).toEqual({
+      ok: false,
+      error: 'That request was not valid.',
+    });
+  });
+});
 
 describe('dictionary over IPC', () => {
   it('adds, lists and removes', async () => {
@@ -135,6 +222,7 @@ describe('permissions over IPC', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const handlers = createIpcHandlers({
       storage: () => null,
+      settings,
       requestPermission: async () => {
         throw new Error('secret internal detail');
       },

@@ -8,7 +8,11 @@ const input =
 /** Your own words (names, product terms) spelled the way you want, and what "open X" remembered. */
 export function Dictionary({ status }: { status: AppStatus }): React.JSX.Element {
   const words = useLoad(() => window.sayso.dictionary.list());
+  const snippets = useLoad(() => window.sayso.snippets.list());
   const choices = useLoad(() => window.sayso.openChoices.list());
+  const [trigger, setTrigger] = useState('');
+  const [snippetText, setSnippetText] = useState('');
+  const [snippetMessage, setSnippetMessage] = useState<string | null>(null);
   const [phrase, setPhrase] = useState('');
   const [spokenAs, setSpokenAs] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -30,6 +34,19 @@ export function Dictionary({ status }: { status: AppStatus }): React.JSX.Element
       await words.reload();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const addSnippet = async (event: React.FormEvent): Promise<void> => {
+    event.preventDefault();
+    try {
+      await window.sayso.snippets.add(trigger, snippetText);
+      setTrigger('');
+      setSnippetText('');
+      setSnippetMessage(null);
+      await snippets.reload();
+    } catch (e) {
+      setSnippetMessage(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -98,6 +115,79 @@ export function Dictionary({ status }: { status: AppStatus }): React.JSX.Element
                 className="text-xs underline"
                 aria-label={`Remove ${entry.phrase}`}
                 onClick={() => void window.sayso.dictionary.remove(entry.id).then(words.reload)}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-label="Snippets" className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Snippets</h2>
+          <p className="text-xs text-neutral-500">
+            Say a short trigger on its own and Sayso types the saved text exactly as written, with
+            no AI. For example, say “calendly” to type your booking link.
+          </p>
+        </div>
+        <form onSubmit={(e) => void addSnippet(e)} className="flex flex-col gap-2">
+          <label className="text-xs">
+            When I say
+            <input
+              className={`${input} mt-1`}
+              value={trigger}
+              maxLength={60}
+              placeholder="calendly"
+              onChange={(e) => setTrigger(e.target.value)}
+            />
+          </label>
+          <label className="text-xs">
+            Type this
+            <textarea
+              className={`${input} mt-1 min-h-20`}
+              value={snippetText}
+              maxLength={2000}
+              placeholder="Book a time here: https://calendly.com/…"
+              onChange={(e) => setSnippetText(e.target.value)}
+            />
+          </label>
+          <div>
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+              disabled={trigger.trim() === '' || snippetText.trim() === ''}
+            >
+              Add snippet
+            </button>
+          </div>
+        </form>
+        <p role="status" className="min-h-4 text-xs text-red-600 dark:text-red-400">
+          {snippetMessage}
+        </p>
+        {snippets.error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {snippets.error}
+          </p>
+        )}
+        {snippets.data?.length === 0 && (
+          <p className="text-sm text-neutral-500">No snippets yet.</p>
+        )}
+        <ul className="flex flex-col gap-1.5">
+          {snippets.data?.map((snippet) => (
+            <li
+              key={snippet.id}
+              className="flex items-start justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
+            >
+              <span className="min-w-0">
+                <span className="font-medium">“{snippet.trigger}”</span>
+                <span className="block truncate text-neutral-500">{snippet.body}</span>
+              </span>
+              <button
+                type="button"
+                className="shrink-0 text-xs underline"
+                aria-label={`Remove snippet ${snippet.trigger}`}
+                onClick={() => void window.sayso.snippets.remove(snippet.id).then(snippets.reload)}
               >
                 Remove
               </button>

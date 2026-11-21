@@ -3,12 +3,16 @@ import { DictionaryRepo } from './DictionaryRepo.ts';
 import { HistoryRepo } from './HistoryRepo.ts';
 import { migrate } from './migrations.ts';
 import { ResolverMemoryRepo } from './ResolverMemoryRepo.ts';
+import { SettingsRepo } from './SettingsRepo.ts';
+import { SnippetRepo } from './SnippetRepo.ts';
 
 export interface Storage {
   db: Db;
   history: HistoryRepo;
   dictionary: DictionaryRepo;
   resolverMemory: ResolverMemoryRepo;
+  snippets: SnippetRepo;
+  settings: SettingsRepo;
   close(): void;
 }
 
@@ -33,6 +37,8 @@ export function openStorage(path: string, options: StorageOptions): Storage {
     history: new HistoryRepo(db, { keep: options.historyKeep, now }),
     dictionary: new DictionaryRepo(db, now),
     resolverMemory: new ResolverMemoryRepo(db, now),
+    snippets: new SnippetRepo(db, now),
+    settings: new SettingsRepo(db, now),
     close: () => db.close(),
   };
 }

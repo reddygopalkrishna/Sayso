@@ -7,6 +7,8 @@ const current = {
   onStatus: () => undefined,
   history: {},
   dictionary: {},
+  snippets: {},
+  settings: {},
   openChoices: {},
   permissions: {},
 };
@@ -23,6 +25,7 @@ describe('hasCurrentApi', () => {
   it.each([
     ['missing history', { ...current, history: undefined }],
     ['missing permissions', { ...current, permissions: undefined }],
+    ['missing snippets (an app from before snippets)', { ...current, snippets: undefined }],
     ['a section that is not an object', { ...current, dictionary: 'x' }],
     ['null section', { ...current, openChoices: null }],
   ])('rejects %s', (_label, api) => {

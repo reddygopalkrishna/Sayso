@@ -46,6 +46,24 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE utterance_history ADD COLUMN cleanup_provider TEXT;
   `,
+  // 4: snippets: a short spoken trigger that types a longer saved text.
+  `
+  CREATE TABLE snippet (
+    id             TEXT PRIMARY KEY,
+    spoken_trigger TEXT NOT NULL,
+    trigger_key    TEXT NOT NULL UNIQUE,
+    body           TEXT NOT NULL,
+    updated_at     INTEGER NOT NULL
+  );
+  `,
+  // 5: settings changed in the app (they win over .env).
+  `
+  CREATE TABLE setting (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 export function schemaVersion(db: Db): number {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { IpcResult } from '../shared/data.ts';
 import { IPC, type SettingsPane } from '../shared/status.ts';
+import { SettingsPatchSchema, type SettingsPatch, type UserSettings } from '../shared/settings.ts';
 import { DictionaryError } from './core/storage/DictionaryRepo.ts';
 import type { Storage } from './core/storage/index.ts';
 
@@ -15,6 +16,12 @@ export interface IpcDeps {
   storage: () => Storage | null;
   requestPermission: (kind: 'microphone' | 'accessibility') => Promise<void>;
   openExternal: (url: string) => Promise<void>;
+  /** The Settings tab: read, change (already validated) and reset to the starting values. */
+  settings: {
+    current: () => UserSettings;
+    apply: (patch: SettingsPatch) => UserSettings;
+    reset: () => UserSettings;
+  };
   /** How many history rows the history tab shows at most. */
   historyLimit?: number;
 }
@@ -24,6 +31,7 @@ export type IpcHandler = (raw: unknown) => Promise<IpcResult<unknown>>;
 const nothing = z.null().or(z.undefined());
 const text = z.string().max(200);
 const addEntry = z.object({ phrase: text, spokenAs: text.nullable() }).strict();
+const addSnippet = z.object({ trigger: text, body: z.string().max(4_000) }).strict();
 const id = z.string().min(1).max(100);
 const permissionKind = z.enum(['microphone', 'accessibility']);
 const settingsPane = z.enum(['microphone', 'accessibility', 'keyboard']);
@@ -65,6 +73,14 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcHandler> {
       storage().dictionary.upsert(phrase, spokenAs),
     ),
     [IPC.removeDictionary]: define(id, (entryId) => storage().dictionary.remove(entryId)),
+    [IPC.getSettings]: define(nothing, () => deps.settings.current()),
+    [IPC.setSettings]: define(SettingsPatchSchema, (patch) => deps.settings.apply(patch)),
+    [IPC.resetSettings]: define(nothing, () => deps.settings.reset()),
+    [IPC.listSnippets]: define(nothing, () => storage().snippets.list()),
+    [IPC.addSnippet]: define(addSnippet, ({ trigger, body }) =>
+      storage().snippets.upsert(trigger, body),
+    ),
+    [IPC.removeSnippet]: define(id, (snippetId) => storage().snippets.remove(snippetId)),
     [IPC.listOpenChoices]: define(nothing, () => storage().resolverMemory.list()),
     [IPC.removeOpenChoice]: define(text, (phrase) => storage().resolverMemory.remove(phrase)),
     [IPC.requestPermission]: define(permissionKind, (kind) => deps.requestPermission(kind)),

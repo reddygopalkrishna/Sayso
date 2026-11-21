@@ -49,6 +49,16 @@ export interface DictionaryEntry {
   updatedAt: number;
 }
 
+/** A spoken trigger that types a longer saved text, e.g. "calendly" → a booking link. */
+export interface Snippet {
+  id: string;
+  /** The words you say, as you typed them. */
+  trigger: string;
+  /** The text typed when the whole phrase is the trigger. */
+  body: string;
+  updatedAt: number;
+}
+
 /** What every IPC call from the renderer returns, so errors arrive as plain messages. */
 export type IpcResult<T> = { ok: true; value: T } | { ok: false; error: string };
 

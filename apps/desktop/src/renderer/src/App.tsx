@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Dictionary } from './Dictionary.tsx';
 import { History } from './History.tsx';
 import { Home } from './Home.tsx';
+import { Settings } from './Settings.tsx';
 import { useStatus } from './useStatus.ts';
 
 const TABS = [
   { id: 'home', label: 'Home' },
   { id: 'history', label: 'History' },
   { id: 'dictionary', label: 'Dictionary' },
+  { id: 'settings', label: 'Settings' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -52,6 +54,8 @@ export function App(): React.JSX.Element {
           <Home status={status} />
         ) : tab === 'history' ? (
           <History status={status} />
+        ) : tab === 'settings' ? (
+          <Settings />
         ) : (
           <Dictionary status={status} />
         )}
