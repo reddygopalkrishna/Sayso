@@ -39,6 +39,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 13:07 · Hands-free fixes: microphone warnings, loud rooms, a log line per utterance (`bdaed8e`)
+- **Warnings flood:** the hands-free microphone ran its audio callback in a way Swift flags as a data race, so the log filled with "data race detected" lines. Fixed the same way the held-key recorder already does it; a live check shows no warnings.
+- **Loud room:** the utterance detector only learned the room's noise during silence, so a steady fan, music or TV counted as one endless sentence and nothing was acted on. It now learns the room level all the time (down fast, up over a few seconds); speech, which rises and falls, stays above it.
+- **Log:** each heard utterance is logged with what hands-free did ("typing", "command", or why it was ignored), e.g. `[hands-free] heard "type hello" (1.4 s): typing`.
+- Reported by you: "hands-free mode is not working". Not yet confirmed fixed by voice.
+- Tests: 54 helper tests pass (new: a loud steady background, a long speech-like sentence); desktop hands-free tests pass.
+
 ### 13:03 · Fix "type chatgpt.com": type with the hold key, names and web addresses (`e648c57`)
 - **Bug:** holding the dictation key and saying "type chatgpt.com" typed the word "type" and a misheard "chartgpt" / "chagpt . com" (reported through another session).
 - **"type …" with the hold key:** the rest is typed as said, with no AI and no end command (a trailing "send" is typed as a word). "type" inside a sentence is still normal dictation.
