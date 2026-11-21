@@ -23,6 +23,10 @@ describe('commands.json', () => {
       'Send',
       'Press Enter',
       'New line',
+      'Next field',
+      'Previous field',
+      'Backspace',
+      'Delete word',
       'Undo',
       'Redo',
       'Select all',
@@ -49,6 +53,10 @@ describe('commands.json', () => {
 
   it('only the end commands wait for a pause; the instant commands are whole-utterance', () => {
     expect(commands.filter((c) => !c.endOfUtteranceOnly).map((c) => c.id)).toEqual([
+      'next_field',
+      'previous_field',
+      'backspace',
+      'delete_word',
       'undo',
       'redo',
       'select_all',

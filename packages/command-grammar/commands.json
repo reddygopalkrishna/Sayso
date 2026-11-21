@@ -59,6 +59,56 @@
       ]
     },
     {
+      "id": "next_field",
+      "label": "Next field",
+      "phrases": ["next field", "next input", "next box", "go to next field", "go to the next field", "go to next box", "go to the next box", "go to next input", "go to next", "tab", "press tab"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "tab"
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "previous_field",
+      "label": "Previous field",
+      "phrases": ["previous field", "previous input", "previous box", "go to previous field", "go to the previous field", "go to previous box", "go to previous", "shift tab"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "tab",
+        "modifiers": ["shift"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "backspace",
+      "label": "Backspace",
+      "phrases": ["backspace", "press backspace", "delete last letter", "delete last character"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "delete"
+      },
+      "safety": "normal",
+      "blockedIn": []
+    },
+    {
+      "id": "delete_word",
+      "label": "Delete word",
+      "phrases": ["delete word", "delete last word", "delete the last word", "delete previous word"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "delete",
+        "modifiers": ["option"]
+      },
+      "safety": "normal",
+      "blockedIn": []
+    },
+    {
       "id": "undo",
       "label": "Undo",
       "phrases": ["undo", "undo that", "undo this", "undo it"],
