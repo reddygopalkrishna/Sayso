@@ -39,6 +39,38 @@ export const InsertTextSchema = z
   .object({ v, type: z.literal('insertText'), id, text: z.string().min(1).max(100_000) })
   .strict();
 
+export const ModifierSchema = z.enum(['cmd', 'shift', 'option', 'ctrl']);
+/** Named keys plus single lowercase letters/digits (ANSI layout) for shortcuts like ⌘Z. */
+export const KeySchema = z.union([
+  z.enum([
+    'enter',
+    'tab',
+    'escape',
+    'space',
+    'delete',
+    'forwardDelete',
+    'up',
+    'down',
+    'left',
+    'right',
+    'home',
+    'end',
+    'pageUp',
+    'pageDown',
+  ]),
+  z.string().regex(/^[a-z0-9]$/),
+]);
+/** Press a key (with modifiers) in the frontmost app. Answered with `done`. */
+export const KeyPressSchema = z
+  .object({
+    v,
+    type: z.literal('keyPress'),
+    id,
+    key: KeySchema,
+    modifiers: z.array(ModifierSchema).max(4),
+  })
+  .strict();
+
 /** Read the frontmost app (and, later, the focused element). Answered with `context`. */
 export const GetContextSchema = z.object({ v, type: z.literal('getContext'), id }).strict();
 
@@ -50,6 +82,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   RecordCancelSchema,
   InsertTextSchema,
   GetContextSchema,
+  KeyPressSchema,
 ]);
 
 // Helper → app
@@ -158,6 +191,8 @@ export type TranscriptMessage = z.infer<typeof TranscriptSchema>;
 export type WordTiming = z.infer<typeof WordTimingSchema>;
 export type HotkeyMessage = z.infer<typeof HotkeySchema>;
 export type ContextMessage = z.infer<typeof ContextSchema>;
+export type Key = z.infer<typeof KeySchema>;
+export type Modifier = z.infer<typeof ModifierSchema>;
 export type SttStatusMessage = z.infer<typeof SttStatusSchema>;
 export type FnListenerMessage = z.infer<typeof FnListenerSchema>;
 

@@ -123,7 +123,12 @@ export function App(): React.JSX.Element {
                 {methodLabel[status.last.method]} ({status.last.tone}) · STT{' '}
                 {Math.round(status.last.sttMs)} ms · cleanup {Math.round(status.last.cleanupMs)} ms
               </p>
-              <p className="mt-1 line-clamp-3 text-sm">{status.last.text}</p>
+              {status.last.text && <p className="mt-1 line-clamp-3 text-sm">{status.last.text}</p>}
+              {status.last.command && (
+                <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  then ran “{status.last.command.replace('_', ' ')}”
+                </p>
+              )}
             </section>
           )}
         </>

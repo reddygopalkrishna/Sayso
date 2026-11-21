@@ -5,21 +5,14 @@ Each entry names the commit so you can see the exact code with `git show <commit
 
 ## In progress
 
-### Phase 0 step 4: pause rule ("… [pause] send" runs as a command), started 2026-11-14
-Done so far (not committed yet):
-- `packages/command-grammar/`: `commands.json` with the end commands `send`, `enter`, `new_line`, validated with zod (8 tests).
-- Helper protocol: `keyPress` request (key + modifiers) on the TypeScript side.
-
-Still to do for this step:
-- Swift helper: handle `keyPress` (synthetic key events). `pnpm helper:test` fails until this is done.
-- IntentRouter: the pause rule on the raw words (gap ≥ 600 ms before the last word or phrase), with tests that use the real WhisperKit transcripts in `apps/desktop/src/main/core/stt/fixtures/`.
-- Remove the spoken command from the text, run `send` as Enter in chat apps and ⌘⏎ / ⌘⇧D in mail apps.
-- Hook it into `UtterancePipeline` before cleanup.
+Nothing in progress. Next: Phase 0 step 5 (preview chip with Esc to cancel, safety levels, never type into password fields).
 
 ## Pending (later)
 
 Known gaps, in rough priority order. Add to this list whenever something is deferred.
 
+- **Adaptive pause:** the pause before "send" is fixed at 600 ms (`SAYSO_PAUSE_MS` to change it). The plan is to learn it per user from cancellations (`adaptive_stats`, step 7).
+- **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
 - **Phase 0 steps 5–7:** preview chip with Esc to cancel and safety levels (never type into password fields, no actions while a meeting app is in front); instant commands without AI (undo, copy, click *label*, open *app*, new tab, scroll…); local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
 - **Configurable hotkey:** Sayso and Wispr Flow both use Fn, so running both pastes twice. Let Sayso use another key (for example, hold Right Option).
 - **Mic pre-roll (300 ms):** the mic starts when Fn goes down, so a word said instantly can be clipped.
@@ -30,6 +23,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 09:53 · Phase 0 step 4: say "send" after a pause to send
+- Say your message, pause, then say **"send"** (or "send it"): the text is typed, then the message is sent. Also **"enter"** / "press enter" and **"new line"** (Shift+Enter, a line break that does not send).
+- It only counts as a command when it is the last thing you say, after a pause of at least 600 ms. "Send me a flower" and "reply send" (no pause) stay text. Saying just "send" on its own presses send.
+- Send is Enter in chat apps (Slack, WhatsApp, Claude…), ⌘⇧D in Apple Mail and ⌘⏎ in Outlook/Spark/Superhuman.
+- Terminals never get Enter, send or new line: the word is typed as text instead.
+- The command is detected on the raw transcript, before AI cleanup, so the AI never sees or rewrites it.
+- Commands are data in `packages/command-grammar/commands.json`; the helper can now press keys (`keyPress`). Tested with 27 pause-rule cases, including a real recording ("…tomorrow? [pause] Send." → text + send).
 
 ### 00:35 · No AI attribution in commits from now on
 - New rule in CLAUDE.md: commits, PRs and repo files carry no Claude/Anthropic attribution or co-author line. Earlier commits are unchanged.

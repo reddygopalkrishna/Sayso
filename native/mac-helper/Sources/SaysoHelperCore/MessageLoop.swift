@@ -29,6 +29,7 @@ public final class MessageLoop {
     private let transcriber: Transcribing
     private let inserter: TextInserting
     private let contextProvider: ContextProviding
+    private let keyPresser: KeyPressing
     private var recordingID: String?
 
     public init(
@@ -37,6 +38,7 @@ public final class MessageLoop {
         transcriber: Transcribing,
         inserter: TextInserting,
         contextProvider: ContextProviding,
+        keyPresser: KeyPressing,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -44,6 +46,7 @@ public final class MessageLoop {
         self.transcriber = transcriber
         self.inserter = inserter
         self.contextProvider = contextProvider
+        self.keyPresser = keyPresser
         self.osDescription = osDescription
     }
 
@@ -91,6 +94,8 @@ public final class MessageLoop {
             return (.keepRunning, nil)
         case let .insertText(id, text):
             return (.keepRunning, Task { await self.insert(id, text) })
+        case let .keyPress(id, key, modifiers):
+            return (.keepRunning, Task { await self.pressKey(id, key, modifiers) })
         }
     }
 
@@ -140,6 +145,19 @@ public final class MessageLoop {
     private func insert(_ id: String, _ text: String) async {
         do {
             try await inserter.insert(text)
+            send(.done(id: id))
+        } catch {
+            sendError(id: id, error, fallbackCode: HelperErrorCode.accessibilityDenied)
+        }
+    }
+
+    private func pressKey(_ id: String, _ key: String, _ modifiers: [Modifier]) async {
+        guard let code = KeyMap.code(for: key) else {
+            send(.error(id: id, code: HelperErrorCode.badMessage, msg: "unknown key \(key)"))
+            return
+        }
+        do {
+            try await keyPresser.press(keyCode: code, modifiers: modifiers)
             send(.done(id: id))
         } catch {
             sendError(id: id, error, fallbackCode: HelperErrorCode.accessibilityDenied)

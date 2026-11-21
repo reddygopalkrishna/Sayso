@@ -42,3 +42,10 @@ public let sampleRate: Double = 16_000
 public protocol ContextProviding: AnyObject {
     func current() -> AppContext
 }
+
+@MainActor
+public protocol KeyPressing: AnyObject {
+    /// Presses one key with modifiers in the frontmost app. Throws `ServiceError`
+    /// (accessibility_denied) when synthetic input is not allowed.
+    func press(keyCode: UInt16, modifiers: [Modifier]) async throws
+}

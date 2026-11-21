@@ -24,7 +24,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 7)
+        #expect(names.count == 8)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
@@ -62,6 +62,8 @@ func fixtureNames(prefix: String) throws -> [String] {
         ("{\"v\":1,\"type\":\"ping\",\"id\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"insertText\",\"id\":\"a\",\"text\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"recordStop\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"keyPress\",\"id\":\"k\",\"key\":\"F13\",\"modifiers\":[]}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"keyPress\",\"id\":\"k\",\"key\":\"a\",\"modifiers\":[\"hyper\"]}", ProtocolError.invalidJSON),
     ])
     func rejects(line: String, expected: ProtocolError) {
         #expect(throws: expected) { try AppMessage.decode(line) }
@@ -90,5 +92,19 @@ func fixtureNames(prefix: String) throws -> [String] {
             if let phase { out.append(phase) }
         }
         #expect(out == expected)
+    }
+}
+
+@Suite struct KeyMapCoverage {
+    /// Every key the protocol allows (KeySchema in messages.ts) must have a key code.
+    @Test func coversEveryProtocolKey() {
+        let named = ["enter", "tab", "escape", "space", "delete", "forwardDelete", "up", "down",
+                     "left", "right", "home", "end", "pageUp", "pageDown"]
+        let characters = (Array("abcdefghijklmnopqrstuvwxyz") + Array("0123456789")).map(String.init)
+        for key in named + characters {
+            #expect(KeyMap.code(for: key) != nil, "\(key)")
+        }
+        #expect(KeyMap.code(for: "F13") == nil)
+        #expect(KeyMap.code(for: "ab") == nil)
     }
 }

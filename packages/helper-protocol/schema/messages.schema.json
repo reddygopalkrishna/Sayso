@@ -172,6 +172,72 @@
             "id"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "keyPress"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "key": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "enter",
+                    "tab",
+                    "escape",
+                    "space",
+                    "delete",
+                    "forwardDelete",
+                    "up",
+                    "down",
+                    "left",
+                    "right",
+                    "home",
+                    "end",
+                    "pageUp",
+                    "pageDown"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]$"
+                }
+              ]
+            },
+            "modifiers": {
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "cmd",
+                  "shift",
+                  "option",
+                  "ctrl"
+                ]
+              }
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "key",
+            "modifiers"
+          ],
+          "additionalProperties": false
         }
       ]
     },

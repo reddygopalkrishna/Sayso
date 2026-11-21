@@ -20,6 +20,7 @@ describe('loadConfig', () => {
       geminiApiKey: 'user',
       geminiModel: undefined,
       cleanupLevel: 'light',
+      pauseMs: 600,
     });
     expect(loadConfig(paths, { GEMINI_API_KEY: 'env' }).geminiApiKey).toBe('env');
   });
@@ -35,7 +36,17 @@ describe('loadConfig', () => {
       geminiApiKey: null,
       geminiModel: undefined,
       cleanupLevel: 'full',
+      pauseMs: 600,
     });
+  });
+
+  it.each([
+    ['800', 800],
+    ['50', 600],
+    ['abc', 600],
+    ['5000', 600],
+  ])('SAYSO_PAUSE_MS=%s → %i ms', (value, expected) => {
+    expect(loadConfig(files(`SAYSO_PAUSE_MS=${value}`), {}).pauseMs).toBe(expected);
   });
 
   it('ignores an empty key and an unknown level', () => {

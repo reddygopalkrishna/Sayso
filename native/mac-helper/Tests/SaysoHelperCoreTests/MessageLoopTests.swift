@@ -56,18 +56,28 @@ struct FakeTranscriber: Transcribing {
     func current() -> AppContext { value }
 }
 
+@MainActor final class FakeKeys: KeyPressing {
+    var error: ServiceError?
+    private(set) var pressed: [(UInt16, [Modifier])] = []
+    func press(keyCode: UInt16, modifiers: [Modifier]) async throws {
+        if let error { throw error }
+        pressed.append((keyCode, modifiers))
+    }
+}
+
 @MainActor
 struct Harness {
     let out = BufferWriter()
     let recorder = FakeRecorder()
     let inserter = FakeInserter()
     let context = FakeContext()
+    let keys = FakeKeys()
     let loop: MessageLoop
 
     init(transcriber: FakeTranscriber = FakeTranscriber()) {
         loop = MessageLoop(
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
-            contextProvider: context, osDescription: "macOS 14.0")
+            contextProvider: context, keyPresser: keys, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -174,6 +184,19 @@ struct Harness {
             .context(id: "c-1", context: AppContext(bundleId: "com.tinyspeck.slackmacgap", appName: "Slack")),
             .context(id: "c-2", context: AppContext(bundleId: nil, appName: nil)),
         ])
+    }
+
+    @Test func pressesKeys() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"keyPress","id":"k-1","key":"enter","modifiers":["shift"]}"#)
+        await h.send(#"{"v":1,"type":"keyPress","id":"k-2","key":"z","modifiers":["cmd"]}"#)
+        #expect(h.keys.pressed.map(\.0) == [36, 6])
+        #expect(h.keys.pressed.map(\.1) == [[.shift], [.cmd]])
+        #expect(h.out.messages == [.done(id: "k-1"), .done(id: "k-2")])
+
+        h.keys.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "no AX")
+        await h.send(#"{"v":1,"type":"keyPress","id":"k-3","key":"enter","modifiers":[]}"#)
+        #expect(h.out.messages.last == .error(id: "k-3", code: HelperErrorCode.accessibilityDenied, msg: "no AX"))
     }
 
     @Test func stopsOnShutdownAndCancelsRecording() async {

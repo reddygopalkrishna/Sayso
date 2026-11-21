@@ -6,6 +6,8 @@ export interface AppConfig {
   geminiApiKey: string | null;
   geminiModel: string | undefined;
   cleanupLevel: CleanupLevel;
+  /** Silence before a trailing "send"/"enter"/"new line" for it to run as a command (pause rule). */
+  pauseMs: number;
 }
 
 /**
@@ -19,13 +21,15 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     if (!existsSync(file)) continue;
     Object.assign(merged, parseEnv(readFileSync(file, 'utf8')));
   }
-  for (const key of ['GEMINI_API_KEY', 'GEMINI_MODEL', 'SAYSO_CLEANUP_LEVEL']) {
+  for (const key of ['GEMINI_API_KEY', 'GEMINI_MODEL', 'SAYSO_CLEANUP_LEVEL', 'SAYSO_PAUSE_MS']) {
     if (processEnv[key]) merged[key] = processEnv[key];
   }
   const level = merged['SAYSO_CLEANUP_LEVEL'];
+  const pause = Number(merged['SAYSO_PAUSE_MS']);
   return {
     geminiApiKey: merged['GEMINI_API_KEY']?.trim() || null,
     geminiModel: merged['GEMINI_MODEL']?.trim() || undefined,
     cleanupLevel: level === 'off' || level === 'light' || level === 'full' ? level : 'full',
+    pauseMs: Number.isFinite(pause) && pause >= 200 && pause <= 3000 ? pause : 600,
   };
 }

@@ -4,7 +4,8 @@ import { IPC } from '../shared/status.ts';
 import { StatusHub } from './StatusHub.ts';
 import { loadConfig } from './config/env.ts';
 import { UtterancePipeline } from './core/UtterancePipeline.ts';
-import { HelperTextInserter } from './core/actions/HelperTextInserter.ts';
+import { endCommands } from '@sayso/command-grammar';
+import { HelperActions } from './core/actions/HelperActions.ts';
 import { TextCleanup } from './core/cleanup/TextCleanup.ts';
 import { GeminiProvider } from './core/cleanup/gemini.ts';
 import { readContext } from './core/context/HelperContext.ts';
@@ -60,21 +61,36 @@ const stt = new HelperWhisperSTT(helper);
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
   cleanup: new TextCleanup({ provider, level: () => config.cleanupLevel }),
-  inserter: new HelperTextInserter(helper),
-  onOutcome: ({ segment, context, cleanup, inserted }) => {
-    console.info(
-      `[cleanup] ${cleanup.method} (${cleanup.tone}) in ${cleanup.ms} ms for ${context.appName ?? 'unknown app'}` +
-        (cleanup.fallbackReason ? `; fallback: ${cleanup.fallbackReason}` : ''),
-    );
-    if (!inserted) return;
+  actions: new HelperActions(helper),
+  endCommands,
+  pauseMs: () => config.pauseMs,
+  onOutcome: ({ segment, context, routing, cleanup, inserted, ranCommand }) => {
+    const app = context.appName ?? 'unknown app';
+    if (cleanup) {
+      console.info(
+        `[cleanup] ${cleanup.method} (${cleanup.tone}) in ${cleanup.ms} ms for ${app}` +
+          (cleanup.fallbackReason ? `; fallback: ${cleanup.fallbackReason}` : ''),
+      );
+    }
+    if (routing.command) {
+      const gap =
+        routing.command.gapMs === null
+          ? 'said alone'
+          : `after ${Math.round(routing.command.gapMs)} ms pause`;
+      console.info(`[command] ${routing.command.command.id} (${gap}) in ${app}`);
+    } else if (routing.keptAsText) {
+      console.info(`[command] trailing command kept as text (${routing.keptAsText}) in ${app}`);
+    }
+    if (!inserted && !ranCommand) return;
     status.update({
       last: {
-        text: cleanup.text,
+        text: cleanup?.text ?? '',
         appName: context.appName,
-        method: cleanup.method,
-        tone: cleanup.tone,
+        method: cleanup?.method ?? 'off',
+        tone: cleanup?.tone ?? 'casual',
+        command: ranCommand,
         sttMs: segment.sttMs,
-        cleanupMs: cleanup.ms,
+        cleanupMs: cleanup?.ms ?? 0,
       },
     });
   },

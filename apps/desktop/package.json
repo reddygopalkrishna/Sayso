@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sayso/command-grammar": "workspace:*",
     "@sayso/helper-protocol": "workspace:*",
     "zod": "^4.6.7"
   },

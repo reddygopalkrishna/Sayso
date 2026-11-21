@@ -52,6 +52,7 @@ public enum AppMessage: Equatable, Sendable {
     case recordCancel(id: String)
     case insertText(id: String, text: String)
     case getContext(id: String)
+    case keyPress(id: String, key: String, modifiers: [Modifier])
 
     public static func decode(_ line: String) throws -> AppMessage {
         let data = Data(line.utf8)
@@ -67,10 +68,21 @@ public enum AppMessage: Equatable, Sendable {
             guard !text.isEmpty else { throw ProtocolError.invalidJSON }
             return .insertText(id: try requestID(data), text: text)
         case "getContext": return .getContext(id: try requestID(data))
+        case "keyPress":
+            struct K: Decodable { let key: String; let modifiers: [Modifier] }
+            let k = try field(K.self, data)
+            guard KeyMap.code(for: k.key) != nil, k.modifiers.count <= 4 else {
+                throw ProtocolError.invalidJSON
+            }
+            return .keyPress(id: try requestID(data), key: k.key, modifiers: k.modifiers)
         case let other:
             throw ProtocolError.unknownType(other)
         }
     }
+}
+
+public enum Modifier: String, Codable, Sendable {
+    case cmd, shift, option, ctrl
 }
 
 public enum LogLevel: String, Codable, Sendable {

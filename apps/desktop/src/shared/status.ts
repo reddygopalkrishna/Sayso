@@ -32,6 +32,8 @@ export interface LastUtterance {
   /** How the text was produced: raw (off), local light cleanup, LLM, or LLM fallback. */
   method: 'off' | 'light' | 'llm' | 'fallback';
   tone: 'casual' | 'professional' | 'literal';
+  /** End command that ran after the text ("send", "enter", "new_line"), if any. */
+  command: string | null;
   sttMs: number;
   cleanupMs: number;
 }
