@@ -30,7 +30,6 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Confirm dialog for Risky actions:** the SafetyGate returns "confirm" for Risky commands, but there is no dialog yet, so they never run. No Risky command exists yet; build the dialog with the first one (delete, git push…).
 - **Meeting apps:** actions are off whenever Zoom, Teams, Webex or FaceTime is in front (the PRD says "with the mic active", which the helper cannot see yet). Google Meet in a browser tab is not detected.
 - **Preview chip polish:** it sits above the listening pill, which still says "Typing…" while the chip shows; hide the pill during the chip. "No" by voice does not cancel yet (only Esc).
-- **Configurable hotkey:** Sayso and Wispr Flow both use Fn, so running both pastes twice. Let Sayso use another key (for example, hold Right Option).
 - **Mic pre-roll (300 ms):** the mic starts when Fn goes down, so a word said instantly can be clipped.
 - **Smart spacing** between back-to-back dictations ("Hello.How are you"): needs the text before the cursor (Accessibility).
 - **Non-QWERTY keyboards:** paste uses the ANSI V key code; other layouts are not handled yet.
@@ -39,6 +38,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-21
+
+### 12:37 · Choose the key you hold to dictate (`3f0149e`)
+- **Settings tab:** "Key to hold to dictate": Fn (default), Right Option, Right Command or Right Control. Shift with it still gives commands; a shortcut pressed while it is held still cancels the dictation. Pick another key if a second dictation app (for example Wispr Flow) also uses Fn, otherwise both type everything you say.
+- **How:** the helper tells the right-hand keys from their left twins by the device-dependent flag bits, so the left Command or Option never starts a dictation. The app sends the key when the helper connects, after a helper restart, and on a change: no restart needed. `SAYSO_HOLD_KEY` sets the starting key.
+- **Protocol:** new `setHoldKey` message with its fixture and schema. The `hotkey` events still say `fn`: they mean "the hold key".
+- Tests: 988 desktop, 59 protocol, 17 grammar and 31 helper tests pass; typecheck and lint clean. Live: the real helper answered `done` for valid keys and rejected `capsLock`.
+- Not tried with real keys yet: restart `pnpm dev`, choose Right Option, hold it and speak. Caps Lock and the left-hand keys are not offered.
 
 ### 12:32 · Style: Default or Chill, everywhere and per app (`2b2726e`)
 - **Style (Settings tab):** Default (capitals and full punctuation) or Chill (no capitals, almost no punctuation), with an example of each. A list under it shows the apps you have dictated into; each can follow the everywhere style or have its own.
