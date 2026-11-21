@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:56 · Chained steps wait for a page to load (`3fc65f3`)
+- **What:** in a chain or an interpreted plan ("open Chrome, new tab, search AWS console, open the first result") the next step used to start 300 ms after the last, so "open the first result" fired before the Google page had loaded. Now a step that loads a page makes the next one wait **1.8 s**: Enter or "send" in a browser, a click or "open the Nth" in a browser, and "open" of a website. New tab, scroll, go back and opening an app keep the 300 ms. Nothing waits after the last step. `SAYSO_PAGE_WAIT_MS` sets it (0 turns the extra wait off; 0 to 10000).
+- **Tested in code:** fake-timer tests for each step kind (waits at 1,799 ms and 1,800 ms; 299 ms and 300 ms), a table test of which steps count as loading a page, and the setting's limits.
+- **Tested live** (through the helper, in Chrome, one run each, on this Mac): new tab, type "aws console", Enter, then "result 1". After a **300 ms** wait it failed (`element_not_found`, the page had not loaded); after **1,800 ms** it succeeded and Chrome was on the first result. That result was a sponsored AWS page, so "the first result" means the top item on the page, ads included. Not tried: other pages, slow connections, or the full spoken chain by voice.
+- **Restart needed:** this is a main-process change; the running `pnpm dev` copy must be restarted to pick it up.
+
 ### 15:53 · Benchmark: plain Whisper vs Sayso (`e297b08`)
 - **What:** `pnpm benchmark <folder>` runs the same recordings (a folder with `manifest.json` and wav files) through plain Whisper (`SaysoHelper --transcribe`) and through Sayso's own text steps (built-in names, local cleanup, address formatting; with `--ai` also the AI cleanup and the interpreter). It reports word error rate, Indian names spelled exactly, filler words left, and command success three ways (plain text, exact grammar, with the interpreter). `docs/BENCHMARK.md` explains the measures and how to record real sentences; `scripts/benchmark/make-samples.sh` makes test audio with the macOS `say` voice.
 - **Tested:** the scoring functions and the sample manifest have unit tests (`pnpm benchmark:test`). The harness was run once, live, on 22 synthetic recordings (local rules, no AI): it works end to end. Those numbers are **not** results: a synthetic voice is not a real speaker, and 5 of 12 short command clips came back empty. `--ai` and the interpreter column were not run.
