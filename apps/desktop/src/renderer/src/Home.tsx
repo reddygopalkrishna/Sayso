@@ -5,6 +5,7 @@ import type {
   LastUtterance,
   SttStatus,
 } from '../../shared/status.ts';
+import { HandsFree } from './HandsFree.tsx';
 import { Onboarding } from './Onboarding.tsx';
 
 type Row = { label: string; detail: string; tone: 'ok' | 'warn' | 'bad' | 'idle' };
@@ -126,6 +127,11 @@ export function Home({ status }: { status: AppStatus }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-5">
       <Onboarding permissions={status.permissions} />
+      <HandsFree
+        status={status.handsFree}
+        wakeWord={status.wakeWord}
+        ready={status.stt.state === 'ready' && status.helper.state === 'connected'}
+      />
       <ul className="flex flex-col gap-3">
         <StatusRow row={helperRow(status.helper)} />
         <StatusRow row={sttRow(status.stt)} />

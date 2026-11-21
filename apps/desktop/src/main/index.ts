@@ -25,7 +25,7 @@ import { PermissionsMonitor } from './core/permissions/PermissionsMonitor.ts';
 import { PreviewChip } from './core/safety/PreviewChip.ts';
 import { openStorage, type Storage } from './core/storage/index.ts';
 import type { UserSettings } from '../shared/settings.ts';
-import { createIpcHandlers } from './ipcHandlers.ts';
+import { createIpcHandlers, UserMessageError } from './ipcHandlers.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
 import { Overlay } from './windows/overlay.ts';
 
@@ -78,6 +78,7 @@ const settingsNow = (): UserSettings => ({
   historyKeep: config.historyKeep,
   style: config.style,
   holdKey: config.holdKey,
+  wakeWord: config.wakeWord,
 });
 const startingSettings = settingsNow();
 // Tells the helper which key is held to dictate (on connect, after a restart, and on a change).
@@ -87,7 +88,10 @@ const sendHoldKey = (): void => {
     .catch((error: unknown) => warn('could not set the hold key', error));
 };
 const refreshCleanupStatus = (): void =>
-  status.update({ cleanup: { level: config.cleanupLevel, provider: providerLabel } });
+  status.update({
+    cleanup: { level: config.cleanupLevel, provider: providerLabel },
+    wakeWord: config.wakeWord,
+  });
 
 const stt = new HelperWhisperSTT(helper);
 const actions = new HelperActions(helper);
@@ -374,6 +378,18 @@ app.whenReady().then(async () => {
 
   const handlers = createIpcHandlers({
     storage: () => storage,
+    handsFree: {
+      set: async (on) => {
+        try {
+          if (on) await handsFree.enable();
+          else await handsFree.disable();
+        } catch (error) {
+          throw new UserMessageError(error instanceof Error ? error.message : String(error), {
+            cause: error,
+          });
+        }
+      },
+    },
     settings: {
       current: settingsNow,
       apply: (patch) => {
@@ -416,8 +432,11 @@ app.whenReady().then(async () => {
   });
 
   const pill = new Overlay({ view: 'pill', width: 220, height: 44, bottomOffset: 28 });
-  dictation.onState((dictationState) =>
-    dictationState.phase === 'idle' ? pill.hide(150) : pill.show(),
+  // Shown while dictating, and while hands-free listens (a quiet reminder that the mic is on).
+  status.onChange((current) =>
+    current.dictation.phase === 'idle' && current.handsFree.state !== 'listening'
+      ? pill.hide(150)
+      : pill.show(),
   );
   // The chip sits just above the pill.
   const chipWindow = new Overlay({ view: 'chip', width: 300, height: 56, bottomOffset: 82 });

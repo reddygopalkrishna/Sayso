@@ -17,6 +17,9 @@ export const SETTINGS_URLS: Readonly<Record<SettingsPane, string>> = {
   keyboard: 'x-apple.systempreferences:com.apple.Keyboard-Settings.extension',
 };
 
+/** A failure whose message is written for people: shown as is instead of "Something went wrong." */
+export class UserMessageError extends Error {}
+
 export interface IpcDeps {
   storage: () => Storage | null;
   requestPermission: (kind: 'microphone' | 'accessibility') => Promise<void>;
@@ -27,6 +30,8 @@ export interface IpcDeps {
     apply: (patch: SettingsPatch) => UserSettings;
     reset: () => UserSettings;
   };
+  /** Hands-free on or off. Rejects with a UserMessageError when it cannot start. */
+  handsFree: { set: (on: boolean) => Promise<void> };
   /** How many history rows the history tab shows at most. */
   historyLimit?: number;
 }
@@ -71,8 +76,9 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcHandler> {
         return { ok: true, value: (await run(parsed.data)) ?? null };
       } catch (error) {
         // Messages written for people (DictionaryError) are shown; anything else is kept generic.
-        const message = error instanceof DictionaryError ? error.message : 'Something went wrong.';
-        if (!(error instanceof DictionaryError)) console.warn('[ipc]', error);
+        const readable = error instanceof DictionaryError || error instanceof UserMessageError;
+        const message = readable ? error.message : 'Something went wrong.';
+        if (!readable) console.warn('[ipc]', error);
         return { ok: false, error: message };
       }
     };
@@ -88,6 +94,7 @@ export function createIpcHandlers(deps: IpcDeps): Record<string, IpcHandler> {
     [IPC.getSettings]: define(nothing, () => deps.settings.current()),
     [IPC.setSettings]: define(SettingsPatchSchema, (patch) => deps.settings.apply(patch)),
     [IPC.resetSettings]: define(nothing, () => deps.settings.reset()),
+    [IPC.setHandsFree]: define(z.boolean(), (on) => deps.handsFree.set(on)),
     [IPC.listAppStyles]: define(nothing, () => storage().appStyles.list()),
     [IPC.setAppStyle]: define(appStyle, ({ bundleId, appName, style }) => {
       storage().appStyles.set(bundleId, appName, style);

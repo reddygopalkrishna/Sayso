@@ -1,4 +1,4 @@
-import type { DictationState } from '../../shared/status.ts';
+import type { AppStatus, DictationState } from '../../shared/status.ts';
 import { useStatus } from './useStatus.ts';
 
 function content(state: DictationState): { text: string; dot: string } | null {
@@ -20,10 +20,19 @@ function content(state: DictationState): { text: string; dot: string } | null {
   }
 }
 
+/** What the pill shows: the dictation in progress, else that hands-free is listening, else nothing. */
+export function pillContent(status: AppStatus): { text: string; dot: string } | null {
+  const dictating = content(status.dictation);
+  if (dictating) return dictating;
+  return status.handsFree.state === 'listening'
+    ? { text: 'Hands-free · say “type …”', dot: 'bg-emerald-500' }
+    : null;
+}
+
 /** The floating listening pill (its own transparent, non-focusable window). */
 export function Pill(): React.JSX.Element | null {
   const status = useStatus();
-  const shown = status ? content(status.dictation) : null;
+  const shown = status ? pillContent(status) : null;
   if (!shown) return null;
   return (
     <div className="flex h-screen items-center justify-center">

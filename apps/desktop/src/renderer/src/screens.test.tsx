@@ -5,7 +5,10 @@ import type { PermissionsStatus } from '../../shared/status.ts';
 import { cleanupLabel, HistoryRow, SpeedSummary } from './History.tsx';
 import type { HistoryStats } from './historyStats.ts';
 import { Onboarding } from './Onboarding.tsx';
+import { HandsFreeCard } from './HandsFree.tsx';
+import { pillContent } from './Pill.tsx';
 import { AppStyleList, SettingsForm } from './Settings.tsx';
+import { initialStatus } from '../../shared/status.ts';
 
 const html = (node: React.JSX.Element): string => renderToStaticMarkup(node);
 
@@ -228,6 +231,7 @@ describe('SettingsForm', () => {
     historyKeep: 50,
     style: 'default',
     holdKey: 'fn',
+    wakeWord: 'sayso',
   } as const;
   const noop = () => undefined;
   const show = (over: Partial<Parameters<typeof SettingsForm>[0]> = {}) =>
@@ -284,6 +288,7 @@ describe('Style in Settings', () => {
           historyKeep: 50,
           style,
           holdKey: 'fn',
+          wakeWord: 'sayso',
         }}
         message={null}
         saved={false}
@@ -342,6 +347,7 @@ describe('Hold key in Settings', () => {
           historyKeep: 50,
           style: 'default',
           holdKey,
+          wakeWord: 'sayso',
         }}
         message={null}
         saved={false}
@@ -361,5 +367,72 @@ describe('Hold key in Settings', () => {
 
   it('shows the chosen key as selected', () => {
     expect(form('rightOption')).toContain('<option value="rightOption" selected="">');
+  });
+});
+
+describe('HandsFreeCard', () => {
+  const noop = () => undefined;
+  const card = (over: Partial<Parameters<typeof HandsFreeCard>[0]> = {}) =>
+    html(
+      <HandsFreeCard
+        status={{ state: 'off' }}
+        wakeWord="sayso"
+        ready
+        message={null}
+        onToggle={noop}
+        {...over}
+      />,
+    );
+
+  it('explains what to say, with the wake word', () => {
+    const out = card({ wakeWord: 'kairo' });
+    for (const text of ['“type …”', '“send it”', '“open Slack”', '“Kairo, new tab”']) {
+      expect(out).toContain(text);
+    }
+    expect(out).toContain('Anything else is ignored, never typed.');
+    expect(out).toContain('audio never');
+  });
+
+  it('shows the switch off, on, and the state in words', () => {
+    expect(card()).toContain('Off');
+    const on = card({ status: { state: 'listening' } });
+    expect(on).toContain('Listening');
+    expect(on).toContain('checked=""');
+  });
+
+  it('cannot be turned on before the speech model has loaded', () => {
+    const out = card({ ready: false });
+    expect(out).toContain('disabled=""');
+    expect(out).toContain('Available once the speech model has loaded.');
+  });
+
+  it('shows why it stopped', () => {
+    expect(card({ status: { state: 'error', message: 'Microphone access is off.' } })).toContain(
+      'Microphone access is off.',
+    );
+    expect(card({ message: 'The speech model is still loading.' })).toContain(
+      'The speech model is still loading.',
+    );
+  });
+});
+
+describe('pillContent', () => {
+  it('is empty when idle and hands-free is off', () => {
+    expect(pillContent(initialStatus)).toBeNull();
+  });
+
+  it('reminds you that hands-free is listening', () => {
+    expect(pillContent({ ...initialStatus, handsFree: { state: 'listening' } })?.text).toContain(
+      'Hands-free',
+    );
+  });
+
+  it('a dictation in progress wins over the hands-free reminder', () => {
+    const status = {
+      ...initialStatus,
+      handsFree: { state: 'listening' as const },
+      dictation: { phase: 'transcribing' as const },
+    };
+    expect(pillContent(status)?.text).toBe('Transcribing…');
   });
 });

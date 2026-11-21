@@ -21,6 +21,10 @@ export interface SaysoApi {
     add(phrase: string, spokenAs: string | null): Promise<DictionaryEntry>;
     remove(id: string): Promise<void>;
   };
+  handsFree: {
+    /** Turns hands-free on or off; rejects with a plain message when it cannot start. */
+    set(on: boolean): Promise<void>;
+  };
   appStyles: {
     list(): Promise<AppStyle[]>;
     /** Sets one app's style (null: follow the everywhere style); answers the updated list. */

@@ -10,6 +10,7 @@ const current = {
   snippets: {},
   settings: {},
   appStyles: {},
+  handsFree: {},
   openChoices: {},
   permissions: {},
 };

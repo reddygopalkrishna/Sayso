@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SettingsPatch, UserSettings } from '../shared/settings.ts';
 import { IPC } from '../shared/status.ts';
 import { openStorage, type Storage } from './core/storage/index.ts';
-import { createIpcHandlers, SETTINGS_URLS } from './ipcHandlers.ts';
+import { createIpcHandlers, SETTINGS_URLS, UserMessageError } from './ipcHandlers.ts';
 
 const defaults: UserSettings = {
   pauseMs: 600,
@@ -12,11 +12,22 @@ const defaults: UserSettings = {
   historyKeep: 50,
   style: 'default',
   holdKey: 'fn',
+  wakeWord: 'sayso',
 };
 const settings = {
   current: () => defaults,
   apply: (patch: SettingsPatch) => ({ ...defaults, ...patch }),
   reset: () => defaults,
+};
+
+const handsFreeCalls: boolean[] = [];
+const handsFree = {
+  set: async (on: boolean) => {
+    if (on && handsFreeCalls.includes(true)) {
+      throw new UserMessageError('The speech model is still loading. Try again in a moment.');
+    }
+    handsFreeCalls.push(on);
+  },
 };
 
 function setup(withStorage = true) {
@@ -28,6 +39,7 @@ function setup(withStorage = true) {
   const handlers = createIpcHandlers({
     storage: () => storage,
     settings,
+    handsFree,
     requestPermission: async (kind) => void requested.push(kind),
     openExternal: async (url) => void opened.push(url),
   });
@@ -71,6 +83,42 @@ describe('settings over IPC', () => {
   it('resets to the starting values', async () => {
     const { call } = setup();
     expect(await call(IPC.resetSettings)).toEqual({ ok: true, value: defaults });
+  });
+});
+
+describe('hands-free over IPC', () => {
+  it('turns it on and off, and shows a readable reason when it cannot start', async () => {
+    const { call } = setup();
+    expect(await call(IPC.setHandsFree, true)).toEqual({ ok: true, value: null });
+    expect(await call(IPC.setHandsFree, false)).toEqual({ ok: true, value: null });
+    expect(await call(IPC.setHandsFree, true)).toEqual({
+      ok: false,
+      error: 'The speech model is still loading. Try again in a moment.',
+    });
+  });
+
+  it('refuses anything but true or false', async () => {
+    const { call } = setup();
+    expect(await call(IPC.setHandsFree, 'on')).toEqual({
+      ok: false,
+      error: 'That request was not valid.',
+    });
+  });
+
+  it.each([['Kairo'], ['two words'], ['x'], ['9lives']])(
+    'refuses the wake word %j (one lowercase word, 2–30 letters or digits)',
+    async (wakeWord) => {
+      const { call } = setup();
+      expect(await call(IPC.setSettings, { wakeWord })).toEqual({
+        ok: false,
+        error: 'That request was not valid.',
+      });
+    },
+  );
+
+  it('accepts a valid wake word', async () => {
+    const { call } = setup();
+    expect(await call(IPC.setSettings, { wakeWord: 'kairo' })).toMatchObject({ ok: true });
   });
 });
 
@@ -266,6 +314,7 @@ describe('permissions over IPC', () => {
     const handlers = createIpcHandlers({
       storage: () => null,
       settings,
+      handsFree,
       requestPermission: async () => {
         throw new Error('secret internal detail');
       },

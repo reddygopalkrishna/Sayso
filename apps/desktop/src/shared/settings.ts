@@ -33,6 +33,8 @@ export interface UserSettings {
   style: Style;
   /** The key held to dictate (Shift with it gives commands). */
   holdKey: HoldKeyName;
+  /** Hands-free: one word said before a command, lowercase ("sayso"). */
+  wakeWord: string;
 }
 
 /** One or more settings to change. Anything else, or any value out of range, is rejected. */
@@ -44,6 +46,7 @@ export const SettingsPatchSchema = z
     skipAi: z.boolean(),
     style: z.enum(STYLES),
     holdKey: z.enum(HOLD_KEYS),
+    wakeWord: z.string().regex(/^[a-z][a-z0-9]{1,29}$/),
     historyKeep: z
       .number()
       .int()

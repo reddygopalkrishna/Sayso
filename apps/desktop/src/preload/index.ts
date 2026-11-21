@@ -26,6 +26,9 @@ const api: SaysoApi = {
     add: (phrase, spokenAs) => call(IPC.addDictionary, { phrase, spokenAs }),
     remove: (id) => call(IPC.removeDictionary, id),
   },
+  handsFree: {
+    set: (on) => call(IPC.setHandsFree, on),
+  },
   appStyles: {
     list: () => call(IPC.listAppStyles),
     set: (bundleId, appName, style) => call(IPC.setAppStyle, { bundleId, appName, style }),

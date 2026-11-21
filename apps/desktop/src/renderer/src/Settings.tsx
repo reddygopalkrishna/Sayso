@@ -132,6 +132,23 @@ export function SettingsForm({
         </select>
       </label>
 
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium">Hands-free wake word</span>
+        <span className="text-xs text-neutral-500">
+          Say it before a command in hands-free mode (“{values.wakeWord}, new tab”). One word,
+          letters and digits, at least two characters.
+        </span>
+        <input
+          className={`${field} w-48`}
+          aria-label="Hands-free wake word"
+          value={values.wakeWord}
+          maxLength={30}
+          onChange={(e) =>
+            onChange({ wakeWord: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') })
+          }
+        />
+      </label>
+
       <fieldset className="flex flex-col gap-2 text-sm">
         <legend className="font-medium">Style</legend>
         <span className="text-xs text-neutral-500">

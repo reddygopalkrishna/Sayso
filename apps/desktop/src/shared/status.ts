@@ -73,6 +73,8 @@ export interface AppStatus {
   cleanup: CleanupStatus;
   dictation: DictationState;
   handsFree: HandsFreeStatus;
+  /** The word said before a hands-free command. */
+  wakeWord: string;
   preview: PreviewStatus | null;
   permissions: PermissionsStatus;
   database: DatabaseStatus;
@@ -86,6 +88,7 @@ export const initialStatus: AppStatus = {
   cleanup: { level: 'full', provider: null },
   dictation: { phase: 'idle' },
   handsFree: { state: 'off' },
+  wakeWord: 'sayso',
   preview: null,
   permissions: { microphone: 'unknown', accessibility: 'unknown' },
   database: { state: 'unknown' },
@@ -103,6 +106,7 @@ export const IPC = {
   getSettings: 'settings:get',
   setSettings: 'settings:set',
   resetSettings: 'settings:reset',
+  setHandsFree: 'handsfree:set',
   listAppStyles: 'styles:list',
   setAppStyle: 'styles:set',
   listSnippets: 'snippets:list',
