@@ -203,11 +203,16 @@ describe('CommandEngine: chained commands', () => {
 
 describe('CommandEngine: messages', () => {
   it.each([
-    ['Message Priya on Slack saying I will be late.', 'priya on slack saying i will be late'],
+    ['Message Priya on Slack saying I will be late.', 'Priya on Slack saying I will be late.'],
     ['message priya on whatsapp running late', 'priya on whatsapp running late'],
-    ['Send a message to Priya Sharma saying call me', 'priya sharma saying call me'],
-    ['send message to priya that I am here', 'priya that i am here'],
+    ['Send a message to Priya Sharma saying call me', 'Priya Sharma saying call me'],
+    ['send message to priya that I am here', 'priya that I am here'],
     ['message a friend saying hello', 'a friend saying hello'],
+    ['Send Priya a message saying I am late', 'Priya saying I am late'],
+    ['send priya sharma a message that says call me', 'priya sharma that says call me'],
+    ['Tell Priya on Slack that I am late', 'Priya on Slack saying I am late'],
+    ['tell priya to say thanks', 'priya saying thanks'],
+    ['Please message Priya saying hi', 'Priya saying hi'],
   ])('%j → send_message with the rest as the argument', (spoken, arg) => {
     const match = engine.match(spoken);
     expect(match?.command.id).toBe('send_message');
@@ -229,4 +234,55 @@ describe('CommandEngine: messages', () => {
     const steps = engine.matchChain('open Slack, message priya saying hello');
     expect(steps?.map((s) => s.command.id)).toEqual(['open', 'send_message']);
   });
+});
+
+describe('CommandEngine: a message is exactly what was said', () => {
+  const arg = (spoken: string) => engine.match(spoken)?.args['message'];
+
+  it('keeps case, apostrophes and punctuation after the name', () => {
+    expect(arg("Message Priya saying I'm on my way, see you at 5:30!")).toBe(
+      "Priya saying I'm on my way, see you at 5:30!",
+    );
+  });
+
+  it.each([
+    ['type', 'message Priya saying type hello'],
+    ['send it', 'message Priya on Slack saying ok send it'],
+    ['open', 'message Priya saying open Slack and call me'],
+    ['new tab', 'message Priya saying new tab'],
+    ['a web address', 'message Priya saying visit www dot example dot com'],
+    ['cancel words', 'message Priya saying never mind, stop, cancel that'],
+    ['yes', 'message Priya saying yes do it'],
+  ])('words like %s inside a message stay part of it', (_label, spoken) => {
+    const match = engine.match(spoken);
+    expect(match?.command.id).toBe('send_message');
+    expect(
+      spoken
+        .toLowerCase()
+        .endsWith((match?.args['message'] ?? '').split(' saying ')[1]?.toLowerCase() ?? '?'),
+    ).toBe(true);
+  });
+
+  it('is one step even with commas and "then" in the message', () => {
+    const steps = engine.matchChain('Message Priya saying call me, then send it, open Slack');
+    expect(steps?.map((s) => s.command.id)).toEqual(['send_message']);
+    expect(steps?.[0]?.args['message']).toBe('Priya saying call me, then send it, open Slack');
+  });
+
+  it('cuts the chain before the message, not inside it', () => {
+    const steps = engine.matchChain('Open Slack, message Priya saying hello, then bye');
+    expect(steps?.map((s) => s.command.id)).toEqual(['open', 'send_message']);
+    expect(steps?.[1]?.args['message']).toBe('Priya saying hello, then bye');
+  });
+
+  it('a chain with an unknown part before the message runs nothing', () => {
+    expect(engine.matchChain('Blah blah, message Priya saying hello')).toBeNull();
+  });
+
+  it.each(['tell priya hello', 'tell priya', 'send priya a message'])(
+    '%j is not taken as a message (ambiguous or no text)',
+    (spoken) => {
+      expect(engine.match(spoken)?.command.id).not.toBe('send_message');
+    },
+  );
 });

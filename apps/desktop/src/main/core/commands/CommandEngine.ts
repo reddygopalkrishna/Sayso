@@ -5,6 +5,8 @@ import {
   type CommandSpec,
 } from '@sayso/command-grammar';
 
+import { messageArgument } from './messageSentence.ts';
+
 export interface InstantMatch {
   command: CommandSpec;
   /** The grammar phrase that matched, e.g. "click {label}". */
@@ -130,7 +132,21 @@ export class CommandEngine {
   matchChain(text: string): InstantMatch[] | null {
     // An explicit joint (comma, "then") wins: "open Chrome, new tab" is two steps, not "open" a
     // target called "Chrome new tab". Without a joint, or when a part is not a command, the
-    // whole sentence is tried as one command.
+    // whole sentence is tried as one command. A message is never cut up: from the part that says
+    // "message …" to the end, everything is the message (it may contain commas and "then").
+    const segments = splitSegments(text);
+    const at = segments.findIndex((seg) => messageArgument(text.slice(seg.start)) !== null);
+    if (at >= 0) {
+      const steps: InstantMatch[] = [];
+      for (const seg of segments.slice(0, at)) {
+        const step = this.match(seg.text);
+        if (!step) return null;
+        steps.push(step);
+      }
+      const message = this.match(text.slice(segments[at]?.start ?? 0));
+      if (!message || steps.length + 1 > MAX_CHAIN_STEPS) return null;
+      return [...steps, message];
+    }
     const parts = splitChain(text);
     if (parts.length >= 2 && parts.length <= MAX_CHAIN_STEPS) {
       const steps: InstantMatch[] = [];
@@ -146,9 +162,21 @@ export class CommandEngine {
   }
 
   match(text: string): InstantMatch | null {
+    const message = this.matchMessage(text);
+    if (message) return message;
     const n = normalizeUtterance(text);
     if (n === '') return null;
     return this.matchExact(n) ?? this.matchWithArgument(n) ?? this.matchFuzzy(n);
+  }
+
+  /** A spoken message keeps its words exactly as said (see messageSentence.ts). */
+  private matchMessage(text: string): InstantMatch | null {
+    const arg = messageArgument(text);
+    if (arg === null) return null;
+    const c = this.compiled.find((x) => x.command.action.type === 'sendMessage');
+    return c
+      ? { command: c.command, phrase: c.phrase, args: { message: arg }, confidence: 1 }
+      : null;
   }
 
   private matchExact(n: string): InstantMatch | null {
@@ -216,10 +244,25 @@ export const MAX_CHAIN_STEPS = 4;
  * then". A bare "and" is not a joint ("open Tom and Jerry" must stay one command).
  */
 export function splitChain(text: string): string[] {
-  return text
-    .split(/\s*(?:[,;]|\b(?:and\s+)?then\b)\s*/i)
-    .map((part) => part.trim())
-    .filter((part) => part !== '');
+  return splitSegments(text).map((seg) => seg.text);
+}
+
+/** The parts of a sentence between joints, with where each starts in the original text. */
+function splitSegments(text: string): Array<{ text: string; start: number }> {
+  const joint = /\s*(?:[,;]|\b(?:and\s+)?then\b)\s*/gi;
+  const segments: Array<{ text: string; start: number }> = [];
+  let from = 0;
+  const push = (end: number): void => {
+    const raw = text.slice(from, end);
+    const trimmed = raw.trim();
+    if (trimmed !== '') segments.push({ text: trimmed, start: from + raw.indexOf(trimmed) });
+  };
+  for (const m of text.matchAll(joint)) {
+    push(m.index);
+    from = m.index + m[0].length;
+  }
+  push(text.length);
+  return segments;
 }
 
 /** Fills {label}, {target} or {app} in a command label ("Click “{label}”") from the matched args. */

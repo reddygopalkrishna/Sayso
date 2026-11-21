@@ -9,6 +9,7 @@ import type { ProfileKey } from '../../shared/profile.ts';
 import type { Style } from '../../shared/settings.ts';
 import type { CleanupResult, TextCleanup } from './cleanup/TextCleanup.ts';
 import { parseMessageRequest, parsePosition } from '@sayso/command-grammar';
+import { verbatimIn } from './commands/messageSentence.ts';
 import { messageAppForBundle, RECIPES, titleCase } from './messaging/recipes.ts';
 import { HelperRequestError } from '../helper/HelperProcess.ts';
 import { CommandFailed, CommandNotUnderstood, CommandRefused } from './commands/errors.ts';
@@ -326,10 +327,35 @@ export class UtterancePipeline {
     if (!this.opts.interpret) return null;
     if (context.secureField || isMeetingApp(context.bundleId)) return null;
     try {
-      return (await this.opts.interpret(text, context))?.steps ?? null;
+      const steps = (await this.opts.interpret(text, context))?.steps ?? null;
+      return steps ? this.keepMessagesVerbatim(steps, text) : null;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * The AI may choose to send a message, but never writes it: the text of every message step must
+   * be words really said, and is replaced by them exactly as said. A plan that rewrote a message
+   * is dropped whole.
+   */
+  private keepMessagesVerbatim(steps: PlanStep[], utterance: string): PlanStep[] | null {
+    const out: PlanStep[] = [];
+    for (const step of steps) {
+      if (step.kind !== 'command' || step.match.command.action.type !== 'sendMessage') {
+        out.push(step);
+        continue;
+      }
+      const request = parseMessageRequest(step.match.args['message'] ?? '');
+      const said = request ? verbatimIn(utterance, request.text) : null;
+      if (!request || !said) return null;
+      const app = request.app ? ` on ${request.app}` : '';
+      out.push({
+        kind: 'command',
+        match: { ...step.match, args: { message: `${request.name}${app} saying ${said}` } },
+      });
+    }
+    return out;
   }
 
   /**
@@ -449,13 +475,9 @@ export class UtterancePipeline {
     const bundleId = resolved.bundleId;
     const name = titleCase(request.name);
 
-    // The text is cleaned up the way dictation is (capitals, punctuation), before anything opens.
-    const cleaned = await this.opts.cleanup.clean({
-      rawText: request.text,
-      bundleId,
-      appName: recipe.appName,
-    });
-    const text = cleaned.text.trim() === '' ? request.text : cleaned.text.trim();
+    // The message is exactly what was said: no AI and no command reading. Only your own spellings
+    // and web addresses ("example dot com" → example.com) are fixed, as when typing by voice.
+    const text = typeLiterally(request.text, this.opts.dictionary?.() ?? []).trim() || request.text;
 
     const wasInFront = live.bundleId === bundleId;
     await this.opts.actions.openApp(bundleId);

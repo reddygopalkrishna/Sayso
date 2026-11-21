@@ -56,7 +56,7 @@ export function buildSystemPrompt(): string {
     '- To click or press something on screen, use "click" with arg set to the EXACT name from the screen list. If nothing on the screen matches, do not guess: reply {"steps":[]}.',
     '- "open" is for apps and websites by name. "open_position" is for the Nth item ("third email", "first result"), arg like "third email".',
     '- The words come from speech recognition, which mishears short commands ("new time" for new tab, "closed" for close tab, "go bag" for go back, "scroll don" for scroll down, "click sign it" for click Sign in). If the words sound like one of the commands or a name on the screen, choose it rather than giving up. Only give nothing when no command or screen name is even close.',
-    '- To message someone in Slack or WhatsApp use "send_message" with arg like "Priya on Slack saying I will be late" (name, then "on Slack" or "on WhatsApp" if said, then "saying", then exactly what to send). One step; never add a separate step to press Enter or send: the app asks the person before sending.',
+    '- To message someone in Slack or WhatsApp use "send_message" with arg like "Priya on Slack saying I will be late" (name, then "on Slack" or "on WhatsApp" if said, then "saying", then the words to send copied word for word from what was said: never reword, shorten or add to them). One step; never add a separate step to press Enter or send: the app asks the person before sending.',
     '- At most 8 steps, and prefer few. Steps run in order. Put the safest reading first.',
     '- If the request is unclear, is a question, or needs something not listed: reply {"steps":[]}.',
     "- Never invent a command. Never confirm or cancel anything on the person's behalf.",

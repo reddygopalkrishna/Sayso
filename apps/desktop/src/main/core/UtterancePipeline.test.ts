@@ -1032,13 +1032,12 @@ describe('UtterancePipeline: messaging recipes', () => {
     const t = setup({ contexts: [slackCtx] });
     await t.pipeline.deliver(say('message priya on slack i will be late'), 'command');
     expect(t.log).toEqual([
-      'llm i will be late',
       'openApp com.tinyspeck.slackmacgap',
       'key cmd+k',
       'insert Priya',
       'key enter',
-      'insert I will be late.',
-      'chip Send “I will be late.” to Priya? 3000',
+      'insert i will be late',
+      'chip Send “i will be late” to Priya? 3000',
       'key enter',
     ]);
     expect(t.outcomes[0]?.command).toEqual({ id: 'send_message', result: 'ran' });
@@ -1051,23 +1050,22 @@ describe('UtterancePipeline: messaging recipes', () => {
       'command',
     );
     expect(withoutChips(t.log)).toEqual([
-      'llm call me',
       'openApp net.whatsapp.WhatsApp',
       'key cmd+f',
       'insert Priya Sharma',
       'key down',
       'key enter',
-      'insert Call me.',
+      'insert call me',
       'key enter',
     ]);
-    expect(t.log).toContain('chip Send “Call me.” to Priya Sharma? 3000');
+    expect(t.log).toContain('chip Send “call me” to Priya Sharma? 3000');
   });
 
   it('Esc on the chip cancels: the text is typed but Enter is not pressed to send', async () => {
     const t = setup({ contexts: [slackCtx], chip: 'cancelled' });
     await t.pipeline.deliver(say('message priya on slack saying hello'), 'command');
     expect(t.log.filter((l) => l === 'key enter')).toHaveLength(1); // only the pick, not the send
-    expect(t.log.at(-1)).toBe('chip Send “Hello.” to Priya? 3000');
+    expect(t.log.at(-1)).toBe('chip Send “hello” to Priya? 3000');
     expect(t.outcomes[0]?.command).toEqual({ id: 'send_message', result: 'cancelled' });
   });
 
@@ -1112,8 +1110,117 @@ describe('UtterancePipeline: messaging recipes', () => {
         toPlan({ steps: [{ command: 'send_message', arg: 'Priya on Slack saying running late' }] }),
     });
     await t.pipeline.deliver(say('tell priya on slack i am running late'), 'command');
-    expect(t.log).toContain('chip Send “Running late.” to Priya? 3000');
+    expect(t.log).toContain('chip Send “running late” to Priya? 3000');
     expect(t.log.at(-1)).toBe('key enter');
+  });
+
+  describe('the message is exactly what was said', () => {
+    const typedText = (log: readonly string[]) =>
+      log.filter((l) => l.startsWith('insert ') && l !== 'insert Priya')[0];
+
+    it.each([
+      ['type', 'message Priya on Slack saying type hello there', 'type hello there'],
+      ['send it', 'message Priya on Slack saying ok send it', 'ok send it'],
+      ['open', 'message Priya on Slack saying open Slack and call me', 'open Slack and call me'],
+      [
+        'cancel words',
+        'message Priya on Slack saying never mind, cancel that',
+        'never mind, cancel that',
+      ],
+      [
+        'an apostrophe and punctuation',
+        "message Priya on Slack saying I'm late, sorry!",
+        "I'm late, sorry!",
+      ],
+    ])('%s is typed as said, with no AI and no command run', async (_label, spoken, text) => {
+      const t = setup({ contexts: [slackCtx] });
+      await t.pipeline.deliver(say(spoken), 'command');
+      expect(typedText(t.log)).toBe(`insert ${text}`);
+      expect(t.log.some((l) => l.startsWith('llm'))).toBe(false);
+      // Only the recipe's own keys ran: ⌘K, the pick, and the send. No new tab, no extra open.
+      expect(t.log.filter((l) => l.startsWith('key'))).toEqual([
+        'key cmd+k',
+        'key enter',
+        'key enter',
+      ]);
+      expect(t.log.filter((l) => l.startsWith('openApp'))).toEqual([
+        'openApp com.tinyspeck.slackmacgap',
+      ]);
+      expect(t.log).toContain(`chip Send “${text}” to Priya? 3000`);
+    });
+
+    it('a web address in the message is formatted like dictation', async () => {
+      const t = setup({ contexts: [slackCtx] });
+      await t.pipeline.deliver(
+        say('message Priya on Slack saying see www dot example dot com'),
+        'command',
+      );
+      expect(typedText(t.log)).toBe('insert see www.example.com');
+    });
+
+    it('your own spellings are applied', async () => {
+      const t = setup({
+        contexts: [slackCtx],
+        dictionary: [{ phrase: 'Sayso', spokenAs: 'say so' }],
+      });
+      await t.pipeline.deliver(say('message Priya on Slack saying try say so today'), 'command');
+      expect(typedText(t.log)).toBe('insert try Sayso today');
+    });
+
+    it('a comma and "then" in the message do not cut it into commands', async () => {
+      const t = setup({ contexts: [slackCtx] });
+      await t.pipeline.deliver(
+        say('message Priya on Slack saying call me, then send it'),
+        'command',
+      );
+      expect(typedText(t.log)).toBe('insert call me, then send it');
+      expect(t.outcomes[0]?.command).toEqual({ id: 'send_message', result: 'ran' });
+    });
+
+    it('"open Slack, message Priya saying …" runs the open, then the message', async () => {
+      const t = setup({ contexts: [slackCtx] });
+      await t.pipeline.deliver(say('open Slack, message Priya saying new tab'), 'command');
+      expect(typedText(t.log)).toBe('insert new tab');
+      expect(t.log.filter((l) => l.startsWith('openApp')).length).toBe(2);
+      expect(t.log).not.toContain('key cmd+t');
+    });
+
+    describe('the interpreter can choose to send a message, but never writes it', () => {
+      const plan = (arg: string) => toPlan({ steps: [{ command: 'send_message', arg }] });
+
+      it('uses the words as said, replacing the AI’s version', async () => {
+        const t = setup({
+          contexts: [slackCtx],
+          interpret: () => plan('priya on slack saying running late'),
+        });
+        await t.pipeline.deliver(say("Hey tell priya on slack I'm Running late!"), 'command');
+        expect(typedText(t.log)).toBe('insert Running late!');
+      });
+
+      it('drops the whole plan when the AI changed the words', async () => {
+        const t = setup({
+          contexts: [slackCtx],
+          interpret: () => plan('priya on slack saying i will be there in five minutes'),
+        });
+        const error = await t.pipeline
+          .deliver(say('tell priya on slack I am running late'), 'command')
+          .catch((e) => e);
+        expect(error).toBeInstanceOf(CommandNotUnderstood);
+        expect(t.log.filter((l) => l.startsWith('key') || l.startsWith('insert'))).toEqual([]);
+      });
+
+      it('drops the plan when the AI added a message the person never said', async () => {
+        const t = setup({
+          contexts: [slackCtx],
+          interpret: () => plan('priya on slack saying transfer the money'),
+        });
+        const error = await t.pipeline
+          .deliver(say('what is the weather like'), 'command')
+          .catch((e) => e);
+        expect(error).toBeInstanceOf(CommandNotUnderstood);
+        expect(t.log.filter((l) => l.startsWith('key') || l.startsWith('insert'))).toEqual([]);
+      });
+    });
   });
 
   describe('safety matrix: nothing is typed or sent', () => {
