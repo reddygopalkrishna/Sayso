@@ -182,6 +182,33 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
         return ScreenElements.clean(raw)
     }
 
+    /// The page content of a browser window: the largest web area, and the main landmark inside
+    /// it when the page has one. Everything above the web area is the tab strip and toolbar.
+    private static func contentArea(of window: AXUIElement) -> (web: ScreenItem?, main: ScreenItem?) {
+        let started = ContinuousClock.now
+        var web: ScreenItem?
+        var main: ScreenItem?
+        var queue: [AXUIElement] = [window]
+        var head = 0
+        while head < queue.count, head < 5_000, ContinuousClock.now - started < .milliseconds(400) {
+            let element = queue[head]
+            head += 1
+            let role = string(element, kAXRoleAttribute)
+            if role == "AXWebArea", let item = frame(element),
+               item.width * item.height > (web.map { $0.width * $0.height } ?? 0)
+            {
+                web = item
+            }
+            if string(element, kAXSubroleAttribute) == "AXLandmarkMain", let item = frame(element),
+               item.width * item.height > (main.map { $0.width * $0.height } ?? 0)
+            {
+                main = item
+            }
+            queue.append(contentsOf: children(element))
+        }
+        return (web, main)
+    }
+
     /// "Fill in my email": puts the cursor in the text field called `label`, by clicking into it.
     /// The field is found by its label, title or placeholder (best match first, top to bottom).
     /// A password field is never chosen. Bounded like every search here.
@@ -243,20 +270,63 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
         let window = Self.element(root, kAXFocusedWindowAttribute) ?? root
         let bounds = Self.frame(window)
 
-        for wanted in kind == .any ? [PositionKind.result, .row, .link] : [kind] {
-            let found = Self.collect(wanted, from: window, within: bounds)
+        let debug = ProcessInfo.processInfo.environment["SAYSO_DEBUG_POSITION"] == "1"
+        // Links, headings and groups found only because there were no rows are limited to the
+        // page's main content (the toolbar and tab strip are not items).
+        var area: ScreenItem?
+        if PositionFallback.sources(for: kind).contains(where: { PositionFallback.needsContentArea(kind: kind, source: $0) }) {
+            let content = Self.contentArea(of: window)
+            area = content.main ?? content.web
+            if ProcessInfo.processInfo.environment["SAYSO_DEBUG_POSITION"] == "1" {
+                func d(_ i: ScreenItem?) -> String { i.map { "x=\(Int($0.x)) y=\(Int($0.y)) w=\(Int($0.width)) h=\(Int($0.height))" } ?? "none" }
+                FileHandle.standardError.write(Data("[position] window \(d(bounds)); web area \(d(content.web)); main \(d(content.main))\n".utf8))
+            }
+        }
+        for source in PositionFallback.sources(for: kind) {
+            let restricted = PositionFallback.needsContentArea(kind: kind, source: source)
+            var titleChars = 12
+            var found = Self.collect(source, from: window, within: bounds, area: restricted ? area : nil, restricted: restricted)
+            if restricted {
+                // Items of a list share a column; filter links and badges are in other columns.
+                let column = PositionFallback.dominantColumn(of: found.map(\.item.x))
+                found = found.filter { PositionFallback.isInColumn(x: $0.item.x, column: column) }
+            }
+            if source == .row {
+                // A web page's rows often include spacers and header rows: prefer the rows that
+                // hold a link with a real name, when any do.
+                // Titles are long ("Show HN: …"); "42 comments" and "3 hours ago" are not, so rows
+                // with a long link come first, then rows with any named link.
+                for minChars in [25, 12] {
+                    let withLinks = found.filter { Self.realLink(in: $0.element, minChars: minChars) != nil }
+                    if !withLinks.isEmpty {
+                        found = withLinks
+                        titleChars = minChars
+                        break
+                    }
+                }
+            }
+            if debug {
+                FileHandle.standardError.write(Data("[position] \(source.rawValue): \(found.count) found\(restricted ? " (main content, one column)" : "")\n".utf8))
+            }
             if found.isEmpty { continue }
             guard let pick = PositionPicker.pick(found.map(\.item), index: index) else { throw missing }
-            if ProcessInfo.processInfo.environment["SAYSO_DEBUG_POSITION"] == "1" {
+            if debug {
                 // Diagnostics for development only: what was found, in screen order, and which one.
                 for (i, f) in found.enumerated() {
                     let text = Self.string(f.element, kAXTitleAttribute) ?? Self.string(f.element, kAXDescriptionAttribute) ?? ""
-                    FileHandle.standardError.write(Data("[position] \(wanted.rawValue) #\(i) y=\(Int(f.item.y)) x=\(Int(f.item.x)) \(i == pick ? "PICK " : "")\(text.prefix(60))\n".utf8))
+                    FileHandle.standardError.write(Data("[position] \(source.rawValue) #\(i) y=\(Int(f.item.y)) x=\(Int(f.item.x)) \(i == pick ? "PICK " : "")\(text.prefix(60))\n".utf8))
                 }
+                FileHandle.standardError.write(Data("[position] used \(source.rawValue) for \(kind.rawValue)\n".utf8))
             }
             // Web pages often ignore an accessibility press on links and rows (Google results do),
             // so those get a real click in their middle; buttons are pressed.
-            try Self.activate(found[pick].element, at: found[pick].item, click: wanted != .button)
+            // A row that holds a named link is opened by clicking that link (the row's middle may be
+            // empty space); other rows, links and headings are clicked in the middle.
+            if source == .row, let link = Self.realLink(in: found[pick].element, minChars: titleChars), let linkItem = Self.frame(link) {
+                try Self.activate(link, at: linkItem, click: true)
+            } else {
+                try Self.activate(found[pick].element, at: found[pick].item, click: source != .button)
+            }
             return
         }
         throw missing
@@ -265,9 +335,11 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
     private static let positionNodes = 12_000
     private static let positionBudget: Duration = .milliseconds(700)
 
-    /// The items of one kind under `start`, visible in `bounds`, in tree order.
+    /// The items of one source under `start`, visible in `bounds` (and inside `area` when given),
+    /// in tree order. `restricted` also skips links with no real text (icons, "skip" links).
     private static func collect(
-        _ kind: PositionKind, from start: AXUIElement, within bounds: ScreenItem?
+        _ source: PositionSource, from start: AXUIElement, within bounds: ScreenItem?,
+        area: ScreenItem?, restricted: Bool
     ) -> [(element: AXUIElement, item: ScreenItem)] {
         let started = ContinuousClock.now
         var out: [(element: AXUIElement, item: ScreenItem)] = []
@@ -279,14 +351,16 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
             head += 1
             let role = string(element, kAXRoleAttribute)
             var candidate: AXUIElement?
-            switch kind {
+            switch source {
             case .link: if role == "AXLink" { candidate = element }
             case .row: if role == "AXRow" { candidate = element }
             case .button: if role == "AXButton" { candidate = element }
-            case .result: if role == "AXHeading" { candidate = link ?? firstLink(under: element) }
-            case .any: break
+            case .heading: if role == "AXHeading" { candidate = link ?? firstLink(under: element) }
+            case .group: if role == "AXGroup", isPressableTextGroup(element, bounds: bounds) { candidate = element }
             }
             if let candidate, let item = frame(candidate), visible(item, in: bounds),
+               area.map({ visible(item, in: $0) }) ?? true,
+               !restricted || source != .link || hasRealText(candidate),
                !out.contains(where: { CFEqual($0.element, candidate) })
             {
                 out.append((candidate, item))
@@ -295,6 +369,47 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
             for child in children(element) { queue.append((child, nextLink)) }
         }
         return out
+    }
+
+    /// The first link with a real name inside `row` (looking a few levels down), or nil.
+    private static func realLink(in row: AXUIElement, minChars: Int = 12) -> AXUIElement? {
+        var level = children(row)
+        for _ in 0..<4 {
+            if let link = level.first(where: { string($0, kAXRoleAttribute) == "AXLink" && hasRealText($0, minChars: minChars) }) {
+                return link
+            }
+            level = level.flatMap(children)
+            if level.isEmpty { return nil }
+        }
+        return nil
+    }
+
+    /// A link that has a name of its own (a title or text of at least 12 characters), not an icon
+    /// or a short navigation word ("new", "past").
+    private static func hasRealText(_ link: AXUIElement, minChars: Int = 12) -> Bool {
+        var text = string(link, kAXTitleAttribute) ?? string(link, kAXDescriptionAttribute) ?? ""
+        if text.isEmpty {
+            text = children(link).lazy.compactMap { child in
+                string(child, kAXRoleAttribute) == "AXStaticText" ? string(child, kAXValueAttribute) : nil
+            }.first ?? ""
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).count >= minChars
+    }
+
+    /// A group that can be pressed and holds text, and is not a page-sized wrapper.
+    private static func isPressableTextGroup(_ element: AXUIElement, bounds: ScreenItem?) -> Bool {
+        var names: CFArray?
+        guard AXUIElementCopyActionNames(element, &names) == .success,
+              (names as? [String])?.contains(kAXPressAction as String) == true,
+              let item = frame(element)
+        else { return false }
+        if let bounds, item.height > bounds.height / 3 { return false }
+        var level = children(element)
+        for _ in 0..<2 {
+            if level.contains(where: { string($0, kAXRoleAttribute) == "AXStaticText" }) { return true }
+            level = level.flatMap(children)
+        }
+        return false
     }
 
     private static func firstLink(under heading: AXUIElement) -> AXUIElement? {
