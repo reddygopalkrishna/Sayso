@@ -64,6 +64,14 @@ describe('toPlan', () => {
     expect(idsOf(plan)).toEqual(['open_position']);
   });
 
+  it.each(['Login', 'Log in', 'Sign in', 'Sign In', 'login'])(
+    'accepts a click on the sign-in button called %j',
+    (label) => {
+      const plan = toPlan({ steps: [{ command: 'click', arg: label }] });
+      expect(idsOf(plan)).toEqual(['click']);
+    },
+  );
+
   it('accepts a message for send_message', () => {
     const plan = toPlan({
       steps: [{ command: 'send_message', arg: 'Priya on Slack saying running late' }],

@@ -76,6 +76,20 @@ describe('prompts', () => {
     expect(system).toContain('"new time" for new tab');
   });
 
+  it.each(['sign in', 'sign me in', 'log in', 'log me in', 'login', 'get me in', 'let me in'])(
+    'the system prompt says "%s" means pressing the sign-in button',
+    (words) => {
+      expect(buildSystemPrompt()).toContain(`"${words}"`);
+    },
+  );
+
+  it('sign-in help says to click only, never type credentials, and to give nothing when no button exists', () => {
+    const system = buildSystemPrompt();
+    expect(system).toContain('Never type a name or password: only click');
+    expect(system).toContain('If no such button is on screen, reply {"steps":[]}');
+    expect(system).toContain('EXACT screen name closest in meaning');
+  });
+
   it('the user prompt carries the app, the screen names and the words', () => {
     const user = buildUserPrompt(request);
     expect(user).toContain('App in front: Chrome');
