@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 03:20 · Two more mishearings (`e556b36`)
+- **Why:** a live hands-free log: "Open faster result." and "Open first page." became web searches, and "Openclaw." (Open Claude) was ignored.
+- **What:** "faster result/link/item" is read as "first result/link/item"; "openclaw" and "open claw" as "open Claude". "Open first page." is left as it is (it can mean a page of a document).
+- **The log in numbers:** of 12 things meant as commands, 8 ran correctly ("Open Cloud", "Open Chrome" ×4, "Open WhatsApp", "Type AWS", "Type AWS, send it"); the misses were mishearings of short phrases.
+- **Tested:** unit tests (203 command tests); not by voice yet.
+
 ### 03:05 · Voice from further away (`349c898`)
 - **Why:** the founder reported speech was not detected properly unless close to the microphone.
 - **What:** (1) hands-free now counts speech from a lower level (RMS 0.008, was 0.015; still at least 3 times the room's own noise), so a voice about 20 dB quieter than normal speech starts an utterance; (2) before the speech model reads a recording, faint audio is lifted so its loudest sample reaches 0.5, by at most 8 times, loud audio untouched. Applies to the held key and hands-free.
