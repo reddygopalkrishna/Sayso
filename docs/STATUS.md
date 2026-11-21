@@ -13,6 +13,7 @@ Update this file at the end of every step. Keep it under 80 lines.
 - **Phase 0 is feature complete.** Remaining for its "done when": use it for real (a Slack message and a Claude prompt without the keyboard) and fix what that shows.
 
 ## In progress
+- **Handover for the next session: `docs/HANDOVER.md`** (rules, what exists, what to do next, the live WhatsApp test that was approved but not yet run).
 - Nothing.
 
 ## Next
