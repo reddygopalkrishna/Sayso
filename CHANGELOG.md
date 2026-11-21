@@ -39,6 +39,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-15
 
+### 14:35 · Go back and go forward by voice (`b497890`)
+- **What:** "go back", "back page" or "previous page" sends ⌘[; "go forward", "forward page" or "next page" sends ⌘]. Both are safe and run without the preview chip. They are Stage C step 2 of `docs/PLAN_INFINA_PARITY.md`.
+- **Why:** Infina has these, and they are the simplest way to move through pages in browsers and Finder.
+- **How it was checked:** the helper sent ⌘[ and ⌘] to Chrome: a test tab went back one page and then forward again. The test window was closed afterwards.
+- **Limits:** the voice path (Fn+Shift, then "go back") is not tried yet. In text editors, ⌘[ may change indentation instead of going back.
+- Tests: 862 desktop tests, grammar (17), protocol (56) and helper (26) pass; typecheck and lint are clean.
+
 ### 14:09 · Chained commands: "open Chrome, new tab" runs each step in order (`bb883f9`)
 - **What:** in command mode (Fn+Shift), a sentence with commas, semicolons, "then" or "and then" runs each part as a command, in order, with a short pause between steps. Stops at the first refusal or failure. If any part is not a command, nothing runs. Up to 4 steps.
 - **Why:** one sentence can now do a short task ("open Slack, new tab"), which is Stage C step 1 of `docs/PLAN_INFINA_PARITY.md`. A bare "and" is not a joint, so "open Tom and Jerry" stays one command.
