@@ -7,6 +7,7 @@ On 21 Nov 2026 the history was rewritten for the first push: every commit was re
 
 ## In progress
 
+- **Voice-action accuracy (phase 2):** run `docs/VOICE_TEST.md` by voice, paste the failing `[dictation]` log lines, then fix the prompt, phrases or fuzzy matching for those exact lines.
 - **Stage B of docs/PLAN_INFINA_PARITY.md:** test "click Profile" in Google Cloud Console by hand after a restart (the code is in; not yet tried in Chrome).
 
 ## Pending (later)
@@ -38,6 +39,10 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Pill polish:** a waveform in the pill.
 
 ## 2026-11-21
+
+### 15:45 · Voice test script (`b3b72a5`)
+- **What:** `docs/VOICE_TEST.md`: 44 spoken commands across Chrome, Finder, Notes, saved details and forms, free-form sentences (the interpreter), System Settings, and four mishearing checks. Each has the expected result and blank Result and Log line columns, plus a score table. Setup notes say which settings to turn on and that "lock screen" and a real "send" are left out.
+- **Not run yet:** the expected results come from the grammar and the interpreter design, not from live runs. Finding and fixing the real failures waits for the founder to run it and paste the `[dictation]` lines from the "Sayso dev" terminal.
 
 ### 15:44 · UI: Activity, About me, Words and Settings as cards (`cca5828`)
 - **What:** the four remaining screens use the same rounded cards as Home (one shared `Card.tsx`). Activity: a note card, a speed card, one card per dictation. About me: all fields in one "Your details" card, two columns. Words: Your words, Snippets and Remembered "open" choices as three cards. Settings: grouped into **Voice** (hold key, language, wake word), **Text** (style, cleanup, skip the AI, pause before "send"), **Understanding** (understand my own words, preview time) and **Privacy and history** (history kept), plus the Style per app card.

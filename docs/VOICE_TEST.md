@@ -1,12 +1,12 @@
-# Voice test: 40 spoken commands
+# Voice test: 44 spoken commands
 
 A script you run by voice on the real app, to measure how accurate Sayso is at doing actions. Nothing here has been run yet: the "Expected" column is what the code is designed to do (from `packages/command-grammar/commands.json` and the interpreter), not a measured result. The "Result" column is yours to fill in.
 
 ## Before you start
 
 1. `pnpm dev` is running (one copy only), Microphone and Accessibility are granted, and the Home screen shows the speech model ready and the Fn listener on.
-2. Settings: "Understand my own words" on (tests 31 to 36 need it). Hold key as you use it (Fn by default).
-3. Save a name, email and phone in **About me** (tests 29 to 30).
+2. Settings: "Understand my own words" on (tests 32 to 36 need it). Hold key as you use it (Fn by default).
+3. Save a name, email and phone in **About me** (tests 29 to 31).
 4. Keep the terminal tab "Sayso dev" visible. Every failure prints a line there, for example `[dictation] dictation error: Didn't catch a command`.
 5. Say each phrase **as written, in a normal voice**, holding the key (Fn + Shift for commands; in hands-free mode say the wake word first). Do not repeat a phrase that failed: mark it and move on, so the table shows first-try accuracy.
 6. Do not test "lock screen" in this run (it locks the Mac) or "send" in a real chat.
