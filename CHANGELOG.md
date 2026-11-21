@@ -38,6 +38,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Model load time:** the first load in a new helper process took 131 s (Neural Engine compile); later loads about 10 s. Show progress in the window.
 - **Pill polish:** a waveform in the pill.
 
+## 2026-11-22
+
+### 00:31 · Voice off switch for hands-free, fewer mishearing mistakes (`9486cf8`)
+- **Why:** from the founder's live log: hands-free had no way to switch off by voice; "NewTek", "NewTown", "He tender" were typed or ignored instead of acting as "new tab" and "hit enter"; "Thanks for watching!" (Whisper's invention from near-silence) reached the AI as a command.
+- **What:** say **"stop listening"**, "turn off hands-free", "hands-free off" or "go to sleep" (whole utterance only) and hands-free turns off. Whole-utterance mishearings of "new tab", "hit enter" and "scroll down" now match the command. "Thanks for watching", "please subscribe", "subtitles by …" are dropped when they are the entire transcript.
+- **Measured, not changed:** on-device speech standalone took 0.4–0.65 s for 1–2 s of audio on this Mac, but 1–3 s in the founder's session (a busy MacBook Air with Chrome, WhatsApp and the dev app open). Word times add about 10 ms, so they are not the cause. A hint prompt of command words for the Whisper model was tried and **rejected**: it added about 200 ms and blanked one sample.
+- **Tested:** unit tests (1,530 desktop); not yet by voice. The other hands-free changes in the working folder (no wake word) are not part of this commit.
+
 ## 2026-11-21
 
 ### 23:52 · Optional cloud speech (`18b432f`)
