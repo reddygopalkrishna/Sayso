@@ -39,6 +39,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-15
 
+### 14:09 · Chained commands: "open Chrome, new tab" runs each step in order (`bb883f9`)
+- **What:** in command mode (Fn+Shift), a sentence with commas, semicolons, "then" or "and then" runs each part as a command, in order, with a short pause between steps. Stops at the first refusal or failure. If any part is not a command, nothing runs. Up to 4 steps.
+- **Why:** one sentence can now do a short task ("open Slack, new tab"), which is Stage C step 1 of `docs/PLAN_INFINA_PARITY.md`. A bare "and" is not a joint, so "open Tom and Jerry" stays one command.
+- **Limits:** the history row shows only the last step of a chain. "search GCP" is not a command yet, so a chain with it is refused as a whole.
+- Tests: 835 desktop tests, typecheck and lint pass. Not yet tried live.
+
 ### 14:06 · Click not-found shows a short message; first click in a web app retries once (`39bf851`)
 - **Not-found message:** a click that finds nothing already reached the pill; the text is now short ("Couldn't find “X” on screen.") so it fits.
 - **First-click retry:** when a web app (Chrome, ChatGPT, Claude…) was just switched on for accessibility, a miss waits 200 ms and searches once more, because its tree may still be building.
