@@ -39,6 +39,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 15:16 · Fill this form by voice (`bfd3ee1`)
+- **What:** say "fill in my details" (or "fill in my email"). Sayso reads the names of the fields on screen, asks the AI which saved facts (About me) match which field, then puts the cursor in each field and types the fact. Up to eight fields per sentence.
+- **Privacy by design:** the AI is told only the names of the fields and which facts are saved (name, email, phone…), and answers with fact **names**; it never sees or writes a value. Your details are not sent anywhere. A plan that names an unknown fact, or gives a value instead of a name, is dropped whole.
+- **Safety:** password fields are never listed to the AI and never chosen; the pipeline checks again before typing that the cursor did not land in one; refused in meetings. A fact that is not saved says so ("Your email is not saved yet. Add it in About me."); a missing field says so.
+- **Checked live** in Chrome on a real web form: name, email and mobile were filled through the helper; asking for the Password field was refused.
+- **Hackathon (Track 1, personal context):** this is the "raw input to useful outcome" journey: one spoken sentence, a filled form, with your own context and nothing leaving your Mac.
+- Tests: 71 helper, 1,224 desktop and protocol tests pass; typecheck and lint clean. Not yet tried by voice in the running app (restart `pnpm dev`).
+
 ### 15:14 · About me: Sayso types the facts about you (`2c231eb`)
 - **What:** a new **About me** tab keeps your name, email, phone, address, company, website, LinkedIn and GitHub on this Mac. Say "type my email", "type my phone number", "type my address"… in any app, with the hold key or hands-free, and Sayso types the saved fact. Your own snippets win over a fact when both match.
 - **Privacy:** they are never sent anywhere, not even to the AI.
