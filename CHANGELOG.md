@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 16:42 · All the ways of saying "sign in" pick the button (`e7fa07b`)
+- **What:** the interpreter prompt now says that "sign in", "sign me in", "log in", "log me in", "login", "get me in" and "let me in" all mean pressing the sign-in button, to click the exact screen name closest in meaning whichever word the button uses, never to type a name or password, and to give nothing if no such button is on screen.
+- **Tested in code:** the prompt carries all seven phrases and the click-only and no-button rules; a click on "Login", "Log in", "Sign in", "Sign In" and "login" is an accepted plan. (The model's choice itself is only tested live.)
+- **Tested live** (Groq, the real names on screen, a harmless public login page, nothing typed, nothing pressed): "sign me in", "sign in", "log in", "login", "get me in", "log me in", "let me in" all gave click "Login" in 260 to 810 ms. Before this change, "sign me in" gave no plan and "log me in" gave one only sometimes. One run of 7 sentences per phrase, one page; not measured on other sites or by voice.
+- **Restart needed:** main-process change.
+
 ### 16:42 · Tab titles are never sent to the AI (`859d25c`)
 - **What:** in a browser the helper no longer lists anything above the page: not the tab strip (open tab titles) and not the toolbar. It finds the page area (the largest web area) and drops names whose top edge is above it; if the area cannot be found it skips the top 120 points of the window instead, so a tab title cannot slip through. Only known browsers are filtered (Chrome, Safari, Firefox, Arc, Edge, Brave, Opera, Vivaldi, Orion, Zen); other apps are listed in full as before. The older "memory usage" filter in the prompt builder stays.
 - **Cost:** the interpreter can no longer see toolbar buttons ("Reload") in a browser; "click Reload" by its exact name still works, because the click itself searches the whole window.
