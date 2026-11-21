@@ -39,6 +39,14 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 14:48 · Understanding your own words, slice 2: the interpreter (`b8a2507`)
+- **What:** an `Interpreter` that turns a sentence no exact command matched, plus the app in front and the names of what its window shows, into a plan of up to four steps. Each step is one of Sayso's own commands (with its one argument) or text to type.
+- **Safety by design:** nothing the AI says is trusted. A plan is checked step by step and dropped whole if a command is unknown, an argument is missing or unwanted, a position is not a position, or there are too many steps, so a half-understood sentence never half runs. The AI can never use "cancel" or "yes", so it cannot answer a confirmation for you. The plan then goes through the same safety checks as words said exactly (preview chip, "yes?" before risky buttons, no password fields).
+- **What is sent to the AI (slice 3 turns it on):** the spoken words, the app name, and at most 40 button, link and field names. Browser tab titles are removed. Never page text or what you typed. Only when no exact command matched.
+- **Models:** an OpenAI-style client (Groq, and OpenAI with your key), tried in order with a short timeout each.
+- **Not wired in yet:** no visible change until slice 3.
+- Tests: 1,167 desktop tests pass (new: plan checks, prompts, model fallback, client); typecheck and lint clean.
+
 ### 14:46 · Reading the screen, slice 1: the helper lists what the front window shows (`b392613`)
 - **What:** a new helper request, `listElements`, answers with the names and kinds (button, link, menu, checkbox, field) of what the front window shows, top to bottom, at most 60. Names only: a field is listed by its label or placeholder, never by what is typed in it; password fields are skipped.
 - **Why:** to let Sayso understand your own words, it has to know what you could name on screen. This is the "read the screen" half; the interpreter that uses it comes in slice 2 and 3.
