@@ -83,6 +83,8 @@ const settingsNow = (): UserSettings => ({
 const startingSettings = settingsNow();
 // Tells the helper which key is held to dictate (on connect, after a restart, and on a change).
 const sendHoldKey = (): void => {
+  // Sent again on connect, so there is nothing to do while the helper is not up yet.
+  if (helper.status.state !== 'connected') return;
   void actions
     .setHoldKey(config.holdKey)
     .catch((error: unknown) => warn('could not set the hold key', error));
