@@ -39,6 +39,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-21
 
+### 14:37 · UI work, step 1: design preview with sample data (`46b4cc0`)
+- **Development only:** open the dev URL in a normal browser with `?preview` (e.g. `http://localhost:5173/?preview` while `pnpm dev` runs) to see every screen with sample data. Not part of the app build.
+- The app status now carries the hold key, for Home to show which key to hold.
+- **In progress:** the UI redesign itself (sidebar navigation, cards, grouped Settings, a cleaner Home). Not started in code yet.
+
 ### 13:41 · Position commands: "open the first result", "open the third email" (`4d26b53`)
 - **Say:** "open the", "click the", "go to the" or "select the" + first…tenth / 1st…10th / top / last + result, link, email, message, button or "one". "open first result" works too. "open the App Store" still opens the app (only a real position counts). Shows the preview chip first.
 - **How:** the helper finds those items wholly inside the front window, counts them from the top, skips ones scrolled out of view, and clicks the chosen one. Links, results and rows get a real mouse click (Google ignores an accessibility press); buttons are pressed. If there are fewer, Sayso says "There is no ninth email on screen."
