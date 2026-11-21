@@ -22,7 +22,6 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 - **Phase 0 steps 5–7:** preview chip with Esc to cancel and safety levels (never type into password fields, no actions while a meeting app is in front); instant commands without AI (undo, copy, click *label*, open *app*, new tab, scroll…); local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
 - **Configurable hotkey:** Sayso and Wispr Flow both use Fn, so running both pastes twice. Let Sayso use another key (for example, hold Right Option).
-- **Only one copy at a time:** running `pnpm dev` again in a new terminal tab starts a second copy, and every dictation is pasted by each copy. Add a single-instance lock (`app.requestSingleInstanceLock`).
 - **Mic pre-roll (300 ms):** the mic starts when Fn goes down, so a word said instantly can be clipped.
 - **Smart spacing** between back-to-back dictations ("Hello.How are you"): needs the text before the cursor (Accessibility).
 - **Non-QWERTY keyboards:** paste uses the ANSI V key code; other layouts are not handled yet.
@@ -31,6 +30,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 00:33 · Only one Sayso runs at a time
+- Starting `pnpm dev` while another copy was running left both copies listening to Fn, so each dictation was pasted twice (up to five times tonight).
+- Now a newly started dev copy makes the old one quit and takes over (it has your latest code). A packaged app instead brings its existing window forward.
+- Quitting is one clean path (stop the helper, then exit). The first version hung half-quit because the new copy's lock retries made the old copy call quit repeatedly; fixed and tested live with two copies: one left running, then 0 after ⌘Q.
+- Clicking the Dock icon reopens the status window after it was closed.
 
 ### 00:26 · Changelog, and a clear page for localhost:5173 in a browser
 - Added this `CHANGELOG.md`; CLAUDE.md now requires updating it after every change.

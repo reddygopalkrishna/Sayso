@@ -12,6 +12,7 @@ import { DictationController } from './core/dictation/DictationController.ts';
 import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
 import { resolveHelperPath } from './helper/binaryPath.ts';
+import { claimSingleInstance } from './singleInstance.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
 import { PillWindow } from './windows/pillWindow.ts';
 
@@ -121,7 +122,38 @@ helper.onMessage((message) => {
 
 dictation.onState((dictationState) => status.update({ dictation: dictationState }));
 
-app.whenReady().then(() => {
+let mainWindow: BrowserWindow | null = null;
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) mainWindow = createMainWindow();
+  else mainWindow.show();
+  mainWindow.focus();
+}
+
+app.whenReady().then(async () => {
+  const mayRun = await claimSingleInstance(
+    {
+      requestSingleInstanceLock: () => app.requestSingleInstanceLock(),
+      onSecondInstance: (listener) => app.on('second-instance', listener),
+    },
+    {
+      newestWins: !app.isPackaged,
+      onSecondInstance: showMainWindow,
+      onReplaced: () => {
+        if (!shuttingDown) console.info('[app] a newer copy of Sayso started; quitting this one');
+        shutdown();
+      },
+    },
+  );
+  if (!mayRun) {
+    console.error(
+      app.isPackaged
+        ? '[app] Sayso is already running'
+        : '[app] another Sayso copy is still running and did not quit (older build?). Quit it and try again.',
+    );
+    app.exit(0);
+    return;
+  }
+
   ipcMain.handle(IPC.getStatus, () => status.current);
   status.onChange((current) => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -133,21 +165,25 @@ app.whenReady().then(() => {
   dictation.onState((dictationState) => pill.show(dictationState));
 
   helper.start();
-  createMainWindow();
+  showMainWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().filter((w) => w.isFocusable()).length === 0) {
-      createMainWindow();
-    }
-  });
+  // Clicking the Dock icon brings the status window back after it was closed.
+  app.on('activate', showMainWindow);
 });
 
-let quitting = false;
+// One shutdown path for every way of quitting (⌘Q, Dock, replaced by a newer copy). It runs once,
+// stops the helper, then exits directly: app.exit() does not re-emit before-quit, so repeated quit
+// requests (a newer copy retries the lock every 250 ms) cannot leave the app half-quit.
+let shuttingDown = false;
+function shutdown(): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  void helper.stop().finally(() => app.exit(0));
+}
+
 app.on('before-quit', (event) => {
-  if (quitting) return;
   event.preventDefault();
-  quitting = true;
-  void helper.stop().finally(() => app.quit());
+  shutdown();
 });
 
 // Sayso keeps running (Fn listening) with no windows open, like other menu-bar style tools.
