@@ -40,6 +40,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 00:33 · Double-tap Fn toggles hands-free (`2fc184a`)
+- **Why:** the founder asked to switch hands-free on and off with Fn, Fn instead of the switch.
+- **What:** two quick taps of the hold key (each under 0.25 s, the second within 0.45 s of the first) turn hands-free on, or off if it is on. The second press is swallowed, so no recording starts for it; Fn with another key or Shift is never counted as a tap. The pill shows the error if hands-free cannot start (model still loading, no microphone).
+- **Tested:** unit tests for the timing rules (1,536 desktop tests). **Not tried on the keyboard yet.** Note: macOS has its own "press Fn twice" shortcut (System Settings → Keyboard → Dictation); set it to Off or it may fight with this.
+
 ### 00:31 · Voice off switch for hands-free, fewer mishearing mistakes (`9486cf8`)
 - **Why:** from the founder's live log: hands-free had no way to switch off by voice; "NewTek", "NewTown", "He tender" were typed or ignored instead of acting as "new tab" and "hit enter"; "Thanks for watching!" (Whisper's invention from near-silence) reached the AI as a command.
 - **What:** say **"stop listening"**, "turn off hands-free", "hands-free off" or "go to sleep" (whole utterance only) and hands-free turns off. Whole-utterance mishearings of "new tab", "hit enter" and "scroll down" now match the command. "Thanks for watching", "please subscribe", "subtitles by …" are dropped when they are the entire transcript.
