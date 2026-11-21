@@ -250,6 +250,7 @@ export class HelperProcess implements HelperRequester {
         this.opts.logger.info(`[helper:${message.level}] ${message.msg}`);
         break;
       case 'hotkey':
+      case 'escape':
       case 'fnListener':
       case 'sttStatus':
         break;

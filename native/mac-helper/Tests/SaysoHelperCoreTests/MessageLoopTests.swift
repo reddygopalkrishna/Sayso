@@ -65,6 +65,11 @@ struct FakeTranscriber: Transcribing {
     }
 }
 
+@MainActor final class FakeEscape: EscapeCapturing {
+    private(set) var states: [Bool] = []
+    func setCapture(_ enabled: Bool) { states.append(enabled) }
+}
+
 @MainActor
 struct Harness {
     let out = BufferWriter()
@@ -72,12 +77,13 @@ struct Harness {
     let inserter = FakeInserter()
     let context = FakeContext()
     let keys = FakeKeys()
+    let escape = FakeEscape()
     let loop: MessageLoop
 
     init(transcriber: FakeTranscriber = FakeTranscriber()) {
         loop = MessageLoop(
             writer: out, recorder: recorder, transcriber: transcriber, inserter: inserter,
-            contextProvider: context, keyPresser: keys, osDescription: "macOS 14.0")
+            contextProvider: context, keyPresser: keys, escapeCapture: escape, osDescription: "macOS 14.0")
     }
 
     @discardableResult
@@ -197,6 +203,29 @@ struct Harness {
         h.keys.error = ServiceError(code: HelperErrorCode.accessibilityDenied, message: "no AX")
         await h.send(#"{"v":1,"type":"keyPress","id":"k-3","key":"enter","modifiers":[]}"#)
         #expect(h.out.messages.last == .error(id: "k-3", code: HelperErrorCode.accessibilityDenied, msg: "no AX"))
+    }
+
+    @Test func capturesEscapeOnRequestAndReleasesItOnShutdown() async {
+        let h = Harness()
+        await h.send(#"{"v":1,"type":"captureEscape","id":"e-1","enabled":true}"#)
+        await h.send(#"{"v":1,"type":"captureEscape","id":"e-2","enabled":false}"#)
+        #expect(h.escape.states == [true, false])
+        #expect(h.out.messages == [.done(id: "e-1"), .done(id: "e-2")])
+        await h.send(#"{"v":1,"type":"shutdown"}"#)
+        #expect(h.escape.states.last == false)
+    }
+
+    @Test func reportsTheFocusedFieldInContext() async {
+        let h = Harness()
+        h.context.value = AppContext(
+            bundleId: "com.apple.Safari", appName: "Safari", focusRole: "AXTextField", secureField: true)
+        await h.send(#"{"v":1,"type":"getContext","id":"c-1"}"#)
+        guard case let .context(_, context) = h.out.messages.last else {
+            Issue.record("expected context")
+            return
+        }
+        #expect(context.secureField)
+        #expect(context.focusRole == "AXTextField")
     }
 
     @Test func stopsOnShutdownAndCancelsRecording() async {

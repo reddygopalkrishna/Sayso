@@ -18,6 +18,10 @@ describe('commands.json', () => {
     }
   });
 
+  it('gives every command a label for the preview chip', () => {
+    expect(commands.map((c) => c.label)).toEqual(['Send', 'Press Enter', 'New line']);
+  });
+
   it('rejects duplicate phrases across commands', () => {
     const base = commands[0];
     if (!base) throw new Error('no commands');
@@ -30,6 +34,8 @@ describe('commands.json', () => {
   it.each(['Send', 'send  it', 'send!', ''])('rejects badly formed phrase %j', (phrase) => {
     const base = commands[0];
     if (!base) throw new Error('no commands');
-    expect(GrammarSchema.safeParse({ commands: [{ ...base, phrases: [phrase] }] }).success).toBe(false);
+    expect(GrammarSchema.safeParse({ commands: [{ ...base, phrases: [phrase] }] }).success).toBe(
+      false,
+    );
   });
 });

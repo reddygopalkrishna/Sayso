@@ -3,5 +3,7 @@
   "type": "context",
   "id": "c-1",
   "bundleId": "com.tinyspeck.slackmacgap",
-  "appName": "Slack"
+  "appName": "Slack",
+  "focusRole": "AXTextArea",
+  "secureField": false
 }

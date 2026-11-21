@@ -17,6 +17,11 @@ export class HelperActions implements TextInserter, KeyPresser {
     await this.helper.request({ type: 'insertText', text }, { timeoutMs: 5_000 });
   }
 
+  /** Swallow Escape (and report it) while the preview chip is showing. */
+  async captureEscape(enabled: boolean): Promise<void> {
+    await this.helper.request({ type: 'captureEscape', enabled }, { timeoutMs: 1_000 });
+  }
+
   async pressKey(key: Key, modifiers: readonly Modifier[]): Promise<void> {
     await this.helper.request(
       { type: 'keyPress', key, modifiers: [...modifiers] },

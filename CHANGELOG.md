@@ -5,7 +5,7 @@ Each entry names the commit so you can see the exact code with `git show <commit
 
 ## In progress
 
-Nothing in progress. Next: Phase 0 step 5 (preview chip with Esc to cancel, safety levels, never type into password fields).
+Nothing in progress. Next: Phase 0 step 6 (instant commands without AI: undo, copy, paste, new tab, open app, click label, scroll).
 
 ## Pending (later)
 
@@ -13,7 +13,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 - **Adaptive pause:** the pause before "send" is fixed at 600 ms (`SAYSO_PAUSE_MS` to change it). The plan is to learn it per user from cancellations (`adaptive_stats`, step 7).
 - **Gmail and other web mail:** "send" presses Enter in browsers, which only adds a new line in a Gmail draft (Gmail sends with ⌘⏎). Needs the page URL or the focused element to tell web mail from web chat.
-- **Phase 0 steps 5–7:** preview chip with Esc to cancel and safety levels (never type into password fields, no actions while a meeting app is in front); instant commands without AI (undo, copy, click *label*, open *app*, new tab, scroll…); local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
+- **Phase 0 steps 6–7:** instant commands without AI (undo, copy, click *label*, open *app*, new tab, scroll…); local SQLite history and dictionary, plus Microphone/Accessibility onboarding.
+- **Verify password-field detection by hand in browsers:** Sayso reads the focused field through Accessibility (`AXSecureTextField`). Native apps expose it; Chrome and Safari may only do so when accessibility is on for the page. Test: focus a password box in each browser, dictate, expect the pill to say "Sayso does not type into password fields."
+- **Confirm dialog for Risky actions:** the SafetyGate returns "confirm" for Risky commands, but there is no dialog yet, so they never run. No Risky command exists yet; build the dialog with the first one (delete, git push…).
+- **Meeting apps:** actions are off whenever Zoom, Teams, Webex or FaceTime is in front (the PRD says "with the mic active", which the helper cannot see yet). Google Meet in a browser tab is not detected.
+- **Preview chip polish:** it sits above the listening pill, which still says "Typing…" while the chip shows; hide the pill during the chip. "No" by voice does not cancel yet (only Esc).
 - **Configurable hotkey:** Sayso and Wispr Flow both use Fn, so running both pastes twice. Let Sayso use another key (for example, hold Right Option).
 - **Mic pre-roll (300 ms):** the mic starts when Fn goes down, so a word said instantly can be clipped.
 - **Smart spacing** between back-to-back dictations ("Hello.How are you"): needs the text before the cursor (Accessibility).
@@ -23,6 +27,15 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Status window and pill polish:** waveform in the pill, a menu-bar icon, a real settings window.
 
 ## 2026-11-14
+
+### 12:29 · Phase 0 step 5: safety gate, preview chip, no typing into password fields
+- **Preview chip:** before "send" or "enter" runs, a small chip above the pill shows "Send · Esc to cancel" with a bar that fills for 1 second (`SAYSO_PREVIEW_MS`). Press **Esc** and the command is cancelled and the word you said is typed instead. "New line" (Safe) runs at once without the chip.
+- **Esc is swallowed only while the chip shows**, so it does not also hit the app underneath (Esc clears drafts in some apps). The helper switches this off by itself after 3 seconds, so a crashed app can never leave Esc disabled.
+- **Password fields:** Sayso never types into one, and never presses keys there. The check uses the focused element from Accessibility, is done again right before typing (the focus can move while the AI is cleaning up), and happens before any text is sent to the AI. The pill says why.
+- **Safety levels (`SafetyGate`):** Blocked refuses; Safe runs; Normal shows the chip; Risky asks to confirm (no dialog yet, so it never runs). Context rules: Terminal/iTerm never get Enter, send or new line; no actions while a meeting app is in front (dictation still works); refused commands stay as typed text.
+- **If you switch app during the chip,** the command is skipped instead of being sent to the wrong app. Commands also re-check the app and field just before running.
+- App names no longer carry the invisible mark WhatsApp adds.
+- Tested: every command × context (Slack, Mail, Terminal, iTerm, Zoom, Teams, unknown, password in two apps) = 27 cases, chip timing and Esc, and the pipeline's change-of-focus cases.
 
 ### 10:01 · Docs and skills: smaller start for every session, no app code changed (`9c077dd`)
 - CLAUDE.md cut from about 15 KB to about 2.5 KB. It is now a short index and the rules; the repo detail moved to `docs/REPO_MAP.md`, and the status to `docs/STATUS.md`. Every session reads these first, so the start costs far fewer tokens.

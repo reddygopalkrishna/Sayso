@@ -62,6 +62,14 @@ describe('route (pause rule)', () => {
     expect(decision.command?.gapMs).toBe(650);
   });
 
+  it('keeps the words as transcribed for typing them back if the command is cancelled', () => {
+    const segment = utterance('hello [700] Send.');
+    expect(route(segment, opts).command?.spokenText).toBe('Send.');
+    expect(route(utterance('ship it [650] send [40] it'), opts).command?.spokenText).toBe(
+      'send it',
+    );
+  });
+
   it('reports no gap when the command is said on its own', () => {
     expect(route(utterance('send'), opts).command?.gapMs).toBeNull();
   });

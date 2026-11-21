@@ -14,8 +14,9 @@ import { HelperWhisperSTT } from './core/stt/HelperWhisperSTT.ts';
 import { HelperProcess } from './helper/HelperProcess.ts';
 import { resolveHelperPath } from './helper/binaryPath.ts';
 import { claimSingleInstance } from './singleInstance.ts';
+import { PreviewChip } from './core/safety/PreviewChip.ts';
 import { createMainWindow } from './windows/mainWindow.ts';
-import { PillWindow } from './windows/pillWindow.ts';
+import { Overlay } from './windows/overlay.ts';
 
 // Logging must never crash the app. When the terminal that started a dev build closes, writes to
 // stdout/stderr fail with EIO/EPIPE; unhandled, that 'error' event becomes an uncaught exception
@@ -58,13 +59,31 @@ status.update({
 });
 
 const stt = new HelperWhisperSTT(helper);
+const actions = new HelperActions(helper);
+
+// Escape presses reported by the helper while the preview chip is showing.
+const escapeListeners = new Set<() => void>();
+let previewSeq = 0;
+const chip = new PreviewChip({
+  show: (label, ms) => status.update({ preview: { id: ++previewSeq, label, ms } }),
+  hide: () => status.update({ preview: null }),
+  captureEscape: (enabled) => actions.captureEscape(enabled),
+  onEscape: (listener) => {
+    escapeListeners.add(listener);
+    return () => escapeListeners.delete(listener);
+  },
+});
+
 const pipeline = new UtterancePipeline({
   readContext: () => readContext(helper),
   cleanup: new TextCleanup({ provider, level: () => config.cleanupLevel }),
-  actions: new HelperActions(helper),
+  actions,
+  chip,
   endCommands,
   pauseMs: () => config.pauseMs,
-  onOutcome: ({ segment, context, routing, cleanup, inserted, ranCommand }) => {
+  previewMs: () => config.previewMs,
+  onOutcome: ({ segment, context, routing, cleanup, inserted, command }) => {
+    const ranCommand = command?.result === 'ran' ? command.id : null;
     const app = context.appName ?? 'unknown app';
     if (cleanup) {
       console.info(
@@ -72,12 +91,13 @@ const pipeline = new UtterancePipeline({
           (cleanup.fallbackReason ? `; fallback: ${cleanup.fallbackReason}` : ''),
       );
     }
-    if (routing.command) {
+    if (routing.command && command) {
       const gap =
         routing.command.gapMs === null
           ? 'said alone'
           : `after ${Math.round(routing.command.gapMs)} ms pause`;
-      console.info(`[command] ${routing.command.command.id} (${gap}) in ${app}`);
+      const result = command.result === 'skipped' ? `skipped: ${command.reason}` : command.result;
+      console.info(`[command] ${command.id} (${gap}) ${result} in ${app}`);
     } else if (routing.keptAsText) {
       console.info(`[command] trailing command kept as text (${routing.keptAsText}) in ${app}`);
     }
@@ -114,6 +134,9 @@ helper.onMessage((message) => {
   switch (message.type) {
     case 'hotkey':
       dictation.handleHotkey(message.phase);
+      break;
+    case 'escape':
+      for (const listener of [...escapeListeners]) listener();
       break;
     case 'fnListener':
       console.info(`[helper] Fn listener ${message.state}`);
@@ -177,8 +200,13 @@ app.whenReady().then(async () => {
     }
   });
 
-  const pill = new PillWindow();
-  dictation.onState((dictationState) => pill.show(dictationState));
+  const pill = new Overlay({ view: 'pill', width: 220, height: 44, bottomOffset: 28 });
+  dictation.onState((dictationState) =>
+    dictationState.phase === 'idle' ? pill.hide(150) : pill.show(),
+  );
+  // The chip sits just above the pill.
+  const chipWindow = new Overlay({ view: 'chip', width: 300, height: 56, bottomOffset: 82 });
+  status.onChange((current) => (current.preview ? chipWindow.show() : chipWindow.hide()));
 
   helper.start();
   showMainWindow();

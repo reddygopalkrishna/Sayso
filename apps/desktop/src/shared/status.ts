@@ -38,12 +38,21 @@ export interface LastUtterance {
   cleanupMs: number;
 }
 
+/** The preview chip: what is about to happen, and for how long Esc can cancel it. */
+export interface PreviewStatus {
+  /** Changes for every chip so the progress bar restarts. */
+  id: number;
+  label: string;
+  ms: number;
+}
+
 export interface AppStatus {
   helper: HelperStatus;
   stt: SttStatus;
   fnListener: FnListenerStatus;
   cleanup: CleanupStatus;
   dictation: DictationState;
+  preview: PreviewStatus | null;
   last: LastUtterance | null;
 }
 
@@ -53,6 +62,7 @@ export const initialStatus: AppStatus = {
   fnListener: 'unknown',
   cleanup: { level: 'full', provider: null },
   dictation: { phase: 'idle' },
+  preview: null,
   last: null,
 };
 

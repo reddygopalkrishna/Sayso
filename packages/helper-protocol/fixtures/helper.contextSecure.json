@@ -1,0 +1,9 @@
+{
+  "v": 1,
+  "type": "context",
+  "id": "c-3",
+  "bundleId": "com.apple.Safari",
+  "appName": "Safari",
+  "focusRole": "AXTextField",
+  "secureField": true
+}

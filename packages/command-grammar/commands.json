@@ -3,9 +3,12 @@
   "commands": [
     {
       "id": "send",
+      "label": "Send",
       "phrases": ["send", "send it", "send that", "send this", "send message"],
       "endOfUtteranceOnly": true,
-      "action": { "type": "contextual_send" },
+      "action": {
+        "type": "contextual_send"
+      },
       "safety": "normal",
       "blockedIn": [
         "com.apple.Terminal",
@@ -18,9 +21,13 @@
     },
     {
       "id": "enter",
+      "label": "Press Enter",
       "phrases": ["enter", "press enter", "hit enter", "return", "press return", "hit return"],
       "endOfUtteranceOnly": true,
-      "action": { "type": "keyPress", "key": "enter" },
+      "action": {
+        "type": "keyPress",
+        "key": "enter"
+      },
       "safety": "normal",
       "blockedIn": [
         "com.apple.Terminal",
@@ -33,9 +40,14 @@
     },
     {
       "id": "new_line",
+      "label": "New line",
       "phrases": ["new line", "newline", "next line", "line break"],
       "endOfUtteranceOnly": true,
-      "action": { "type": "keyPress", "key": "enter", "modifiers": ["shift"] },
+      "action": {
+        "type": "keyPress",
+        "key": "enter",
+        "modifiers": ["shift"]
+      },
       "safety": "safe",
       "blockedIn": [
         "com.apple.Terminal",

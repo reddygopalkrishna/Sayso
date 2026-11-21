@@ -44,6 +44,13 @@ public protocol ContextProviding: AnyObject {
 }
 
 @MainActor
+public protocol EscapeCapturing: AnyObject {
+    /// While on, the Escape key is swallowed and reported; implementations must switch themselves
+    /// off after a few seconds so a crashed app cannot leave Escape disabled.
+    func setCapture(_ enabled: Bool)
+}
+
+@MainActor
 public protocol KeyPressing: AnyObject {
     /// Presses one key with modifiers in the frontmost app. Throws `ServiceError`
     /// (accessibility_denied) when synthetic input is not allowed.

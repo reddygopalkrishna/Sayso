@@ -1,1 +1,9 @@
-{ "v": 1, "type": "context", "id": "c-2", "bundleId": null, "appName": null }
+{
+  "v": 1,
+  "type": "context",
+  "id": "c-2",
+  "bundleId": null,
+  "appName": null,
+  "focusRole": null,
+  "secureField": false
+}

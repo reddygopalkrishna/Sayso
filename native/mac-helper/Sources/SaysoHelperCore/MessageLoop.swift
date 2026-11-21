@@ -30,6 +30,7 @@ public final class MessageLoop {
     private let inserter: TextInserting
     private let contextProvider: ContextProviding
     private let keyPresser: KeyPressing
+    private let escapeCapture: EscapeCapturing
     private var recordingID: String?
 
     public init(
@@ -39,6 +40,7 @@ public final class MessageLoop {
         inserter: TextInserting,
         contextProvider: ContextProviding,
         keyPresser: KeyPressing,
+        escapeCapture: EscapeCapturing,
         osDescription: String = MessageLoop.currentOS()
     ) {
         self.writer = writer
@@ -47,6 +49,7 @@ public final class MessageLoop {
         self.inserter = inserter
         self.contextProvider = contextProvider
         self.keyPresser = keyPresser
+        self.escapeCapture = escapeCapture
         self.osDescription = osDescription
     }
 
@@ -76,6 +79,7 @@ public final class MessageLoop {
             send(.pong(id: id))
             return (.keepRunning, nil)
         case .shutdown:
+            escapeCapture.setCapture(false)
             if recordingID != nil { recorder.cancel() }
             return (.stop, nil)
         case let .recordStart(id):
@@ -94,6 +98,10 @@ public final class MessageLoop {
             return (.keepRunning, nil)
         case let .insertText(id, text):
             return (.keepRunning, Task { await self.insert(id, text) })
+        case let .captureEscape(id, enabled):
+            escapeCapture.setCapture(enabled)
+            send(.done(id: id))
+            return (.keepRunning, nil)
         case let .keyPress(id, key, modifiers):
             return (.keepRunning, Task { await self.pressKey(id, key, modifiers) })
         }

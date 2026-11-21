@@ -255,6 +255,8 @@ describe('HelperProcess', () => {
       id: 'c-1',
       bundleId: 'com.apple.Notes',
       appName: 'Notes',
+      focusRole: 'AXTextArea',
+      secureField: false,
     };
     latest().emitMessage(context);
     await expect(result).resolves.toEqual(context);

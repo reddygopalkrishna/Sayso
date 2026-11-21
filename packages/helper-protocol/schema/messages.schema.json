@@ -238,6 +238,34 @@
             "modifiers"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "captureEscape"
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "v",
+            "type",
+            "id",
+            "enabled"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -438,6 +466,20 @@
                   "type": "null"
                 }
               ]
+            },
+            "focusRole": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "secureField": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -445,7 +487,27 @@
             "type",
             "id",
             "bundleId",
-            "appName"
+            "appName",
+            "focusRole",
+            "secureField"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "v": {
+              "type": "number",
+              "const": 1
+            },
+            "type": {
+              "type": "string",
+              "const": "escape"
+            }
+          },
+          "required": [
+            "v",
+            "type"
           ],
           "additionalProperties": false
         },

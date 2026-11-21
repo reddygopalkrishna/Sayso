@@ -52,6 +52,11 @@ describe('decodeHelperLine rejects bad input', () => {
       '{"v":1,"type":"transcript","id":"a","text":"x","words":[{"text":"x","startMs":-1,"endMs":2,"p":1}],"audioMs":1,"sttMs":1,"model":"m"}',
     ],
     ['unknown hotkey phase', '{"v":1,"type":"hotkey","key":"fn","phase":"tap"}'],
+    [
+      'context without secureField',
+      '{"v":1,"type":"context","id":"a","bundleId":null,"appName":null,"focusRole":null}',
+    ],
+    ['captureEscape without enabled', '{"v":1,"type":"captureEscape","id":"a"}'],
   ])('%s', (_label, line) => {
     const result = decodeHelperLine(line);
     expect(result.ok).toBe(false);

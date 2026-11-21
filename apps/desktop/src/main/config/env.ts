@@ -8,6 +8,8 @@ export interface AppConfig {
   cleanupLevel: CleanupLevel;
   /** Silence before a trailing "send"/"enter"/"new line" for it to run as a command (pause rule). */
   pauseMs: number;
+  /** How long the preview chip shows before a Normal-level action runs (Esc cancels). */
+  previewMs: number;
 }
 
 /**
@@ -21,15 +23,23 @@ export function loadConfig(envFiles: readonly string[], processEnv: NodeJS.Proce
     if (!existsSync(file)) continue;
     Object.assign(merged, parseEnv(readFileSync(file, 'utf8')));
   }
-  for (const key of ['GEMINI_API_KEY', 'GEMINI_MODEL', 'SAYSO_CLEANUP_LEVEL', 'SAYSO_PAUSE_MS']) {
+  for (const key of [
+    'GEMINI_API_KEY',
+    'GEMINI_MODEL',
+    'SAYSO_CLEANUP_LEVEL',
+    'SAYSO_PAUSE_MS',
+    'SAYSO_PREVIEW_MS',
+  ]) {
     if (processEnv[key]) merged[key] = processEnv[key];
   }
   const level = merged['SAYSO_CLEANUP_LEVEL'];
   const pause = Number(merged['SAYSO_PAUSE_MS']);
+  const preview = Number(merged['SAYSO_PREVIEW_MS']);
   return {
     geminiApiKey: merged['GEMINI_API_KEY']?.trim() || null,
     geminiModel: merged['GEMINI_MODEL']?.trim() || undefined,
     cleanupLevel: level === 'off' || level === 'light' || level === 'full' ? level : 'full',
     pauseMs: Number.isFinite(pause) && pause >= 200 && pause <= 3000 ? pause : 600,
+    previewMs: Number.isFinite(preview) && preview >= 300 && preview <= 5000 ? preview : 1000,
   };
 }

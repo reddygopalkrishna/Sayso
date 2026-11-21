@@ -5,6 +5,8 @@ export interface CommandMatch {
   command: CommandSpec;
   /** The phrase as matched, e.g. "send it". */
   phrase: string;
+  /** The words as transcribed, e.g. "Send." Typed instead if the user cancels the command. */
+  spokenText: string;
   /** Silence before the command's first word; null when the command was said on its own. */
   gapMs: number | null;
 }
@@ -52,7 +54,15 @@ export function route(segment: TranscriptSegment, opts: RouteOptions): RoutingDe
 
   return {
     dictation: stripTrailingPhrase(segment.text, match.phrase, words.slice(0, -match.length)),
-    command: { command: match.command, phrase: match.phrase, gapMs },
+    command: {
+      command: match.command,
+      phrase: match.phrase,
+      spokenText: words
+        .slice(-match.length)
+        .map((w) => w.text.trim())
+        .join(' '),
+      gapMs,
+    },
   };
 }
 

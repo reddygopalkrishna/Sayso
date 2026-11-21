@@ -49,16 +49,24 @@ if arguments.count == 3, arguments[1] == "--transcribe" {
     exit(0)
 }
 
+/// The tap reports events through the loop, and the loop drives the tap (Escape capture).
+@MainActor final class LoopBox { var loop: MessageLoop? }
+
 let (loop, fnTap) = MainActor.assumeIsolated {
+    let box = LoopBox()
+    let fnTap = FnEventTap(
+        onPhase: { phase in box.loop?.send(.hotkey(phase: phase)) },
+        onEscape: { box.loop?.send(.escape) })
     let loop = MessageLoop(
         writer: StandardOutputWriter(),
         recorder: MicRecorder(),
         transcriber: transcriber,
         inserter: PasteInserter(),
         contextProvider: WorkspaceContext(),
-        keyPresser: KeyPresser()
+        keyPresser: KeyPresser(),
+        escapeCapture: fnTap
     )
-    let fnTap = FnEventTap { phase in loop.send(.hotkey(phase: phase)) }
+    box.loop = loop
     return (loop, fnTap)
 }
 

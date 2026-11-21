@@ -24,7 +24,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 @Suite struct SharedFixtures {
     @Test func everyAppFixtureDecodes() throws {
         let names = try fixtureNames(prefix: "app.")
-        #expect(names.count == 8)
+        #expect(names.count == 9)
         for name in names {
             #expect(throws: Never.self, "\(name)") { try AppMessage.decode(fixture(name)) }
         }
@@ -33,7 +33,7 @@ func fixtureNames(prefix: String) throws -> [String] {
 
     @Test func everyHelperFixtureRoundTrips() throws {
         let names = try fixtureNames(prefix: "helper.")
-        #expect(names.count == 12)
+        #expect(names.count == 14)
         for name in names {
             let message = try HelperMessage.decode(fixture(name))
             let line = message.encodedLine()
@@ -43,7 +43,7 @@ func fixtureNames(prefix: String) throws -> [String] {
         }
     }
 
-    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.errorReply.json", "helper.sttStatus.json", "helper.contextEmpty.json"])
+    @Test(arguments: ["helper.ready.json", "helper.transcript.json", "helper.errorReply.json", "helper.sttStatus.json", "helper.contextEmpty.json", "helper.contextSecure.json", "helper.context.json"])
     func encodingMatchesFixtureExactly(name: String) throws {
         let message = try HelperMessage.decode(fixture(name))
         let encoded = try JSONSerialization.jsonObject(with: Data(message.encodedLine().utf8)) as? NSDictionary
@@ -62,6 +62,7 @@ func fixtureNames(prefix: String) throws -> [String] {
         ("{\"v\":1,\"type\":\"ping\",\"id\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"insertText\",\"id\":\"a\",\"text\":\"\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"recordStop\"}", ProtocolError.invalidJSON),
+        ("{\"v\":1,\"type\":\"captureEscape\",\"id\":\"e\"}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"keyPress\",\"id\":\"k\",\"key\":\"F13\",\"modifiers\":[]}", ProtocolError.invalidJSON),
         ("{\"v\":1,\"type\":\"keyPress\",\"id\":\"k\",\"key\":\"a\",\"modifiers\":[\"hyper\"]}", ProtocolError.invalidJSON),
     ])

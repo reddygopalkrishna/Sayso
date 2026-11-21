@@ -9,18 +9,19 @@ apps/desktop/                      Electron app (CommonJS; configs are .mts)
     index.ts                       app entry; quitting goes through shutdown() (stop helper, app.exit(0))
     singleInstance.ts              dev: new copy replaces old; packaged: old copy stays and shows its window
     StatusHub.ts                   holds AppStatus (src/shared/status.ts), pushed to windows over IPC
-    config/env.ts                  reads GEMINI_API_KEY, GEMINI_MODEL, SAYSO_CLEANUP_LEVEL (off|light|full)
+    config/env.ts                  reads GEMINI_API_KEY, GEMINI_MODEL, SAYSO_CLEANUP_LEVEL (off|light|full), SAYSO_PAUSE_MS, SAYSO_PREVIEW_MS
     helper/HelperProcess.ts        spawns native helper, request(), restart with backoff, stop
-    core/UtterancePipeline.ts      deliver(segment): context → router → cleanup → insert → send key
+    core/UtterancePipeline.ts      deliver(segment): context → router → cleanup → insert → SafetyGate (+chip) → key
     core/dictation/DictationController.ts   Fn state machine (holds < 250 ms are taps, 5 min cap)
     core/stt/HelperWhisperSTT.ts   STTProvider; strips Whisper markers like [BLANK_AUDIO]
     core/router/IntentRouter.ts    pause rule on raw words (see TECHNICAL_ARCHITECTURE §5.3)
     core/cleanup/                  TextCleanup, tone.ts, gemini.ts, light.ts, prompt.ts, types.ts
-    core/actions/sendStrategy.ts   Enter (default), ⌘⇧D (Mail), ⌘⏎ (Outlook)
+    core/actions/                  HelperActions (insert, keys, Esc capture); sendStrategy.ts: Enter, ⌘⇧D (Mail), ⌘⏎ (Outlook)
+    core/safety/                   SafetyGate (run / preview / confirm / refuse, meeting apps, password fields), PreviewChip
     core/context/HelperContext.ts  frontmost app from the helper
-    windows/                       mainWindow.ts, pillWindow.ts (non-focusable panel), load.ts
+    windows/                       mainWindow.ts, overlay.ts (pill and chip: non-focusable panels), load.ts
   src/preload/                     IPC bridge (api.d.ts)
-  src/renderer/src/                React UI; #pill selects the listening pill
+  src/renderer/src/                React UI; #pill and #chip select the overlays
 native/mac-helper/                 Swift package
   Sources/SaysoHelperCore/         protocol, MessageLoop, FnTracker, service protocols (no OS frameworks; unit-tested with fakes)
   Sources/SaysoHelperMac/          thin adapters: FnEventTap, MicRecorder, WhisperTranscriber, PasteInserter, WorkspaceContext, KeyPresser
@@ -49,4 +50,5 @@ CHANGELOG.md                       updated on every commit
 - **Dev permissions:** Accessibility and Microphone go to the launching app, not to Sayso. Set System Settings → Keyboard → "Press 🌐 key to" → **Do Nothing**.
 - **Versions:** TypeScript pinned to `~6.0` (typescript-eslint does not support 7 yet).
 - **Pause rule:** `SAYSO_PAUSE_MS` (600) gap before the first word of the end phrase; punctuation ignored; longest phrase wins; blocked apps keep it as text.
-- **Step 5 changes `deliver`:** the `isAllowed` blockedIn check is replaced by the SafetyGate.
+- **Safety:** `decideAction(command, context)` order: blocked level → `blockedIn` app → meeting app → password field → level (safe runs, normal shows the chip, risky = confirm, which is not executable until a dialog exists). The router only strips a command from the text if it is executable, so refused commands stay typed text. The pipeline reads the context again right before inserting and before pressing a key (focus can move during cleanup or the chip). Context carries `focusRole` and `secureField` from Accessibility (`AXSecureTextField`).
+- **Esc capture:** `captureEscape` makes the helper swallow Esc and send an `escape` event; it switches itself off after 3 s. Only the preview chip uses it.

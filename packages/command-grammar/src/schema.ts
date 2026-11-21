@@ -28,6 +28,8 @@ const phrase = z
 export const CommandSpecSchema = z
   .object({
     id: z.string().regex(/^[a-z][a-z0-9_]*$/),
+    /** Short name shown on the preview chip, e.g. "Send". */
+    label: z.string().min(1).max(30),
     phrases: z.array(phrase).min(1),
     /** Only recognised as the last words of an utterance, after a pause (the pause rule). */
     endOfUtteranceOnly: z.boolean(),
@@ -46,12 +48,16 @@ export const GrammarSchema = z
     const ids = new Set<string>();
     const phrases = new Map<string, string>();
     for (const command of grammar.commands) {
-      if (ids.has(command.id)) ctx.addIssue({ code: 'custom', message: `duplicate id ${command.id}` });
+      if (ids.has(command.id))
+        ctx.addIssue({ code: 'custom', message: `duplicate id ${command.id}` });
       ids.add(command.id);
       for (const p of command.phrases) {
         const owner = phrases.get(p);
         if (owner) {
-          ctx.addIssue({ code: 'custom', message: `phrase "${p}" is in both ${owner} and ${command.id}` });
+          ctx.addIssue({
+            code: 'custom',
+            message: `phrase "${p}" is in both ${owner} and ${command.id}`,
+          });
         }
         phrases.set(p, command.id);
       }

@@ -11,7 +11,7 @@
  *   binary data never mixes with JSON lines.
  *
  * Requests (messages with an `id`) are answered with exactly one reply carrying the same `id`:
- * `pong`, `done`, `transcript`, `context`, or `error`. Events (`ready`, `hotkey`, `fnListener`, `sttStatus`, `log`, and
+ * `pong`, `done`, `transcript`, `context`, or `error`. Events (`ready`, `hotkey`, `escape`, `fnListener`, `sttStatus`, `log`, and
  * `error` without an id) are unsolicited. The helper sends `ready` first.
  *
  * The Swift helper mirrors these types (native/mac-helper/Sources/SaysoHelperCore/Message.swift);
@@ -71,7 +71,16 @@ export const KeyPressSchema = z
   })
   .strict();
 
-/** Read the frontmost app (and, later, the focused element). Answered with `context`. */
+/**
+ * Swallow the Escape key (it does not reach the app) and report it as an `escape` event, for the
+ * preview chip's "Esc cancels". The helper switches this off by itself after a few seconds, so a
+ * crashed app can never leave Escape disabled. Answered with `done`.
+ */
+export const CaptureEscapeSchema = z
+  .object({ v, type: z.literal('captureEscape'), id, enabled: z.boolean() })
+  .strict();
+
+/** Read the frontmost app and the focused element. Answered with `context`. */
 export const GetContextSchema = z.object({ v, type: z.literal('getContext'), id }).strict();
 
 export const AppMessageSchema = z.discriminatedUnion('type', [
@@ -83,6 +92,7 @@ export const AppMessageSchema = z.discriminatedUnion('type', [
   InsertTextSchema,
   GetContextSchema,
   KeyPressSchema,
+  CaptureEscapeSchema,
 ]);
 
 // Helper → app
@@ -127,8 +137,15 @@ export const ContextSchema = z
     /** Frontmost app; null when there is none (e.g. the login window). */
     bundleId: z.string().min(1).nullable(),
     appName: z.string().min(1).nullable(),
+    /** Accessibility role of the focused element (e.g. "AXTextField"); null when unknown. */
+    focusRole: z.string().min(1).nullable(),
+    /** True when the focused element is a password field (AXSecureTextField). */
+    secureField: z.boolean(),
   })
   .strict();
+
+/** Escape was pressed while `captureEscape` was on (the key was swallowed). */
+export const EscapeSchema = z.object({ v, type: z.literal('escape') }).strict();
 
 export const HotkeySchema = z
   .object({
@@ -177,6 +194,7 @@ export const HelperMessageSchema = z.discriminatedUnion('type', [
   DoneSchema,
   TranscriptSchema,
   ContextSchema,
+  EscapeSchema,
   HotkeySchema,
   FnListenerSchema,
   SttStatusSchema,

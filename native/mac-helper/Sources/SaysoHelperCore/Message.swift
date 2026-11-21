@@ -53,6 +53,7 @@ public enum AppMessage: Equatable, Sendable {
     case insertText(id: String, text: String)
     case getContext(id: String)
     case keyPress(id: String, key: String, modifiers: [Modifier])
+    case captureEscape(id: String, enabled: Bool)
 
     public static func decode(_ line: String) throws -> AppMessage {
         let data = Data(line.utf8)
@@ -68,6 +69,9 @@ public enum AppMessage: Equatable, Sendable {
             guard !text.isEmpty else { throw ProtocolError.invalidJSON }
             return .insertText(id: try requestID(data), text: text)
         case "getContext": return .getContext(id: try requestID(data))
+        case "captureEscape":
+            struct E: Decodable { let enabled: Bool }
+            return .captureEscape(id: try requestID(data), enabled: try field(E.self, data).enabled)
         case "keyPress":
             struct K: Decodable { let key: String; let modifiers: [Modifier] }
             let k = try field(K.self, data)
@@ -119,10 +123,16 @@ public struct Word: Codable, Equatable, Sendable {
 public struct AppContext: Equatable, Sendable {
     public var bundleId: String?
     public var appName: String?
+    /// Accessibility role of the focused element, e.g. "AXTextField"; nil when unknown.
+    public var focusRole: String?
+    /// True when the focused element is a password field (AXSecureTextField).
+    public var secureField: Bool
 
-    public init(bundleId: String?, appName: String?) {
+    public init(bundleId: String?, appName: String?, focusRole: String? = nil, secureField: Bool = false) {
         self.bundleId = bundleId
         self.appName = appName
+        self.focusRole = focusRole
+        self.secureField = secureField
     }
 }
 
@@ -144,6 +154,7 @@ public enum HelperMessage: Equatable, Sendable {
     case transcript(id: String, transcription: Transcription, audioMs: Double, sttMs: Double, model: String)
     case context(id: String, context: AppContext)
     case hotkey(phase: HotkeyPhase)
+    case escape
     case fnListener(state: FnListenerState)
     case sttStatus(state: STTState, model: String, msg: String?)
     case log(level: LogLevel, msg: String)
@@ -184,6 +195,10 @@ public enum HelperMessage: Equatable, Sendable {
             f["id"] = .string(id)
             f["bundleId"] = context.bundleId.map(JSONValue.string) ?? .null
             f["appName"] = context.appName.map(JSONValue.string) ?? .null
+            f["focusRole"] = context.focusRole.map(JSONValue.string) ?? .null
+            f["secureField"] = .bool(context.secureField)
+        case .escape:
+            f["type"] = "escape"
         case let .hotkey(phase):
             f["type"] = "hotkey"
             f["key"] = "fn"
@@ -233,9 +248,17 @@ public enum HelperMessage: Equatable, Sendable {
                 id: t.id, transcription: Transcription(text: t.text, words: t.words),
                 audioMs: t.audioMs, sttMs: t.sttMs, model: t.model)
         case "context":
-            struct C: Decodable { let id: String; let bundleId: String?; let appName: String? }
+            struct C: Decodable {
+                let id: String; let bundleId: String?; let appName: String?
+                let focusRole: String?; let secureField: Bool
+            }
             let c = try field(C.self, data)
-            return .context(id: c.id, context: AppContext(bundleId: c.bundleId, appName: c.appName))
+            return .context(
+                id: c.id,
+                context: AppContext(
+                    bundleId: c.bundleId, appName: c.appName, focusRole: c.focusRole,
+                    secureField: c.secureField))
+        case "escape": return .escape
         case "hotkey":
             struct H: Decodable { let key: String; let phase: HotkeyPhase }
             let h = try field(H.self, data)
@@ -276,6 +299,7 @@ public enum HelperErrorCode {
 indirect enum JSONValue: Encodable, ExpressibleByStringLiteral {
     case string(String)
     case int(Int)
+    case bool(Bool)
     case double(Double)
     case array([JSONValue])
     case object([String: JSONValue])
@@ -290,6 +314,7 @@ indirect enum JSONValue: Encodable, ExpressibleByStringLiteral {
         switch self {
         case let .string(value): try container.encode(value)
         case let .int(value): try container.encode(value)
+        case let .bool(value): try container.encode(value)
         case let .double(value): try container.encode(value.isFinite ? value : 0)
         case let .array(value): try container.encode(value)
         case let .object(value): try container.encode(value)
