@@ -291,6 +291,7 @@ describe('UtterancePipeline: command mode', () => {
     ['scroll down', ['scroll down 600']],
     ['go back', ['key cmd+leftBracket']],
     ['go forward.', ['key cmd+rightBracket']],
+    ['take a screenshot', ['key cmd+shift+3']],
     ['Scroll up.', ['scroll up 600']],
     ['cancel', []],
     ['never mind', []],
@@ -308,6 +309,7 @@ describe('UtterancePipeline: command mode', () => {
     ['click Submit', 'Click “submit”', ['press submit']],
     ['press the Save button', 'Click “save”', ['press save']],
     ['send', 'Send', ['key enter']],
+    ['lock screen', 'Lock screen', ['key cmd+ctrl+q']],
   ])('normal command %j shows the chip first', async (text, label, expected) => {
     const { log } = await run(text);
     expect(log).toEqual([`chip ${label} 1000`, ...expected]);

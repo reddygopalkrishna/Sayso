@@ -40,6 +40,8 @@ describe('commands.json', () => {
       'Scroll down',
       'Cancel',
       'Yes',
+      'Screenshot',
+      'Lock screen',
     ]);
   });
 
@@ -62,6 +64,8 @@ describe('commands.json', () => {
       'scroll_down',
       'cancel',
       'confirm',
+      'screenshot',
+      'lock_screen',
     ]);
   });
 

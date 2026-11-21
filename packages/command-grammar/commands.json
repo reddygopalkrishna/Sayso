@@ -280,6 +280,32 @@
       },
       "safety": "safe",
       "blockedIn": []
+    },
+    {
+      "id": "screenshot",
+      "label": "Screenshot",
+      "phrases": ["take a screenshot", "take screenshot", "screenshot"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "3",
+        "modifiers": ["cmd", "shift"]
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "lock_screen",
+      "label": "Lock screen",
+      "phrases": ["lock screen", "lock my screen", "lock the screen"],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "keyPress",
+        "key": "q",
+        "modifiers": ["cmd", "ctrl"]
+      },
+      "safety": "normal",
+      "blockedIn": []
     }
   ]
 }

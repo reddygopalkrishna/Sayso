@@ -86,12 +86,13 @@ const safeInstant = [
   'go_back',
   'go_forward',
   'confirm',
+  'screenshot',
   'scroll_up',
   'scroll_down',
   'open',
   'switch_app',
 ];
-const normalInstant = ['delete_that', 'click', 'close_tab'];
+const normalInstant = ['delete_that', 'click', 'close_tab', 'lock_screen'];
 const argsFor: Record<string, Record<string, string>> = {
   click: { label: 'submit' },
   open: { target: 'slack' },
