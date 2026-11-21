@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_TERMS } from './builtInTerms.ts';
+import { applyDictionary } from './dictionary.ts';
 import { afterTypeWord, fixWebAddresses, typeLiterally } from './webAddress.ts';
 
 describe('fixWebAddresses', () => {
@@ -61,6 +62,44 @@ describe('typeLiterally (the hold key\'s "type …")', () => {
     ['send', 'send'],
   ])('%j → %j', (input, expected) => {
     expect(typeLiterally(input, BUILT_IN_TERMS)).toBe(expected);
+  });
+});
+
+describe('BUILT_IN_TERMS: Indian places, services and names', () => {
+  it.each([
+    ['i live in hydrabad near gachi bowli', 'i live in Hyderabad near Gachibowli'],
+    ['send it by phone pe or pay tm', 'send it by PhonePe or Paytm'],
+    ['update my aadhar and pan', 'update my Aadhaar and pan'],
+    ['book it on i r c t c', 'book it on IRCTC'],
+    ['the g s t number and the i f s c code', 'the GST number and the IFSC code'],
+    ['order from swigy or flip kart', 'order from Swiggy or Flipkart'],
+    ['we met at the hi tech city office', 'we met at the HITEC City office'],
+    ['call venkatesh and priya', 'call Venkatesh and Priya'],
+    ['the equal a i team', 'the Equal AI team'],
+  ])('%j → %j', (input, expected) => {
+    expect(applyDictionary(input, BUILT_IN_TERMS)).toBe(expected);
+  });
+
+  it('does not change ordinary sentences', () => {
+    for (const text of [
+      'pay the bill',
+      'the price is fifty',
+      'phone me later',
+      'the cloud is slow',
+    ]) {
+      expect(applyDictionary(text, BUILT_IN_TERMS)).toBe(text);
+    }
+  });
+
+  it('no mishearing is an ordinary English word', () => {
+    const risky = ['pay', 'phone', 'big', 'flip', 'cart', 'open', 'swig', 'equal', 'hi', 'city'];
+    const heard = BUILT_IN_TERMS.flatMap((t) => (t.spokenAs ? [t.spokenAs] : []));
+    for (const word of risky) expect(heard).not.toContain(word);
+  });
+
+  it('every name is listed once with its own spelling', () => {
+    const phrases = BUILT_IN_TERMS.filter((t) => t.spokenAs === null).map((t) => t.phrase);
+    expect(new Set(phrases).size).toBe(phrases.length);
   });
 });
 

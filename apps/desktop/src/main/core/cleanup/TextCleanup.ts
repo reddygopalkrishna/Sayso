@@ -94,7 +94,10 @@ export class TextCleanup {
         {
           rawText: spelled,
           tone,
-          dictionary: [...new Set(terms.map((t) => t.phrase))],
+          // Only the names that were said: a long list would bloat every request for nothing.
+          dictionary: [
+            ...new Set(terms.filter((t) => containsPhrase(spelled, t.phrase)).map((t) => t.phrase)),
+          ],
           appName: input.appName,
         },
         controller.signal,

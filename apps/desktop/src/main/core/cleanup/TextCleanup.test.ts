@@ -37,7 +37,8 @@ describe('TextCleanup', () => {
       tone: 'casual',
     });
     expect(llm.requests).toEqual([
-      { rawText: raw, tone: 'casual', dictionary: ['Sayso'], appName: 'Slack' },
+      // Sayso was not said, so it is not sent: only the names that were said go to the AI.
+      { rawText: raw, tone: 'casual', dictionary: [], appName: 'Slack' },
     ]);
   });
 
@@ -52,6 +53,22 @@ describe('TextCleanup', () => {
 
     const light = await cleanup(llm, 'light').clean({ rawText: 'um say so is great', ...slack });
     expect(light.text).toBe('Sayso is great');
+  });
+
+  it('sends the AI only the names that were said, even with a long list of names', async () => {
+    const llm = new FakeLLM(async (r) => r.rawText);
+    const many = Array.from({ length: 200 }, (_, i) => ({ phrase: `Name${i}`, spokenAs: null }));
+    const withMany = new TextCleanup({
+      provider: llm,
+      level: () => 'full',
+      dictionary: () => [
+        ...many,
+        { phrase: 'Priya', spokenAs: null },
+        { phrase: 'Sayso', spokenAs: 'say so' },
+      ],
+    });
+    await withMany.clean({ rawText: 'um tell priya and say so about Name7 today', ...slack });
+    expect([...(llm.requests[0]?.dictionary ?? [])].sort()).toEqual(['Name7', 'Priya', 'Sayso']);
   });
 
   it('leaves the raw text alone when cleanup is off', async () => {
