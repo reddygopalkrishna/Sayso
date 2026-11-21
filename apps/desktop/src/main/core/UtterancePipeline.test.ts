@@ -70,6 +70,7 @@ function setup({
   profile,
   settleMs = 0,
   pageWaitMs = 0,
+  appReadyMs = 0,
 }: Setup & {
   confirmMs?: number;
   settleMs?: number;
@@ -123,6 +124,7 @@ function setup({
     engine: new CommandEngine(commands),
     settleMs: () => settleMs,
     pageWaitMs: () => pageWaitMs,
+    appReadyMs: () => appReadyMs,
     profileValue: (key) => profile?.[key] ?? null,
     ...(interpret
       ? {
@@ -951,5 +953,55 @@ describe('UtterancePipeline: waiting for pages to load between steps', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(finished).toBe(true);
     await done;
+  });
+});
+
+describe('UtterancePipeline: waiting for an opened app to come to the front', () => {
+  afterEach(() => vi.useRealTimers());
+  const chrome = context('com.google.Chrome');
+  const slackCtx = context('com.tinyspeck.slackmacgap');
+
+  it('waits until the app is in front, then runs the next step', async () => {
+    vi.useFakeTimers();
+    // Chrome is in front for the first reads; Slack takes over on the fourth.
+    const t = setup({ contexts: [chrome, chrome, chrome, slackCtx], appReadyMs: 3_000 });
+    const done = t.pipeline.deliver(segment('open Slack, scroll down'), 'command');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.log.filter((l) => l.startsWith('scroll'))).toEqual([]);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await done;
+    expect(t.log.filter((l) => !l.startsWith('chip '))).toEqual([
+      'openApp com.tinyspeck.slackmacgap',
+      'scroll down 600',
+    ]);
+  });
+
+  it('carries on after the limit when the app never comes to the front', async () => {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [chrome], appReadyMs: 1_000 });
+    const done = t.pipeline.deliver(segment('open Slack, scroll down'), 'command');
+    await vi.advanceTimersByTimeAsync(900);
+    expect(t.log.some((l) => l.startsWith('scroll'))).toBe(false);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await done;
+    expect(t.log.some((l) => l.startsWith('scroll'))).toBe(true);
+  });
+
+  it('does not wait when the app is already in front', async () => {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [slackCtx], appReadyMs: 3_000 });
+    const done = t.pipeline.deliver(segment('open Slack'), 'command');
+    await vi.advanceTimersByTimeAsync(0);
+    await done;
+    expect(t.log).toContain('openApp com.tinyspeck.slackmacgap');
+  });
+
+  it('does not poll for a website', async () => {
+    vi.useFakeTimers();
+    const t = setup({ contexts: [chrome], appReadyMs: 3_000 });
+    const done = t.pipeline.deliver(segment('open github'), 'command');
+    await vi.advanceTimersByTimeAsync(0);
+    await done;
+    expect(t.log).toContain('openUrl https://github.com');
   });
 });

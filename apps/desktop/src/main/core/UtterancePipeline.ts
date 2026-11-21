@@ -41,6 +41,10 @@ export type CommandOutcome =
   /** A risky button was named: nothing is pressed until the user says "yes" (see confirmPending). */
   | { id: string; result: 'awaiting' };
 
+/** Wait for an opened app to come to the front: poll this often, for at most this long. */
+const APP_POLL_MS = 150;
+const DEFAULT_APP_READY_MS = 3_000;
+
 /** How long a risky action waits for "yes" before it is dropped. */
 const CONFIRM_MS = 8_000;
 
@@ -74,6 +78,8 @@ export interface UtterancePipelineOptions {
   settleMs?: () => number;
   /** Pause after a step that loads a page (Enter in a browser, a click, opening a site). Default 1.8 s. */
   pageWaitMs?: () => number;
+  /** How long to wait for an opened app to come to the front before the next step. Default 3 s; 0 = do not wait. */
+  appReadyMs?: () => number;
   /**
    * "Say it in your own words": for a command-mode sentence no exact command matched, a plan made
    * only of the app's own commands (or null). Its steps go through the same safety checks.
@@ -399,6 +405,24 @@ export class UtterancePipeline {
       : { id: waiting.match.command.id, result: 'ran' };
   }
 
+  /**
+   * After opening an app: wait until it is the app in front (polling every 150 ms, up to
+   * `appReadyMs`), so the next step does not land in the app that was in front before. It
+   * carries on when the time is up: the next step's own checks decide what is safe.
+   */
+  private async waitForFront(bundleId: string): Promise<void> {
+    const limit = this.opts.appReadyMs?.() ?? DEFAULT_APP_READY_MS;
+    const started = Date.now();
+    while (Date.now() - started < limit) {
+      try {
+        if ((await this.opts.readContext()).bundleId === bundleId) return;
+      } catch {
+        // Not readable yet (the app is still starting): try again.
+      }
+      await new Promise((resolve) => setTimeout(resolve, APP_POLL_MS));
+    }
+  }
+
   private clearPending(): void {
     if (!this.pending) return;
     clearTimeout(this.pending.timer);
@@ -484,8 +508,10 @@ export class UtterancePipeline {
       }
       case 'openTarget': {
         const resolved = await resolver.resolveOpen(requiredArg(args, 'target'));
-        if (resolved.type === 'app') await actions.openApp(resolved.bundleId);
-        else await actions.openUrl(resolved.url);
+        if (resolved.type === 'app') {
+          await actions.openApp(resolved.bundleId);
+          await this.waitForFront(resolved.bundleId);
+        } else await actions.openUrl(resolved.url);
         effect = { type: 'openTarget', resolved: resolved.type === 'app' ? 'app' : 'url' };
         break;
       }
