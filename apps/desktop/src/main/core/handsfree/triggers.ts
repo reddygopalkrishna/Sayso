@@ -40,6 +40,11 @@ const normText = (text: string): string =>
 const STOP_LISTENING =
   /^(?:(?:please|ok|okay|hey)\s+)?(?:(?:stop|quit|exit|end|pause)\s+(?:listening|hands\s?free(?:\s+mode)?)|(?:turn|switch)\s+(?:off|of)\s+(?:hands\s?free(?:\s+mode)?|listening)|(?:turn|switch)\s+(?:hands\s?free(?:\s+mode)?|listening)\s+off|hands\s?free(?:\s+mode)?\s+off|go\s+to\s+sleep|disable\s+hands\s?free(?:\s+mode)?)$/;
 
+/** Just the word "type": the words to type come in the next utterance. */
+export function isLoneType(text: string): boolean {
+  return normText(text) === 'type';
+}
+
 export function isStopListening(text: string): boolean {
   return STOP_LISTENING.test(normText(text));
 }

@@ -3,7 +3,7 @@ import type { HandsFreeStatus } from '../../../shared/status.ts';
 import { cleanWords, stripNonSpeech } from '../stt/normalize.ts';
 import type { TranscriptSegment } from '../stt/types.ts';
 import type { PipelineMode } from '../UtterancePipeline.ts';
-import { classifyHeard, isStopListening } from './triggers.ts';
+import { classifyHeard, isLoneType, isStopListening } from './triggers.ts';
 
 /** How long Sayso stays awake after a trigger: commands then work without the wake word. */
 const AWAKE_MS = 60_000;
@@ -34,11 +34,16 @@ export interface HandsFreeDeps {
  * Hands-free mode: while it is on, the helper reports every utterance it hears, and this decides
  * which ones to act on (see classifyHeard). Utterances are handled one at a time, in order.
  */
+/** How long after a lone "type" the next utterance is still typed. */
+const TYPE_NEXT_MS = 10_000;
+
 export class HandsFreeController {
   private current: HandsFreeStatus = { state: 'off' };
   private awakeUntil = 0;
   private queue: Promise<void> = Promise.resolve();
   private readonly now: () => number;
+  /** After "type" said on its own, the next utterance (until this time) is typed as it is. */
+  private typeNextUntil = 0;
 
   constructor(private readonly deps: HandsFreeDeps) {
     this.now = deps.now ?? Date.now;
@@ -109,6 +114,25 @@ export class HandsFreeController {
     if (isStopListening(segment.text)) {
       this.deps.log?.(`[hands-free] heard ${heardText}: turning hands-free off`);
       await this.disable();
+      return;
+    }
+    // "Type" … (a pause) … "hello there": people pause after "type", so it arrives as two utterances.
+    if (isLoneType(segment.text)) {
+      this.typeNextUntil = this.now() + TYPE_NEXT_MS;
+      this.deps.log?.(`[hands-free] heard ${heardText}: waiting for the words to type`);
+      return;
+    }
+    const typeNext = this.now() < this.typeNextUntil;
+    this.typeNextUntil = 0;
+    if (typeNext && segment.text !== '' && !/^cancel\W*$/i.test(segment.text.trim())) {
+      this.deps.log?.(
+        `[hands-free] heard ${heardText}: typing (it followed "type"); STT ${Math.round(message.sttMs)} ms`,
+      );
+      try {
+        await this.deps.deliver(segment, 'dictation');
+      } catch (error) {
+        this.deps.onError(this.deps.describeError(error));
+      }
       return;
     }
     const result = classifyHeard(segment, {

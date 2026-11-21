@@ -53,6 +53,38 @@ function setup(over: { sttReady?: boolean; startFails?: boolean; holdBusy?: bool
   };
 }
 
+describe('HandsFreeController: "type" then the words', () => {
+  it('types the next utterance after a lone "type"', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('Type.'));
+    expect(t.log).toEqual(['start']);
+    t.advance(3_000);
+    await t.controller.handleHeard(heard('Claude Code is great'));
+    expect(t.log).toEqual(['start', 'dictation: Claude Code is great']);
+    // Only once: the utterance after that is back to normal.
+    await t.controller.handleHeard(heard('hello there how are you'));
+    expect(t.log).toHaveLength(2);
+  });
+
+  it('forgets a lone "type" after ten seconds', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('type'));
+    t.advance(11_000);
+    await t.controller.handleHeard(heard('hello there how are you'));
+    expect(t.log).toEqual(['start']);
+  });
+
+  it('"cancel" after "type" types nothing', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('type'));
+    await t.controller.handleHeard(heard('Cancel.'));
+    expect(t.log.filter((entry) => entry.startsWith('dictation'))).toEqual([]);
+  });
+});
+
 describe('HandsFreeController: voice off switch', () => {
   it('"stop listening" turns hands-free off and does nothing else', async () => {
     const t = setup();
