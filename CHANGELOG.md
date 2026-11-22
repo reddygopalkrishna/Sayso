@@ -40,7 +40,7 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
-### 07:50 · Final multi-test run: results (changelog only, no code)
+### 07:34 · Final multi-test run: results (changelog only, no code)
 - **Run:** a fresh app with all fixes loaded, hands-free on, spoken (computer voice, speakers to microphone) to a local test page in Chrome, checked against what the page recorded and the app log. The script stops unless Chrome and the test tab are in front.
 - **Passed (page-confirmed):** next field; type; backspace; select all then delete that; previous field; "type AWS hit enter" (AWS typed and submitted); click Save; typing mode on and sentences typed with correct spacing; **"stop typing" said in the same breath as a sentence** (sentence typed without the end phrase, mode ended, the next "scroll up" ran as a command); **"start typing", a sentence, then a separate "send it"** (heard, Enter pressed, typing mode ended, the next "scroll down" ran as a command).
 - **Not a code failure:** the computer voice made "send it" into "Send him.", "select all" into "Select dial.", "click Save" into "Plug save." in some runs; those were typed or ignored as text. A real voice has not been measured.
