@@ -3,8 +3,8 @@ import ApplicationServices
 import SaysoHelperCore
 
 /// "Click Submit": finds a button, link or menu item in the frontmost app by its visible label and
-/// presses it through Accessibility (AXPress). A breadth-first search with node and time limits,
-/// so a huge window can never stall a command.
+/// presses it through Accessibility, or clicks its visible web-content bounds. Node and time
+/// limits keep a huge window from stalling a command.
 @MainActor
 public final class AXElementPresser: ElementPressing, ScreenReading {
     private static let pressableRoles: Set<String> = [
@@ -13,6 +13,10 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
     ]
     private static let maxNodes = 4000
     private static let timeBudget: Duration = .milliseconds(300)
+    /// The second look, only after the quick one found nothing: web apps with a big tree (a long
+    /// chat list) can hide a navigation row beyond the quick look's limits.
+    private static let slowMaxNodes = 30_000
+    private static let slowTimeBudget: Duration = .milliseconds(1_500)
 
     public init() {}
 
@@ -39,9 +43,18 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
             best = Self.searchApp(root: root, label: label)
         }
 
+        // Nothing in the quick look: one longer look before giving up.
+        if best == nil { best = Self.searchApp(root: root, label: label, slow: true) }
+
         guard let best else { throw Self.notFound(label) }
-        let result = AXUIElementPerformAction(best.target, kAXPressAction as CFString)
-        guard result == .success else {
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier else {
+            throw Self.notFound(label)
+        }
+        if best.click, let item = Self.frame(best.target) {
+            // Chromium can acknowledge AXPress without activating a web control. Use the
+            // element's visible bounds, as positional navigation and form filling already do.
+            try Self.activate(best.target, at: item, click: true)
+        } else if AXUIElementPerformAction(best.target, kAXPressAction as CFString) != .success {
             throw ServiceError(
                 code: HelperErrorCode.elementNotFound,
                 message: "Found “\(label)” but could not press it.")
@@ -59,17 +72,20 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
         return true
     }
 
-    /// Focused window first, then the whole app, sharing one time budget.
-    private static func searchApp(root: AXUIElement, label: String) -> (score: Int, target: AXUIElement)? {
+    /// Search the focused window, then its menu bar; never another window's matching control.
+    private static func searchApp(
+        root: AXUIElement, label: String, slow: Bool = false
+    ) -> (score: Int, target: AXUIElement, click: Bool)? {
         let started = ContinuousClock.now
-        var starts: [AXUIElement] = []
-        if let window = element(root, kAXFocusedWindowAttribute) { starts.append(window) }
-        starts.append(root)
-        var best: (score: Int, target: AXUIElement)?
-        for start in starts where best == nil || (best?.score ?? 0) < 3 {
-            best = search(from: start, label: label, started: started, best: best)
+        let limits = slow ? (slowMaxNodes, slowTimeBudget) : (maxNodes, timeBudget)
+        let window = element(root, kAXFocusedWindowAttribute) ?? root
+        if let match = search(
+            from: window, label: label, started: started, bounds: frame(window), limits: limits)
+        {
+            return match
         }
-        return best
+        guard let menu = element(root, kAXMenuBarAttribute) else { return nil }
+        return search(from: menu, label: label, started: started, bounds: nil, limits: limits)
     }
 
     private nonisolated(unsafe) static var enabledPids: Set<pid_t> = []
@@ -86,36 +102,55 @@ public final class AXElementPresser: ElementPressing, ScreenReading {
     /// the node cap, or the shared time budget. Keeps the better of `best` and any new match.
     private static func search(
         from start: AXUIElement, label: String, started: ContinuousClock.Instant,
-        best: (score: Int, target: AXUIElement)?
-    ) -> (score: Int, target: AXUIElement)? {
-        var best = best
+        bounds: ScreenItem?, limits: (nodes: Int, time: Duration)
+    ) -> (score: Int, target: AXUIElement, click: Bool)? {
+        var best: (score: Int, target: AXUIElement, click: Bool)?
         // Each entry carries the nearest pressable ancestor, so matching text inside a button
         // (web links, custom buttons) presses the button.
-        var queue: [(element: AXUIElement, ancestor: AXUIElement?)] = [(start, nil)]
+        var queue: [(element: AXUIElement, ancestor: AXUIElement?, web: Bool)] = [(start, nil, false)]
         var head = 0
-        while head < queue.count, head < maxNodes, ContinuousClock.now - started < timeBudget {
-            let (element, ancestor) = queue[head]
+        while head < queue.count, head < limits.nodes, ContinuousClock.now - started < limits.time {
+            let (element, ancestor, parentWeb) = queue[head]
             head += 1
             let role = string(element, kAXRoleAttribute)
-            let pressable = role.map(pressableRoles.contains) ?? false
+            let web = parentWeb || role == "AXWebArea"
+            let field = role.map(fieldRoles.contains) ?? false
+            let pressable = (role.map(pressableRoles.contains) ?? false) || field
+            if isSecure(element) { continue }
 
             var score = 0
+            var shortest = Int.max  // length of the shortest text that matched
             for attribute in [kAXTitleAttribute, kAXDescriptionAttribute] {
                 if let text = string(element, attribute) {
-                    score = max(score, LabelMatch.score(query: label, text: text))
+                    let one = LabelMatch.score(query: label, text: text)
+                    score = max(score, one)
+                    if one > 0 { shortest = min(shortest, text.count) }
                 }
             }
             if role == "AXStaticText", let text = string(element, kAXValueAttribute) {
-                score = max(score, LabelMatch.score(query: label, text: text))
+                let one = LabelMatch.score(query: label, text: text)
+                score = max(score, one)
+                if one > 0 { shortest = min(shortest, text.count) }
             }
-            if score > 0, let target = pressable ? element : (role == "AXStaticText" ? ancestor : nil),
-               score > (best?.score ?? 0)
+            // Some apps' navigation rows (WhatsApp's Chats, Updates, Calls) are plain generic
+            // elements or text with the name and no button role, and no pressable ancestor. A
+            // close name match on such an element is clicked by its bounds. "Calls, 37" (a name
+            // plus a count) counts; a long sentence of text does not.
+            let plainRole = role == "AXGenericElement" || role == "AXStaticText"
+            let plainMatch = score >= 2 && shortest <= 40 && plainRole
+                && !pressable && (role == "AXGenericElement" || ancestor == nil)
+            if score > 0,
+                let target = pressable ? element
+                    : (role == "AXStaticText" ? ancestor : nil) ?? (plainMatch ? element : nil),
+                score > (best?.score ?? 0),
+                let item = frame(target), item.width > 0, item.height > 0,
+                visible(item, in: bounds)
             {
-                best = (score, target)
+                best = (score, target, web || field || (!pressable && target == element && plainMatch))
                 if score == 3 { break }
             }
             let nextAncestor = pressable ? element : ancestor
-            for child in children(element) { queue.append((child, nextAncestor)) }
+            for child in children(element) { queue.append((child, nextAncestor, web)) }
         }
         return best
     }
