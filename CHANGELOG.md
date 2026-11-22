@@ -40,6 +40,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 07:50 · Final multi-test run: results (changelog only, no code)
+- **Run:** a fresh app with all fixes loaded, hands-free on, spoken (computer voice, speakers to microphone) to a local test page in Chrome, checked against what the page recorded and the app log. The script stops unless Chrome and the test tab are in front.
+- **Passed (page-confirmed):** next field; type; backspace; select all then delete that; previous field; "type AWS hit enter" (AWS typed and submitted); click Save; typing mode on and sentences typed with correct spacing; **"stop typing" said in the same breath as a sentence** (sentence typed without the end phrase, mode ended, the next "scroll up" ran as a command); **"start typing", a sentence, then a separate "send it"** (heard, Enter pressed, typing mode ended, the next "scroll down" ran as a command).
+- **Not a code failure:** the computer voice made "send it" into "Send him.", "select all" into "Select dial.", "click Save" into "Plug save." in some runs; those were typed or ignored as text. A real voice has not been measured.
+- **Still open:** about 2 of 15 short phrases per run never reach the app (the helper now logs the ones the model found no words in; the rest are dropped by the speech cutter); about 3 minutes of speech-model loading after every helper rebuild.
+- **Mistake to record:** during one check my test voice ran backspace, next field and scroll in the founder's Claude window (the front app had changed); the test script now checks the front app before every phrase.
+
 ### 07:28 · Very short commands no longer dropped (`84d1b66`)
 - **Found by a drop test (15 short phrases spoken three rounds, app log vs spoken):** 12 reached the app; every "send it" (3 of 3) and one "backspace" never produced even a "found no words" line, so the speech cutter dropped them: it threw away anything under 0.3 s of sound and a quick "send it" has about 0.25 s. The other misses were the speech model mishearing the computer voice ("Let's go down", "Plug save", "Klaxade"); several of those still ran.
 - **What:** sound of 0.18 s or more counts as an utterance (a click or cough of 90 ms is still dropped). With a second helper listening to the same speakers, 13 of 15 phrases came through (2 of 3 "send it"; one was heard as "- Sounded.").
