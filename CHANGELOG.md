@@ -40,6 +40,16 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 07:01 · Typing mode: "send it" instead of "stop typing" (`f595ccc`)
+- **Why:** the founder suggested saying "send it" or "hit enter" directly after a pause instead of "stop typing".
+- **What:** in typing mode, a separate utterance that is exactly "send it", "hit enter" or "press return" now runs as that command (preview chip and safety check as usual) and ends typing mode; "new line" runs and keeps it on. Said in the same breath as the text, the pause rule still applies (a gap of 0.6 s or more makes it a command, less keeps it as text). The speech model writing `Type "Hello World"` in quotes no longer types the quotes.
+- **Tested:** unit tests (1,667 desktop; the commit's own files checked on their own). **Not tried by voice yet.**
+
+### 07:01 · Short recordings no longer come back empty (`8dbe82c`)
+- **Found by the multi-test run:** "backspace" and "click Save" never reached the app; on clean audio the speech model returned an empty string for any clip under about a second (it returned in 4–10 ms). Real commands like "Open." or "Backspace" are often that short. This also explains the earlier "stop typing" that was not heard.
+- **What:** every recording shorter than 1.2 s gets silence added at the end before it is read (the same speed, 0.4 s). "Backspace" → "Backspace", "click Save" → "Click Save." on the same audio.
+- **Tested:** two helper tests (96 helper tests pass) and the four sample clips through the speech model.
+
 ### 07:05 · "Stop typing" in the same breath as the last words (`5882c63`)
 - **Why:** the founder dictated into Claude: "What is the difference between Claude Code and Cloud Cowork? Stop typing." The whole sentence, including "Stop typing.", was typed and typing mode stayed on, because only a lone "stop typing" ended it.
 - **What:** when an utterance in typing mode ends with the end phrase (stop / end / finish typing or dictation, done typing, typing off), the words before it are typed, the phrase is dropped and typing mode ends. A lone phrase still just ends the mode.
