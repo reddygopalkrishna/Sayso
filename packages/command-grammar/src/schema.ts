@@ -30,6 +30,10 @@ export const CommandActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('switchApp') }).strict(),
   /** Message someone in Slack or WhatsApp; the rest of the sentence is the `{message}` argument (see message.ts). */
   z.object({ type: z.literal('sendMessage') }).strict(),
+  /** Open a new Gmail draft (the compose page); never sends. */
+  z.object({ type: z.literal('composeEmail') }).strict(),
+  /** The same, addressed to the `{to}` argument when it is an email address. */
+  z.object({ type: z.literal('composeEmailTo') }).strict(),
   /** Do nothing: "cancel" / "never mind". */
   z.object({ type: z.literal('cancel') }).strict(),
   /** Press the risky action that is waiting for "yes" (see UtterancePipeline). */
@@ -60,6 +64,7 @@ const ACTION_ARGUMENT: Partial<Record<CommandAction['type'], string>> = {
   openTarget: 'target',
   switchApp: 'app',
   sendMessage: 'message',
+  composeEmailTo: 'to',
 };
 
 /** The {name} a phrase ends with, or null. */

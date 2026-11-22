@@ -94,6 +94,8 @@ const safeInstant = [
   'scroll_down',
   'open',
   'switch_app',
+  'compose_email',
+  'compose_email_to',
 ];
 const normalInstant = [
   'backspace',

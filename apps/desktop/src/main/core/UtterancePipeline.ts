@@ -1,6 +1,7 @@
 import type { CommandAction, CommandSpec } from '@sayso/command-grammar';
 import type { CommandActions, KeyPresser, TextInserter } from './actions/HelperActions.ts';
 import { keyStrokeFor } from './actions/sendStrategy.ts';
+import { gmailComposeUrl } from './commands/email.ts';
 import { applyDictionary, type DictionaryTerm } from './cleanup/dictionary.ts';
 import { applyStyle } from './cleanup/style.ts';
 import { afterTypeWord, fixWebAddresses, typeLiterally } from './cleanup/webAddress.ts';
@@ -665,6 +666,11 @@ export class UtterancePipeline {
         effect = { type: 'openTarget', resolved: resolved.type === 'app' ? 'app' : 'url' };
         break;
       }
+      case 'composeEmail':
+      case 'composeEmailTo':
+        await actions.openUrl(gmailComposeUrl(args['to']));
+        effect = { type: 'openTarget', resolved: 'url' };
+        break;
       case 'switchApp': {
         const name = requiredArg(args, 'app');
         const app = await resolver.resolveSwitch(name);

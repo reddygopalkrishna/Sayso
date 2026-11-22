@@ -807,6 +807,20 @@ describe('UtterancePipeline: command mode', () => {
     await t.pipeline.deliver(said('see you soon'), 'command').catch(() => undefined);
     expect(t.log.some((l) => l.startsWith('insert') || l.startsWith('llm'))).toBe(false);
   });
+  it.each([
+    ['new email', 'openUrl https://mail.google.com/mail/?view=cm&fs=1'],
+    ['create a draft', 'openUrl https://mail.google.com/mail/?view=cm&fs=1'],
+    ['write an email', 'openUrl https://mail.google.com/mail/?view=cm&fs=1'],
+    [
+      'new email to priya at gmail dot com',
+      'openUrl https://mail.google.com/mail/?view=cm&fs=1&to=priya%40gmail.com',
+    ],
+    ['write an email to Priya', 'openUrl https://mail.google.com/mail/?view=cm&fs=1'],
+    ['open Gmail', 'openUrl https://mail.google.com'],
+  ])('email: "%s" opens a Gmail draft and never sends', async (said, expected) => {
+    expect((await run(said)).log).toEqual([expected]);
+  });
+
 
   it('a risky button asks for "yes" and presses nothing yet', async () => {
     const t = setup({ contexts: [slack] });

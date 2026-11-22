@@ -394,6 +394,58 @@
       "action": { "type": "sendMessage" },
       "safety": "normal",
       "blockedIn": []
+    },
+    {
+      "id": "compose_email",
+      "label": "New email draft",
+      "phrases": [
+        "new email",
+        "new mail",
+        "new email draft",
+        "compose email",
+        "compose an email",
+        "compose a new email",
+        "compose mail",
+        "write an email",
+        "write a new email",
+        "write email",
+        "draft an email",
+        "draft email",
+        "create a draft",
+        "create an email",
+        "create an email draft",
+        "create email draft",
+        "create a new email",
+        "start a new email",
+        "open a new email",
+        "email draft"
+      ],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "composeEmail"
+      },
+      "safety": "safe",
+      "blockedIn": []
+    },
+    {
+      "id": "compose_email_to",
+      "label": "Email {to}",
+      "phrases": [
+        "new email to {to}",
+        "write an email to {to}",
+        "draft an email to {to}",
+        "draft email to {to}",
+        "compose an email to {to}",
+        "compose email to {to}",
+        "create a draft to {to}",
+        "send an email to {to}"
+      ],
+      "endOfUtteranceOnly": false,
+      "action": {
+        "type": "composeEmailTo"
+      },
+      "safety": "safe",
+      "blockedIn": []
     }
   ]
 }

@@ -49,6 +49,8 @@ describe('commands.json', () => {
       'Screenshot',
       'Lock screen',
       'Message',
+      'New email draft',
+      'Email {to}',
     ]);
   });
 
@@ -80,6 +82,8 @@ describe('commands.json', () => {
       'screenshot',
       'lock_screen',
       'send_message',
+      'compose_email',
+      'compose_email_to',
     ]);
   });
 
@@ -88,6 +92,7 @@ describe('commands.json', () => {
     ['open', 'target'],
     ['switch_app', 'app'],
     ['send_message', 'message'],
+    ['compose_email_to', 'to'],
   ])('%s phrases all end in {%s}', (id, arg) => {
     const spec = commands.find((c) => c.id === id);
     expect(spec?.phrases.length).toBeGreaterThan(0);

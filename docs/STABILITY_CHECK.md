@@ -42,6 +42,11 @@ Say each line, then wait for the action (about 1–2 seconds). If nothing happen
 | 24 | "take a screenshot" | the macOS screenshot tool opens | |
 | 25 | "fill in my details" (on a sign-up form; About me filled in) | name, email, phone filled; password never touched | |
 | 26 | "stop listening" | hands-free turns off | |
+| 36 | "open Gmail" | Gmail opens in the browser | |
+| 37 | "new email" (or "create a draft", "write an email") | a blank Gmail draft opens, the cursor in To | |
+| 38 | "new email to priya at gmail dot com" | a draft opens addressed to priya@gmail.com | |
+| 39 | In the draft: "type hello Priya" · "next field" · "type Meeting tomorrow" | To/subject/body filled; Gmail keeps it as a draft; nothing is sent | |
+| 40 | In the inbox: "open the first email", "click Compose", "click Inbox" | the email opens, Compose opens, Inbox opens | |
 
 ## B. Held key (dictation and command mode)
 

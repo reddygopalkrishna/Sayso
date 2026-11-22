@@ -7,6 +7,7 @@ On 21 Nov 2026 the history was rewritten for the first push: every commit was re
 
 ## In progress
 
+- **Gmail by voice (22 Nov, not committed yet):** "new email", "create a draft", "write an email" open a blank Gmail draft; "email priya at gmail dot com" opens one addressed to that address. It never sends; "open the first email" and "click Compose" use the existing click commands. Unit tests pass; not yet tried by voice (restart `pnpm dev` first). Checklist rows 36 to 40 in `docs/STABILITY_CHECK.md`.
 - **Voice-action accuracy (phase 2):** run `docs/VOICE_TEST.md` by voice, paste the failing `[dictation]` log lines, then fix the prompt, phrases or fuzzy matching for those exact lines.
 - **Stage B of docs/PLAN_INFINA_PARITY.md:** test "click Profile" in Google Cloud Console by hand after a restart (the code is in; not yet tried in Chrome).
 
