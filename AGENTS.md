@@ -2,6 +2,8 @@
 
 Sayso is a voice layer for macOS. You speak and it (1) types clean text at the cursor and (2) does actions: open apps, new tab, click buttons, fill forms, send WhatsApp/Slack messages, start a Gmail draft. Speech runs on the Mac (WhisperKit); an AI model only cleans up dictated text.
 
+**Deployed URL:** none. Sayso is a desktop app (no server, no database server, no ports, no logins). The demo video is `demo/Sayso-demo.mp4`, the slides are `deck/Sayso-deck.pdf` (also `.pptx`).
+
 **Important for a fresh server:** the full app needs a Mac with a microphone, the Fn key and macOS Accessibility permission, so it cannot run on a Linux server. Everything else, which is all the product logic (about 1,800 automated tests: command matching, the pause rule, the safety gate for every command × every app context, the full utterance pipeline with a fake Mac, messaging, Gmail, cleanup), runs on any OS with Node. **Section 2 is the path that works on a fresh server. Section 3 is the full app on a Mac.**
 
 ## 0. What is where
@@ -117,7 +119,14 @@ pnpm dev
 pnpm helper:test                       # Swift tests (use this script, not a bare `swift test`)
 ```
 
-## 4. Known limits (honest list)
+## 4. What is simulated, mocked or not finished
+
+- **Nothing is mocked in the product.** The tests use a fake Mac (fake keyboard, fake window, fake microphone) so the logic can run on any machine; the real app uses the real ones.
+- **No key needed:** with no API key the app runs in local mode (local clean-up, all instant commands). There is no mock AI; the AI features are simply off.
+- **Not finished:** wake word; Windows; sending email (Gmail drafts are opened, never sent); real-voice and Indian-English accuracy numbers (the benchmark harness exists, the real recordings do not); billing (the Pricing section on the website is planned pricing only).
+- **Only checked with a computer voice and by hand, not yet at scale:** "new chat", Gmail drafts and delete-word are covered by unit tests and spot checks; run the rows in `docs/STABILITY_CHECK.md` by voice to confirm on your machine.
+
+## 5. Known limits (honest list)
 
 - Very short phrases ("send it") are missed about 2 times in 15 in our tests; accuracy with real voices and Indian-English speakers is not yet measured (`docs/BENCHMARK.md` explains how it will be).
 - The speech model takes minutes to load after the helper is rebuilt.
@@ -125,7 +134,7 @@ pnpm helper:test                       # Swift tests (use this script, not a bar
 - Gmail and WhatsApp by voice are driven through the screen (keyboard and accessibility), not their APIs, so a big page redesign can break a click.
 - The microphone input volume should be 100% in System Settings → Sound, and the microphone within arm's length.
 
-## 5. Notes for agents working in this repo
+## 6. Notes for agents working in this repo
 
 - Product logic is TypeScript; the Swift helper only does OS calls. The renderer has `contextIsolation: true`, `nodeIntegration: false`.
 - Do not commit `.env`. No key is ever printed.
