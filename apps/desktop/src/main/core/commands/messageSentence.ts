@@ -4,7 +4,7 @@ const POLITE_PREFIX = /^(?:please|can you|could you|would you|will you)\s+/i;
 const MARKER = '(saying|that says|that|to say|and say|say)';
 /** "send hi to Ravi", "send a hello message to Ravi on WhatsApp": 1 to 8 words, then the name (up to 4 words). */
 const SEND_TEXT_TO =
-  /^send\s+(?:a\s+|an\s+)?((?:\S+\s){0,7}?\S+?)\s+(?:message\s+)?to\s+([\p{L}][\p{L}'.-]*(?:\s[\p{L}][\p{L}'.-]*){0,3}?)(?:\s+(?:on|in|via)\s+(slack|whats\s?app))?$/iu;
+  /^send\s+(?:a\s+|an\s+)?((?:\S+\s){0,7}?\S+?)\s+(?:message\s+)?to\s+([\p{L}][\p{L}'-]*(?:\s[\p{L}][\p{L}'-]*){0,3}?)(?:\s+(?:on|in|via)\s+(slack|whats\s?app))?[.!?]*$/iu;
 /** "send it to Ravi" is a file or a link, not a message text. */
 const NOT_A_TEXT = new Set(['it', 'that', 'this', 'message', 'them', 'one', 'a message', 'the message']);
 

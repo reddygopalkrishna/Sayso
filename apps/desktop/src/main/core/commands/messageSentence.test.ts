@@ -9,6 +9,8 @@ describe('messageArgument', () => {
     ['tell Priya that hi there', 'Priya saying hi there'],
     ['tell Priya to say hi', 'Priya saying hi'],
     ['send hi to Ravi', 'Ravi saying hi'],
+    ['Send hi to my notes on WhatsApp.', 'my notes on WhatsApp saying hi'],
+    ['Send hi to Ravi on WhatsApp?', 'Ravi on WhatsApp saying hi'],
     ['Send hi to Ravi on WhatsApp', 'Ravi on WhatsApp saying hi'],
     ['send a hello message to Ravi on whatsapp', 'Ravi on whatsapp saying hello'],
     ['send good morning to Ravi Kumar', 'Ravi Kumar saying good morning'],

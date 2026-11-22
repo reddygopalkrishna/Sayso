@@ -15,6 +15,12 @@ describe('"open WhatsApp and send hi to Ravi" as one sentence', () => {
     expect(steps?.[1]?.args['message']?.toLowerCase()).toBe('ravi saying hi');
   });
 
+  it('as Whisper writes it, with the closing full stop (seen live)', () => {
+    const step = engine.match('Send hi to my notes on WhatsApp.');
+    expect(step?.command.id).toBe('send_message');
+    expect(step?.args['message']).toBe('my notes on WhatsApp saying hi');
+  });
+
   it('on its own, with the app named', () => {
     const step = engine.match('send hi to Ravi on WhatsApp');
     expect(step?.command.id).toBe('send_message');
