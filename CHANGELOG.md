@@ -7,7 +7,6 @@ On 21 Nov 2026 the history was rewritten for the first push: every commit was re
 
 ## In progress
 
-- **Gmail by voice (22 Nov, not committed yet):** "new email", "create a draft", "write an email" open a blank Gmail draft; "email priya at gmail dot com" opens one addressed to that address. It never sends; "open the first email" and "click Compose" use the existing click commands. Unit tests pass; not yet tried by voice (restart `pnpm dev` first). Checklist rows 36 to 40 in `docs/STABILITY_CHECK.md`.
 - **Voice-action accuracy (phase 2):** run `docs/VOICE_TEST.md` by voice, paste the failing `[dictation]` log lines, then fix the prompt, phrases or fuzzy matching for those exact lines.
 - **Stage B of docs/PLAN_INFINA_PARITY.md:** test "click Profile" in Google Cloud Console by hand after a restart (the code is in; not yet tried in Chrome).
 
@@ -40,6 +39,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Pill polish:** a waveform in the pill.
 
 ## 2026-11-22
+
+### 09:00 · Gmail by voice (`0388b30`)
+
+- **What:** "new email", "new mail", "write an email", "compose an email", "draft an email", "create a draft" open a blank Gmail draft (Gmail's compose page). "New email to priya at gmail dot com" (also "write an email to …", "draft an email to …") opens it addressed to that address; "priya at gmail dot com" is turned into priya@gmail.com. Names that are not addresses just open a blank draft.
+- **Why:** the Gmail demo flow. It never sends: Gmail saves the draft itself. A bare "email {name}" phrase was left out on purpose, so ordinary sentences starting with "email" are not hijacked. "Open Gmail", "open the first email" and "click Compose" already worked through the existing commands.
+- **Checked:** unit tests only (grammar, SafetyGate, pipeline, address parsing); not yet tried by voice. Checklist rows 36 to 40 in `docs/STABILITY_CHECK.md`.
 
 ### 07:34 · Final multi-test run: results (changelog only, no code)
 - **Run:** a fresh app with all fixes loaded, hands-free on, spoken (computer voice, speakers to microphone) to a local test page in Chrome, checked against what the page recorded and the app log. The script stops unless Chrome and the test tab are in front.
