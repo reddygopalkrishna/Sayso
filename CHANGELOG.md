@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 07:05 · "Stop typing" in the same breath as the last words (`5882c63`)
+- **Why:** the founder dictated into Claude: "What is the difference between Claude Code and Cloud Cowork? Stop typing." The whole sentence, including "Stop typing.", was typed and typing mode stayed on, because only a lone "stop typing" ended it.
+- **What:** when an utterance in typing mode ends with the end phrase (stop / end / finish typing or dictation, done typing, typing off), the words before it are typed, the phrase is dropped and typing mode ends. A lone phrase still just ends the mode.
+- **Not changed:** "Claude Cowork" heard as "Cloud Cowork" (the speech model; "Cloud Code" is already fixed by the built-in list, add "Cowork" to your Dictionary if it matters).
+- **Tested:** unit tests (1,655 desktop; this commit's files also checked on their own against the last commit). **Not tried by voice yet.**
+
 ### 06:40 · "Click Updates" in WhatsApp (`57cb997`)
 - **Why:** the founder could not click WhatsApp's sidebar (Updates, Calls, Communities). Those rows are plain text/generic elements with the name (and sometimes a count: "Calls, 37"), with no button role, so the click-by-name search skipped them. It then fell back to any button whose text merely contained the word (a chat called "… Updates") and could press that instead.
 - **What:** a close match (same words, or the name followed by a count) on such a plain element, up to 40 characters long, is now clicked by its bounds. When the quick look (300 ms, 4,000 elements) finds nothing, one longer look (1.5 s, 30,000 elements) runs before giving up, so a long chat list cannot hide a row. The helper's earlier uncommitted "click web controls by bounds" change in the same file is included.
