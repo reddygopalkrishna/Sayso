@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 06:20 · First live WhatsApp message (changelog only, no code)
+- **What was tried:** with the founder's go-ahead for one "hi" to their own "My notes (You)" chat, the sentence "send hi to My notes on WhatsApp" was spoken (synthetic voice, speakers to microphone) to the running app with hands-free on. Before that the same sentence was run through the speech model on three synthetic voices: two heard it exactly, one heard "WhatsApp" as "Vharts app".
+- **What the app logged:** heard "Send hi to my notes on WhatsApp." (2.3 s, STT 522 ms) → `send_message ran` → action finished in 8.85 s (open the app, search, 3 s chip, Enter). WhatsApp was in front afterwards with its message box ready.
+- **Not confirmed by me:** that the message "hi" arrived in "My notes (You)": I only checked that WhatsApp was in front with a chat open. The founder looks in the chat to confirm.
+- **Still open:** a different "Ravi" or a group could win the first-search-result pick; a mis-heard name is the main risk, so say the name clearly and watch the 3-second chip.
+
 ### 05:50 · Messages in natural words (`a36666e`)
 - **Why:** the founder asked to say "open WhatsApp and send hi to Ravi". Only "message Ravi on WhatsApp saying hi" and a few similar forms were understood.
 - **What:** "send hi to Ravi", "send hi to Ravi on WhatsApp", "send a hello message to Ravi on Slack" now parse (a short text, then "to", then the name; "send it to Ravi" and "send a message to Ravi" are not taken). A bare "and" right before a message now joins the steps, so "open WhatsApp and send hi to Ravi" is two steps: open the app, then the message. "open Tom and Jerry" is still one command.
