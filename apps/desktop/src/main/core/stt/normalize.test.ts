@@ -16,6 +16,18 @@ describe('stripNonSpeech', () => {
   });
 });
 
+describe('stripNonSpeech: dialogue dashes', () => {
+  it.each([
+    ['- Delete last word.', 'Delete last word.'],
+    ['- Yes. - No.', 'Yes. No.'],
+    ['— Open Chrome', 'Open Chrome'],
+    ['well-known and e-mail', 'well-known and e-mail'],
+    ['Wait - what?', 'Wait - what?'],
+  ])('%j → %j', (input, expected) => {
+    expect(stripNonSpeech(input)).toBe(expected);
+  });
+});
+
 describe('stripNonSpeech: phrases Whisper invents from silence', () => {
   it.each([
     ['Thanks for watching!', ''],

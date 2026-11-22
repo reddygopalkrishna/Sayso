@@ -271,12 +271,18 @@ public final class MessageLoop {
             let audioMs = Double(samples.count) / sampleRate * 1000
             let clock = ContinuousClock()
             let started = clock.now
-            guard let transcription = try? await transcriber.transcribe(samples) else { return }
+            guard let transcription = try? await transcriber.transcribe(samples) else {
+                self.send(.log(level: .warn, msg: "[listen] heard \(Int(audioMs)) ms of speech but the speech model failed on it"))
+                return
+            }
             let elapsed = clock.now - started
             let sttMs = Double(elapsed.components.seconds) * 1000
                 + Double(elapsed.components.attoseconds) / 1e15
             let text = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else { return }
+            guard !text.isEmpty else {
+                self.send(.log(level: .info, msg: "[listen] heard \(Int(audioMs)) ms of sound; the speech model found no words in it"))
+                return
+            }
             self.send(.heard(
                 transcription: transcription, audioMs: audioMs, sttMs: sttMs,
                 model: transcriber.modelName))

@@ -16,6 +16,10 @@ export function stripNonSpeech(text: string): string {
   const cleaned = text
     .replace(BRACKETED, ' ')
     .replace(PAREN_OR_STAR, ' ')
+    // Whisper writes "- Yes. - No." for turns of a conversation: a leading or between-sentences dash
+    // is a marker, not text ("- Delete last word." must still be the command).
+    .replace(/^\s*[-\u2013\u2014\u2022]+\s+/, '')
+    .replace(/([.!?])\s+[-\u2013\u2014]+\s+/g, '$1 ')
     .replace(/\s+/g, ' ')
     .trim();
   return INVENTED.test(cleaned) ? '' : cleaned;
