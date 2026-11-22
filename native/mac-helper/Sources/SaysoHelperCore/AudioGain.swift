@@ -16,4 +16,15 @@ public enum AudioGain {
         let gain = min(target / peak, maxGain)
         return samples.map { $0 * gain }
     }
+
+    /// The speech model returns nothing for a recording under about a second (seen live: "backspace"
+    /// and "click Save" came back empty, so those commands never ran). Silence is added at the end
+    /// so every recording is at least this long.
+    public static let minimumSeconds = 1.2
+
+    public static func padded(_ samples: [Float]) -> [Float] {
+        let minimum = Int(Double(sampleRate) * minimumSeconds)
+        guard !samples.isEmpty, samples.count < minimum else { return samples }
+        return samples + [Float](repeating: 0, count: minimum - samples.count)
+    }
 }

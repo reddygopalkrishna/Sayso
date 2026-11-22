@@ -41,7 +41,7 @@ public actor WhisperTranscriber: Transcribing {
         )
         let results: [TranscriptionResult]
         do {
-            results = try await kit.transcribe(audioArray: AudioGain.lifted(samples), decodeOptions: options)
+            results = try await kit.transcribe(audioArray: AudioGain.padded(AudioGain.lifted(samples)), decodeOptions: options)
         } catch {
             throw ServiceError(code: HelperErrorCode.sttFailed, message: "transcription failed: \(error)")
         }

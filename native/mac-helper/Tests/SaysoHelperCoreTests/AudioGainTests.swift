@@ -23,4 +23,17 @@ import Testing
         #expect(AudioGain.lifted(samples) == samples)
         #expect(AudioGain.lifted([]).isEmpty)
     }
+
+    @Test func shortRecordingsAreEndedWithSilenceToTheMinimum() {
+        let out = AudioGain.padded([0.1, 0.2])
+        #expect(out.count == Int(Double(sampleRate) * AudioGain.minimumSeconds))
+        #expect(Array(out.prefix(2)) == [0.1, 0.2])
+        #expect(out.dropFirst(2).allSatisfy { $0 == 0 })
+    }
+
+    @Test func longRecordingsAndEmptyOnesAreLeftAlone() {
+        let long = [Float](repeating: 0.1, count: Int(sampleRate) * 2)
+        #expect(AudioGain.padded(long) == long)
+        #expect(AudioGain.padded([]).isEmpty)
+    }
 }
