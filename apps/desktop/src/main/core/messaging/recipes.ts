@@ -27,6 +27,12 @@ export interface MessageRecipe {
   afterNameMs: number;
   /** After the first match is chosen, for the conversation to load and take focus. */
   afterPickMs: number;
+  /**
+   * The label of the message box to click into before typing, when the app does not put the cursor
+   * there itself. WhatsApp leaves the focus on the chat list after Enter (seen live: the text was
+   * typed into nothing and nothing was sent).
+   */
+  composer?: string;
 }
 
 const enter: KeyStroke = { key: 'enter', modifiers: [] };
@@ -54,6 +60,7 @@ export const RECIPES: Readonly<Record<MessageApp, MessageRecipe>> = {
     afterOpenSearchMs: 400,
     afterNameMs: 900,
     afterPickMs: 900,
+    composer: 'Compose message',
   },
 };
 

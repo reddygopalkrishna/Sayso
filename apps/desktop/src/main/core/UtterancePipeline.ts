@@ -525,6 +525,17 @@ export class UtterancePipeline {
       await this.pause(150);
     }
     await this.pause(recipe.afterPickMs);
+    if (recipe.composer) {
+      // Put the cursor in the message box: after picking a chat WhatsApp keeps the focus on the list.
+      try {
+        await this.opts.actions.focusField(recipe.composer);
+      } catch (error) {
+        throw new CommandFailed('Could not click into the message box, so nothing was typed.', {
+          cause: error,
+        });
+      }
+      await this.pause(200);
+    }
 
     await this.assertStillSafe(bundleId);
     await this.insert(text);

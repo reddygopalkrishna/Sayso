@@ -1108,6 +1108,7 @@ describe('UtterancePipeline: messaging recipes', () => {
       'insert Priya Sharma',
       'key down',
       'key enter',
+      'focus Compose message',
       'insert call me',
       'key enter',
     ]);
