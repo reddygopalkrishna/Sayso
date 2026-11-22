@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 05:50 · Messages in natural words (`a36666e`)
+- **Why:** the founder asked to say "open WhatsApp and send hi to Ravi". Only "message Ravi on WhatsApp saying hi" and a few similar forms were understood.
+- **What:** "send hi to Ravi", "send hi to Ravi on WhatsApp", "send a hello message to Ravi on Slack" now parse (a short text, then "to", then the name; "send it to Ravi" and "send a message to Ravi" are not taken). A bare "and" right before a message now joins the steps, so "open WhatsApp and send hi to Ravi" is two steps: open the app, then the message. "open Tom and Jerry" is still one command.
+- **Safety unchanged:** the message is typed word for word, a chip shows "Send “hi” to Ravi?" for 3 s before Enter, and Esc cancels.
+- **Tested:** unit tests (1,647 desktop). **No real WhatsApp message has been sent by this code yet.** The recipe (⌘F, name, Down, Enter, text) was only dry-run. The first search result is chosen, so a second "Ravi" or a group with that name could be picked: check the chat name before the chip ends.
+
 ### 05:25 · No more silent 0 ms recordings (`cc01278`)
 - **Why:** after a restart the founder's app recorded every held-key utterance as `0 ms audio, STT 0 ms, 0 words` (no sound reached the helper), so nothing was ever typed. A fresh helper started from a shell recorded the same microphone normally (2.4 s, RMS 0.045), so the microphone and its permission were fine; the helper inside the running app was stuck. The cause was not found.
 - **What:** after the audio engine starts, the helper waits up to 0.7 s for the first sound. If none comes it throws the engine away, builds a new one and tries once more (printing `[mic] no audio … rebuilding the engine`); if that also fails the pill says "The microphone is not delivering sound. Check System Settings → Sound → Input, or reconnect it." instead of silently doing nothing. The recordStart reply now arrives after the first sound (about 0.1 s later), not before.
