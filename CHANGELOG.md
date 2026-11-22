@@ -40,6 +40,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 07:18 · Dialogue dashes, and a log line for words the model could not find (`e3beeec`)
+- **From the re-run of the multi-test sweep (new helper, hands-free on, test page in Chrome):** passed with the page's own record: next field, type hello world (typed without quotes), backspace (the short-clip fix works), select all then delete that (the box cleared), previous field (even heard as "Previous feel."), type AWS hit enter (AWS typed and submitted), click Save, typing mode on and two sentences typed, stop typing.
+- **Failed and fixed:** "Delete last word." was heard as "- Delete last word." (Whisper's dash for a turn in a conversation) and ignored. A leading dash, or one between sentences, is now removed before matching.
+- **Still open:** about 3 of 7 short lone phrases (stop typing, send it, backspace) in one stretch never reached the app's log, while a second helper listening to the same speakers heard all three once its model was loaded. The helper now logs `[listen] … the speech model found no words in it` (or failed) for any utterance it drops, so the next run shows where they go.
+- **Test-method problem I caused:** the first runs typed into the wrong Chrome tab (the test tab had navigated to a Google search), so their page results are not valid; the script now stops unless the active tab is the test page.
+- **Tested:** unit tests (1,672 desktop, 96 helper). **Restart needed to load the helper.**
+
 ### 07:01 · Typing mode: "send it" instead of "stop typing" (`f595ccc`)
 - **Why:** the founder suggested saying "send it" or "hit enter" directly after a pause instead of "stop typing".
 - **What:** in typing mode, a separate utterance that is exactly "send it", "hit enter" or "press return" now runs as that command (preview chip and safety check as usual) and ends typing mode; "new line" runs and keeps it on. Said in the same breath as the text, the pause rule still applies (a gap of 0.6 s or more makes it a command, less keeps it as text). The speech model writing `Type "Hello World"` in quotes no longer types the quotes.
