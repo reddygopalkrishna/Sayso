@@ -37,6 +37,16 @@ pnpm lint                             # expect: no errors
 pnpm test                             # expect: all tests pass (about 1,800, under a minute)
 ```
 
+**Try it yourself, no Mac needed:** feed spoken sentences into the real command pipeline and see what Sayso would do (a fake Mac records the actions; nothing is typed or clicked):
+
+```bash
+SAY="open GitHub; new tab; new email to priya at gmail dot com; click Sign in; scroll down" pnpm simulate
+SAY="dictate: um tell priya to meet me in hyderabad at five" pnpm simulate   # dictation (local clean-up only here)
+APP=com.apple.mail SAY="send it" pnpm simulate                               # choose the app in front by bundle id
+```
+
+Separate sentences with `;`. Sayso answers with lines such as `opens address: https://mail.google.com/mail/?view=cm&fs=1&to=priya%40gmail.com`. (The "type …" hands-free forms are covered by the hands-free tests below.)
+
 The tests *are* the end-to-end journeys for this environment: each one feeds a spoken sentence into the real pipeline (`UtterancePipeline`) with a fake Mac and checks what it would type or press. Run a journey on its own:
 
 ```bash

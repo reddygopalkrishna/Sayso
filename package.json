@@ -15,7 +15,8 @@
     "helper:build": "swift build --package-path native/mac-helper",
     "helper:test": "native/mac-helper/scripts/test.sh",
     "benchmark": "scripts/benchmark/bench.sh",
-    "benchmark:test": "vitest run scripts/benchmark"
+    "benchmark:test": "vitest run scripts/benchmark",
+    "simulate": "vitest run --config scripts/simulate/vitest.config.ts --silent=false"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
