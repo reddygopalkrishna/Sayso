@@ -8,6 +8,7 @@ import {
   isLoneType,
   isStartTyping,
   isStopListening,
+  endCommandKind,
   isStopTyping,
   withoutTrailingStopTyping,
 } from './triggers.ts';
@@ -144,6 +145,21 @@ export class HandsFreeController {
       return;
     }
     if (this.now() < this.typingUntil && segment.text !== '') {
+      // A lone "send it" / "hit enter" after a pause is the command, not more text to type. It
+      // ends typing mode (the message is done); "new line" keeps it on.
+      const endKind = endCommandKind(segment.text);
+      if (endKind) {
+        this.deps.log?.(
+          `[hands-free] heard ${heardText}: ${endKind} (typing mode${endKind === 'newline' ? ' stays on' : ' ends'})`,
+        );
+        if (endKind !== 'newline') this.setTyping(false);
+        try {
+          await this.deps.deliver(segment, 'command');
+        } catch (error) {
+          this.deps.onError(this.deps.describeError(error));
+        }
+        return;
+      }
       // "…Cowork? Stop typing." in one breath: type the words, then end typing mode.
       const withoutStop = withoutTrailingStopTyping(segment);
       const toType = withoutStop ?? segment;

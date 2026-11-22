@@ -81,6 +81,34 @@ describe('HandsFreeController: typing mode', () => {
     expect(t.controller.status).toEqual({ state: 'listening' });
   });
 
+  it('a lone "send it" after a pause is run as a command and ends typing mode', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('start typing'));
+    await t.controller.handleHeard(heard('please call me when you are free'));
+    await t.controller.handleHeard(heard('Send it.'));
+    await t.controller.handleHeard(heard('hello there how are you'));
+    expect(t.log).toEqual(['start', 'dictation: please call me when you are free', 'command: Send it.']);
+    expect(t.controller.status).toEqual({ state: 'listening' });
+  });
+
+  it('"hit enter" does the same, "new line" keeps typing mode on', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('start typing'));
+    await t.controller.handleHeard(heard('first line'));
+    await t.controller.handleHeard(heard('New line'));
+    await t.controller.handleHeard(heard('second line'));
+    await t.controller.handleHeard(heard('Hit enter'));
+    expect(t.log).toEqual([
+      'start',
+      'dictation: first line',
+      'command: New line',
+      'dictation: second line',
+      'command: Hit enter',
+    ]);
+  });
+
   it('tells the pill when typing mode is on and off', async () => {
     const t = setup();
     await t.controller.enable();

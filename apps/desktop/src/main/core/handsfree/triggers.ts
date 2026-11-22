@@ -67,6 +67,19 @@ export function withoutTrailingStopTyping(segment: TranscriptSegment): Transcrip
   };
 }
 
+/** A lone end command said on its own, with a pause before it: "send it", "hit enter", "new line". */
+const SEND_PHRASE = /^(?:send|send it|send that|send this|send message)$/;
+const ENTER_PHRASE = /^(?:enter|return|(?:hit|press) (?:enter|return))$/;
+const NEW_LINE_PHRASE = /^(?:new line|newline|line break)$/;
+
+export function endCommandKind(text: string): 'send' | 'enter' | 'newline' | null {
+  const t = normText(text);
+  if (SEND_PHRASE.test(t)) return 'send';
+  if (ENTER_PHRASE.test(t)) return 'enter';
+  if (NEW_LINE_PHRASE.test(t)) return 'newline';
+  return null;
+}
+
 export const isStartTyping = (text: string): boolean => START_TYPING.test(normText(text));
 export const isStopTyping = (text: string): boolean => STOP_TYPING.test(normText(text));
 
@@ -77,6 +90,18 @@ export function isLoneType(text: string): boolean {
 
 export function isStopListening(text: string): boolean {
   return STOP_LISTENING.test(normText(text));
+}
+
+/** The speech model sometimes writes what was said to be typed in quotes: `Type "Hello World"`. */
+function withoutQuotes(segment: TranscriptSegment): TranscriptSegment {
+  const quoted = /^["“”'‘’]+(.*?)["“”'‘’]+([.!?]*)$/su.exec(segment.text.trim());
+  if (!quoted) return segment;
+  const strip = (t: string): string => t.replace(/["“”]/g, '');
+  return {
+    ...segment,
+    text: `${quoted[1] ?? ''}${quoted[2] ?? ''}`.trim(),
+    words: segment.words.map((w) => ({ ...w, text: strip(w.text) })),
+  };
 }
 
 /** Removes the first word and the punctuation after it ("Type, hello" → "hello"). */
@@ -98,7 +123,7 @@ export function classifyHeard(segment: TranscriptSegment, options: TriggerOption
 
   // "type hello there" → the words after "type", typed like a dictation.
   if (first === 'type') {
-    const rest = afterFirstWord(segment);
+    const rest = withoutQuotes(afterFirstWord(segment));
     return rest.text === ''
       ? { intent: null, triggered: true }
       : { intent: { kind: 'dictate', segment: { ...rest, relaxPause: true } }, triggered: true };

@@ -6,6 +6,7 @@ import {
   classifyHeard,
   isStartTyping,
   isStopListening,
+  endCommandKind,
   isStopTyping,
   withoutTrailingStopTyping,
 } from './triggers.ts';
@@ -176,5 +177,30 @@ describe('withoutTrailingStopTyping', () => {
   it('is null when the sentence does not end with it', () => {
     expect(withoutTrailingStopTyping(seg('stop typing is a phrase I use'))).toBeNull();
     expect(withoutTrailingStopTyping(seg('hello there'))).toBeNull();
+  });
+});
+
+describe('endCommandKind', () => {
+  it.each([
+    ['Send it.', 'send'],
+    ['send', 'send'],
+    ['Hit enter', 'enter'],
+    ['press return', 'enter'],
+    ['New line', 'newline'],
+  ])('%j → %s', (text, kind) => expect(endCommandKind(text)).toBe(kind));
+  it.each(['please send it to him', 'open Chrome', 'send it tomorrow'])('%j is not one', (text) =>
+    expect(endCommandKind(text)).toBeNull(),
+  );
+});
+
+describe('"type" with quotes around the words', () => {
+  it('drops the quotes the speech model added', () => {
+    const result = classifyHeard(heard('Type "Hello World"'), { wakeWord: 'sayso', awake: false, isCommand });
+    expect(result.intent?.segment.text).toBe('Hello World');
+    expect(result.intent?.segment.words.map((w) => w.text).join(' ')).toBe('Hello World');
+  });
+  it('keeps quotes inside a sentence', () => {
+    const result = classifyHeard(heard('type he said "hi" to me'), { wakeWord: 'sayso', awake: false, isCommand });
+    expect(result.intent?.segment.text).toBe('he said "hi" to me');
   });
 });
