@@ -40,6 +40,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 06:10 · WhatsApp: the text now goes into the message box (`265565b`)
+- **What went wrong (found from the founder's screenshot of the first live test):** the earlier entry said the send ran, but no "hi" reached the chat. The steps ⌘F, name, Down, Enter did open "My notes (You)" correctly, but WhatsApp then leaves the keyboard focus on the chat list (read live: the focused element was a group, not the message box), so the pasted "hi" went nowhere and the final Enter sent nothing. The app still reported "ran".
+- **What:** the WhatsApp recipe now clicks into the message box ("Compose message") after choosing the chat; the focused element then reads as a text area. If the box cannot be found, nothing is typed and the pill says so. Slack is unchanged.
+- **Checked live without sending:** the focus change (group → text area) in WhatsApp; the text-pasting pace (two pastes 0.9 s apart) on a local test page.
+- **Tested:** unit tests (1,647 desktop). **Not yet re-run live with a send.**
+- **Known risk, not handled:** if the chat already holds an unsent draft (the founder's "My notes" had `"Hello World"`), the new text is added to it and both are sent. Clear drafts in the chat you test with.
+
 ### 06:20 · First live WhatsApp message (changelog only, no code)
 - **What was tried:** with the founder's go-ahead for one "hi" to their own "My notes (You)" chat, the sentence "send hi to My notes on WhatsApp" was spoken (synthetic voice, speakers to microphone) to the running app with hands-free on. Before that the same sentence was run through the speech model on three synthetic voices: two heard it exactly, one heard "WhatsApp" as "Vharts app".
 - **What the app logged:** heard "Send hi to my notes on WhatsApp." (2.3 s, STT 522 ms) → `send_message ran` → action finished in 8.85 s (open the app, search, 3 s chip, Enter). WhatsApp was in front afterwards with its message box ready.
