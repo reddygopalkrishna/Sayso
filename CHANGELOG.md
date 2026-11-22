@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 06:08 · Message sentences with a closing full stop (`9dbb62c`)
+- **Why (live retry):** the app heard "Send hi to my notes on WhatsApp." and answered "Say which app": the new "send hi to <name>" form took "my notes on WhatsApp." (with the full stop) as one long name. Nothing was typed or sent.
+- **Also learned:** the first live attempt (05:5x) ran on the app started before the "send hi to …" form existed, so that sentence went through the AI interpreter, not the new rule; the founder's later screenshot showed it never reached the chat either.
+- **What:** the form now allows a closing . ! or ? after the name or app, and names no longer swallow a full stop.
+- **Tested:** unit tests (1,650 desktop), including the exact sentence as Whisper wrote it. **Not yet re-run live with a send.**
+
 ### 06:10 · WhatsApp: the text now goes into the message box (`265565b`)
 - **What went wrong (found from the founder's screenshot of the first live test):** the earlier entry said the send ran, but no "hi" reached the chat. The steps ⌘F, name, Down, Enter did open "My notes (You)" correctly, but WhatsApp then leaves the keyboard focus on the chat list (read live: the focused element was a group, not the message box), so the pasted "hi" went nowhere and the final Enter sent nothing. The app still reported "ran".
 - **What:** the WhatsApp recipe now clicks into the message box ("Compose message") after choosing the chat; the focused element then reads as a text area. If the box cannot be found, nothing is typed and the pill says so. Slack is unchanged.
