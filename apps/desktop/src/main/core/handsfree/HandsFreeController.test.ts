@@ -71,6 +71,16 @@ describe('HandsFreeController: typing mode', () => {
     ]);
   });
 
+  it('"stop typing" at the end of a sentence types the sentence and ends typing mode', async () => {
+    const t = setup();
+    await t.controller.enable();
+    await t.controller.handleHeard(heard('start typing'));
+    await t.controller.handleHeard(heard('What is the difference between A and B? Stop typing.'));
+    await t.controller.handleHeard(heard('hello there how are you'));
+    expect(t.log).toEqual(['start', 'dictation: What is the difference between A and B?']);
+    expect(t.controller.status).toEqual({ state: 'listening' });
+  });
+
   it('tells the pill when typing mode is on and off', async () => {
     const t = setup();
     await t.controller.enable();

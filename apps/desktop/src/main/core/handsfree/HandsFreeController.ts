@@ -9,6 +9,7 @@ import {
   isStartTyping,
   isStopListening,
   isStopTyping,
+  withoutTrailingStopTyping,
 } from './triggers.ts';
 
 /** How long Sayso stays awake after a trigger: commands then work without the wake word. */
@@ -143,15 +144,23 @@ export class HandsFreeController {
       return;
     }
     if (this.now() < this.typingUntil && segment.text !== '') {
-      this.typingUntil = this.now() + TYPING_IDLE_MS;
-      this.typingTimer?.refresh();
+      // "…Cowork? Stop typing." in one breath: type the words, then end typing mode.
+      const withoutStop = withoutTrailingStopTyping(segment);
+      const toType = withoutStop ?? segment;
+      if (withoutStop) this.setTyping(false);
+      else {
+        this.typingUntil = this.now() + TYPING_IDLE_MS;
+        this.typingTimer?.refresh();
+      }
       this.deps.log?.(
-        `[hands-free] heard ${heardText}: typing (typing mode); STT ${Math.round(message.sttMs)} ms`,
+        `[hands-free] heard ${heardText}: typing (typing mode${withoutStop ? ', then off' : ''}); STT ${Math.round(message.sttMs)} ms`,
       );
-      try {
-        await this.deps.deliver(segment, 'dictation');
-      } catch (error) {
-        this.deps.onError(this.deps.describeError(error));
+      if (toType.text !== '') {
+        try {
+          await this.deps.deliver(toType, 'dictation');
+        } catch (error) {
+          this.deps.onError(this.deps.describeError(error));
+        }
       }
       return;
     }

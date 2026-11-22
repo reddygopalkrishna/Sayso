@@ -46,6 +46,27 @@ const START_TYPING =
 const STOP_TYPING =
   /^(?:(?:please|ok|okay|hey)\s+)?(?:(?:stop|end|finish|exit|quit)\s+(?:typing|dictation|dictating)(?:\s+mode)?|(?:turn|switch)\s+off\s+(?:typing|dictation)(?:\s+mode)?|done\s+(?:typing|dictating)|(?:typing|dictation)\s+(?:mode\s+)?off)$/;
 
+/** "… and that is it, stop typing": the end phrase said in the same breath as the last words. */
+const TRAILING_STOP_TYPING =
+  /\s+\b((?:stop|end|finish|exit|quit)\s+(?:typing|dictation|dictating)(?:\s+mode)?|done\s+(?:typing|dictating)|(?:typing|dictation)\s+(?:mode\s+)?off|turn\s+off\s+(?:typing|dictation)(?:\s+mode)?)[.!?\s]*$/i;
+
+/**
+ * When the end phrase comes at the end of an utterance that also holds words to type ("What is the
+ * difference between A and B? Stop typing."), returns the utterance without it. The text may be
+ * empty. Null when the utterance does not end with the phrase.
+ */
+export function withoutTrailingStopTyping(segment: TranscriptSegment): TranscriptSegment | null {
+  const match = TRAILING_STOP_TYPING.exec(segment.text);
+  if (!match || match.index === undefined) return null;
+  const phraseWords = (match[1] ?? '').trim().split(/\s+/).length;
+  const spoken = segment.words.filter((w) => norm(w.text) !== '');
+  return {
+    ...segment,
+    text: segment.text.slice(0, match.index).trim().replace(/[,;:]+$/, ''),
+    words: spoken.slice(0, Math.max(0, spoken.length - phraseWords)),
+  };
+}
+
 export const isStartTyping = (text: string): boolean => START_TYPING.test(normText(text));
 export const isStopTyping = (text: string): boolean => STOP_TYPING.test(normText(text));
 

@@ -7,6 +7,7 @@ import {
   isStartTyping,
   isStopListening,
   isStopTyping,
+  withoutTrailingStopTyping,
 } from './triggers.ts';
 
 const engine = new CommandEngine(commands);
@@ -158,5 +159,22 @@ describe('"type …" waives the pause before a trailing command', () => {
   it('does not mark commands', () => {
     const result = classifyHeard(heard('new tab'), { wakeWord: 'sayso', awake: false, isCommand });
     expect(result.intent?.segment.relaxPause).toBeUndefined();
+  });
+});
+
+describe('withoutTrailingStopTyping', () => {
+  const seg = (text: string): TranscriptSegment => heard(text);
+  it.each([
+    ['What is the difference? Stop typing.', 'What is the difference?', 4],
+    ['it was a long day, done typing', 'it was a long day', 5],
+    ['that is all end dictation', 'that is all', 3],
+  ])('%j → %j', (text, rest, wordCount) => {
+    const out = withoutTrailingStopTyping(seg(text));
+    expect(out?.text).toBe(rest);
+    expect(out?.words).toHaveLength(wordCount);
+  });
+  it('is null when the sentence does not end with it', () => {
+    expect(withoutTrailingStopTyping(seg('stop typing is a phrase I use'))).toBeNull();
+    expect(withoutTrailingStopTyping(seg('hello there'))).toBeNull();
   });
 });
