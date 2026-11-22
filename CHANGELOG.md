@@ -40,6 +40,12 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 13:10 · Submission files: AGENTS.md, VIDEO.md, deck, pitch notes
+
+- **What:** `AGENTS.md` (setup, env variables, commands, journeys, known limits; a path that works on any machine with Node, and one for a Mac with a microphone), `VIDEO.md` (points to `demo/Sayso-demo.mp4`, kept out of git because of its size), `deck/Sayso-deck.pptx` (5 slides) and `docs/PITCH.md` (how to explain the project).
+- **Why:** the hackathon submission needs one zip with code, a setup file that an AI agent can follow, a demo video and a short deck.
+- **Checked:** a clean unzip installs, typechecks and passes all tests.
+
 ### 09:00 · Gmail by voice (`0388b30`)
 
 - **What:** "new email", "new mail", "write an email", "compose an email", "draft an email", "create a draft" open a blank Gmail draft (Gmail's compose page). "New email to priya at gmail dot com" (also "write an email to …", "draft an email to …") opens it addressed to that address; "priya at gmail dot com" is turned into priya@gmail.com. Names that are not addresses just open a blank draft.
