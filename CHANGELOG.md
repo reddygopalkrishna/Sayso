@@ -50,13 +50,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **What:** every recording shorter than 1.2 s gets silence added at the end before it is read (the same speed, 0.4 s). "Backspace" → "Backspace", "click Save" → "Click Save." on the same audio.
 - **Tested:** two helper tests (96 helper tests pass) and the four sample clips through the speech model.
 
-### 07:05 · "Stop typing" in the same breath as the last words (`5882c63`)
+### 06:50 · "Stop typing" in the same breath as the last words (`5882c63`)
 - **Why:** the founder dictated into Claude: "What is the difference between Claude Code and Cloud Cowork? Stop typing." The whole sentence, including "Stop typing.", was typed and typing mode stayed on, because only a lone "stop typing" ended it.
 - **What:** when an utterance in typing mode ends with the end phrase (stop / end / finish typing or dictation, done typing, typing off), the words before it are typed, the phrase is dropped and typing mode ends. A lone phrase still just ends the mode.
 - **Not changed:** "Claude Cowork" heard as "Cloud Cowork" (the speech model; "Cloud Code" is already fixed by the built-in list, add "Cowork" to your Dictionary if it matters).
 - **Tested:** unit tests (1,655 desktop; this commit's files also checked on their own against the last commit). **Not tried by voice yet.**
 
-### 06:40 · "Click Updates" in WhatsApp (`57cb997`)
+### 06:21 · "Click Updates" in WhatsApp (`57cb997`)
 - **Why:** the founder could not click WhatsApp's sidebar (Updates, Calls, Communities). Those rows are plain text/generic elements with the name (and sometimes a count: "Calls, 37"), with no button role, so the click-by-name search skipped them. It then fell back to any button whose text merely contained the word (a chat called "… Updates") and could press that instead.
 - **What:** a close match (same words, or the name followed by a count) on such a plain element, up to 40 characters long, is now clicked by its bounds. When the quick look (300 ms, 4,000 elements) finds nothing, one longer look (1.5 s, 30,000 elements) runs before giving up, so a long chat list cannot hide a row. The helper's earlier uncommitted "click web controls by bounds" change in the same file is included.
 - **Checked live in WhatsApp (no messages involved):** "Chats", "Updates", "Calls" and "Communities" each switched to their tab (the tab's own controls appeared: New Chat / Add status / New call / New community), repeated twice, with a stray popup dismissed first. 94 helper tests pass.
@@ -68,13 +68,13 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **This is one confirmed send, not a test of reliability:** the contact was the founder's own chat (distinctive name, first search result, empty message box). Other contacts, a second person with the same name, a chat with an unsent draft, and a real human voice have not been tried.
 - **What it took (in order):** the rule for "send hi to <name>" (06:00), clicking into the message box (06:10) and allowing a closing full stop (06:12). The two earlier "ran" reports (one through the AI interpreter on the old app, one on stale code) did not deliver anything.
 
-### 06:08 · Message sentences with a closing full stop (`9dbb62c`)
+### 06:02 · Message sentences with a closing full stop (`9dbb62c`)
 - **Why (live retry):** the app heard "Send hi to my notes on WhatsApp." and answered "Say which app": the new "send hi to <name>" form took "my notes on WhatsApp." (with the full stop) as one long name. Nothing was typed or sent.
 - **Also learned:** the first live attempt (05:5x) ran on the app started before the "send hi to …" form existed, so that sentence went through the AI interpreter, not the new rule; the founder's later screenshot showed it never reached the chat either.
 - **What:** the form now allows a closing . ! or ? after the name or app, and names no longer swallow a full stop.
 - **Tested:** unit tests (1,650 desktop), including the exact sentence as Whisper wrote it. **Not yet re-run live with a send.**
 
-### 06:10 · WhatsApp: the text now goes into the message box (`265565b`)
+### 05:58 · WhatsApp: the text now goes into the message box (`265565b`)
 - **What went wrong (found from the founder's screenshot of the first live test):** the earlier entry said the send ran, but no "hi" reached the chat. The steps ⌘F, name, Down, Enter did open "My notes (You)" correctly, but WhatsApp then leaves the keyboard focus on the chat list (read live: the focused element was a group, not the message box), so the pasted "hi" went nowhere and the final Enter sent nothing. The app still reported "ran".
 - **What:** the WhatsApp recipe now clicks into the message box ("Compose message") after choosing the chat; the focused element then reads as a text area. If the box cannot be found, nothing is typed and the pill says so. Slack is unchanged.
 - **Checked live without sending:** the focus change (group → text area) in WhatsApp; the text-pasting pace (two pastes 0.9 s apart) on a local test page.
@@ -87,95 +87,95 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 - **Not confirmed by me:** that the message "hi" arrived in "My notes (You)": I only checked that WhatsApp was in front with a chat open. The founder looks in the chat to confirm.
 - **Still open:** a different "Ravi" or a group could win the first-search-result pick; a mis-heard name is the main risk, so say the name clearly and watch the 3-second chip.
 
-### 05:50 · Messages in natural words (`a36666e`)
+### 05:44 · Messages in natural words (`a36666e`)
 - **Why:** the founder asked to say "open WhatsApp and send hi to Ravi". Only "message Ravi on WhatsApp saying hi" and a few similar forms were understood.
 - **What:** "send hi to Ravi", "send hi to Ravi on WhatsApp", "send a hello message to Ravi on Slack" now parse (a short text, then "to", then the name; "send it to Ravi" and "send a message to Ravi" are not taken). A bare "and" right before a message now joins the steps, so "open WhatsApp and send hi to Ravi" is two steps: open the app, then the message. "open Tom and Jerry" is still one command.
 - **Safety unchanged:** the message is typed word for word, a chip shows "Send “hi” to Ravi?" for 3 s before Enter, and Esc cancels.
 - **Tested:** unit tests (1,647 desktop). **No real WhatsApp message has been sent by this code yet.** The recipe (⌘F, name, Down, Enter, text) was only dry-run. The first search result is chosen, so a second "Ravi" or a group with that name could be picked: check the chat name before the chip ends.
 
-### 05:25 · No more silent 0 ms recordings (`cc01278`)
+### 05:20 · No more silent 0 ms recordings (`cc01278`)
 - **Why:** after a restart the founder's app recorded every held-key utterance as `0 ms audio, STT 0 ms, 0 words` (no sound reached the helper), so nothing was ever typed. A fresh helper started from a shell recorded the same microphone normally (2.4 s, RMS 0.045), so the microphone and its permission were fine; the helper inside the running app was stuck. The cause was not found.
 - **What:** after the audio engine starts, the helper waits up to 0.7 s for the first sound. If none comes it throws the engine away, builds a new one and tries once more (printing `[mic] no audio … rebuilding the engine`); if that also fails the pill says "The microphone is not delivering sound. Check System Settings → Sound → Input, or reconnect it." instead of silently doing nothing. The recordStart reply now arrives after the first sound (about 0.1 s later), not before.
 - **Tested:** helper unit tests (94) and a live recording through a fresh helper (2.6 s, RMS 0.049). **Not reproduced**, so not proven to cure the stuck state; restart `pnpm dev` and watch for the new line.
 - **If it still records 0 ms:** quit the app that may hold the microphone (Zoom, a browser call, FaceTime), check System Settings → Privacy & Security → Microphone for Terminal and Electron, and replug a headset if one is connected.
 
-### 03:40 · Stability checklist (`652e0b9`)
+### 05:02 · Stability checklist (`652e0b9`)
 - **What:** `docs/STABILITY_CHECK.md`: 35 rows (26 hands-free commands, 5 held-key checks, 4 things that must not happen), three tries each, the setup, and exactly what to send for a failure (row, words said, expected vs actual, the terminal lines, the app in front).
 - **Why:** to find and fix the exact failing lines before the code freeze, without adding features.
 - **Next:** once the demo rows pass three times, tag that commit as the demo build.
 
-### 03:20 · Two more mishearings (`e556b36`)
+### 04:40 · Two more mishearings (`e556b36`)
 - **Why:** a live hands-free log: "Open faster result." and "Open first page." became web searches, and "Openclaw." (Open Claude) was ignored.
 - **What:** "faster result/link/item" is read as "first result/link/item"; "openclaw" and "open claw" as "open Claude". "Open first page." is left as it is (it can mean a page of a document).
 - **The log in numbers:** of 12 things meant as commands, 8 ran correctly ("Open Cloud", "Open Chrome" ×4, "Open WhatsApp", "Type AWS", "Type AWS, send it"); the misses were mishearings of short phrases.
 - **Tested:** unit tests (203 command tests); not by voice yet.
 
-### 03:05 · Voice from further away (`349c898`)
+### 04:16 · Voice from further away (`349c898`)
 - **Why:** the founder reported speech was not detected properly unless close to the microphone.
 - **What:** (1) hands-free now counts speech from a lower level (RMS 0.008, was 0.015; still at least 3 times the room's own noise), so a voice about 20 dB quieter than normal speech starts an utterance; (2) before the speech model reads a recording, faint audio is lifted so its loudest sample reaches 0.5, by at most 8 times, loud audio untouched. Applies to the held key and hands-free.
 - **Tested:** unit tests (new gain tests and a quiet-voice segmenter test; 94 helper tests). **Not tried at distance by a person yet.** Restart `pnpm dev`.
 - **Not done (needs the founder):** macOS input volume was at 88%; setting it to 100% in System Settings → Sound → Input helps too. A headset or close microphone is still the safest for the demo. A loud room can now start more utterances; room speech is still ignored unless it is a command.
 
-### 02:45 · "Type … hit enter" in one breath (`11ec363`)
+### 03:32 · "Type … hit enter" in one breath (`11ec363`)
 - **Why:** the founder's log: "Type AWS, hit enter" (and "send it") typed the words "AWS, hit enter" because the pause rule keeps a trailing command as text unless it follows a pause of 0.6 s or more.
 - **What:** text the person explicitly asked to type in hands-free ("type …", or the words after a lone "type") now waives that pause, so "type AWS hit enter" types AWS and presses Enter (through the same safety gate and preview chip). Typing mode ("start typing") and the held-key dictation keep the pause rule, so a story that happens to end in "send it" is not sent.
 - **Tested:** unit tests (1,632 desktop; this commit's own files also checked against the last commit). **Not tried by voice yet.**
 - **Seen in the same log, fine:** "next." ran next field, "Open new tab" ran twice, speech 410–515 ms. "Type my name" ran the saved-fact path (no AI call logged); whether the name appeared was not reported.
 
-### 02:25 · Typing mode shows in the pill (`1367155`)
+### 02:16 · Typing mode shows in the pill (`1367155`)
 - **What:** while typing mode is on the pill reads "Typing mode · say “stop typing” to end" (the status now carries `typing`), and typing mode switches itself off on a timer after 3 quiet minutes, so the pill never goes stale.
 - **Tested:** unit tests (1,628 desktop); this commit's own files were also checked on their own against the last commit (typecheck and 135 tests). **Not seen on screen yet.**
 - **Note:** the working folder still holds uncommitted hands-free changes from another session (no wake word, the quieter pill). They are not part of this commit.
 
-### 02:10 · Long dictation in hands-free: typing mode, and spaces between pieces (`3bb0248`)
+### 02:13 · Long dictation in hands-free: typing mode, and spaces between pieces (`3bb0248`)
 - **Why:** the founder could not tell a whole story into the Claude Code or Codex input box: hands-free types only after "type", and a pause of 0.65 s ends an utterance, so everything after the first pause was ignored.
 - **What:** say **"start typing"** (or "start dictation", "dictation mode") and every utterance is typed until you say **"stop typing"** (or "stop dictation", "done typing"); it also ends by itself after 3 quiet minutes or when hands-free is turned off. Dictated pieces told one after another in the same app (within 30 s) are now joined with a space (not before punctuation); a command such as send or new line starts the next piece clean. Messaging recipes and snippets are unchanged.
 - **Tested:** unit tests (1,626 desktop); **not tried live.** The pill does not yet show that typing mode is on; the terminal prints `typing mode on`.
 - **Also:** holding Fn still records one long take (up to 5 minutes) with no pause cut, which is the other way to dictate a long text.
 
-### 01:50 · Speech right after the double tap, ChatGPT and "new chat" mishearings (`1322303`)
+### 01:53 · Speech right after the double tap, ChatGPT and "new chat" mishearings (`1322303`)
 - **Why:** the founder's log: "Open chat GPT" said just after the double tap was ignored ("said while holding the key"), because the tap that started hands-free counted as a recent hold; ChatGPT was heard as "Charged GPT", "to RGBT", "charge GPT"; "A new chat?" was ignored and "Click/Open New Chart" clicked or searched instead of starting a chat.
 - **What:** a tap (cancelled as too short) no longer counts as a recent hold. "charged gpt", "to rgbt" and a few more are added to the built-in ChatGPT spellings. "new chart" now means "new chat" anywhere in a command, and "a new chat" is accepted.
 - **Tested:** unit tests (1,608 desktop); not tried by voice yet.
 - **Not fixed:** "Click Sign in"-style clicks still need a visible button with that name; "Open Chrome" ran "in Claude" only because Claude was in front when you spoke.
 
-### 01:35 · "New chat" (`aa2cd64`)
+### 01:37 · "New chat" (`aa2cd64`)
 - **Why:** the founder said "new chat" in ChatGPT and Claude; it was heard as "new chart" and no command matched.
 - **What:** new command **new chat** ("start a new chat", "open a new chat", "new conversation"). It presses **⌘N** in the ChatGPT and Claude desktop apps (read from their File menus: "New Chat" in ChatGPT, "New Session" in Claude) and **⇧⌘O** everywhere else, which is the shortcut on chatgpt.com and claude.ai. The heard-as "new chart" and "new check" count as "new chat" when they are the whole utterance. A new action type, `contextual_new_chat`, picks the keys by app like "send" does.
 - **Caveat:** on a web page that is not ChatGPT or Claude, ⇧⌘O only opens Chrome's bookmark manager. Safe class: runs at once, never in password fields or meeting apps.
 - **Tested:** unit tests for the keys per app, the phrases, the safety matrix (1,602 desktop). **Not tried by voice or in the apps yet.**
 
-### 01:21 · Hands-free: "type", pause, then the words (`70a9929`)
+### 01:19 · Hands-free: "type", pause, then the words (`70a9929`)
 - **Why:** the founder's log: people say "type", pause, then speak, so hands-free heard two utterances: a lone "Type" (ignored) and the words (ignored, no "type" in front). Nothing was typed.
 - **What:** a lone "type" now waits up to 10 s and types the next utterance as it is (through the usual dictionary and cleanup). Saying "type Codex" in one breath still works. "Cancel" after "type" types nothing.
 - **Tested:** unit tests (1,586 desktop); not tried by voice yet.
 - **From the same log, not changed:** "New chat" is heard as "New chart" and there is no "new chat" command (⌘N would open a new browser window in Chrome, so it needs per-app keys); "Click on Link" has no matching on-screen name; "Open Cloud" correctly opens the Claude app. Phrases like "What is the difference between Codex and Cloud Code?" are rightly ignored (conversation).
 
-### 01:05 · Next field, previous field, backspace, delete word (`ec66d75`)
+### 01:12 · Next field, previous field, backspace, delete word (`ec66d75`)
 - **Why:** the founder asked to move between form fields and delete by voice.
 - **What:** four new commands in `commands.json`: **next field** (also "next input", "next box", "go to next", "go to the next field", "tab"), **previous field** ("shift tab", "go to previous"), **backspace**, **delete word** ("delete last word"). They press Tab, Shift+Tab, Delete and Option+Delete. "Delete that" still deletes the selection; to clear a field say "select all, delete that". A bare "next" is deliberately not a command (too easy to say by accident while hands-free listens).
 - **Safety:** next/previous field are Safe, backspace and delete word are Normal (preview chip); all four are refused in password fields and meeting apps like the other editing commands. Added to the every-command-by-context matrix.
 - **Tested:** unit tests (1,583 desktop, 58 grammar); not tried by voice yet.
 - **Incident:** while adding these, a script of mine emptied `commands.json` in the working folder; it was restored from the last commit with the one uncommitted line ("glows tab" in close tab) re-added, with the founder's go-ahead.
 
-### 00:46 · Hands-free keeps a soft first word (`8b2efcb`)
+### 00:54 · Hands-free keeps a soft first word (`8b2efcb`)
 - **Why:** after the noise fix, the next live log was healthy (utterances 1.1–1.5 s, speech 400–440 ms, "Open Chrome", "Open WhatsApp", "New tab" all ran) but "type Codex" arrived as "Codex": the soft "t" of "type" was clipped, so it was ignored.
 - **What:** the helper keeps 0.5 s of audio from before speech is noticed (was 0.3 s) and counts speech as started after 2 loud frames (was 3).
 - **Tested:** new helper test (a soft 0.4 s word start is kept), 89 helper tests pass. **Not tried live.** Restart `pnpm dev`.
 - **Still slow by design:** an action runs about 1.1 s after you stop speaking (0.65 s waiting to be sure you are done, about 0.4 s to turn speech into text).
 
-### 00:40 · Hands-free: noisy rooms no longer make long utterances (`b3a867d`)
+### 00:38 · Hands-free: noisy rooms no longer make long utterances (`b3a867d`)
 - **Why:** the founder's log showed hands-free "utterances" of 9–15 s for two words ("Open Chrome." heard after 12.9 s). The helper's room-noise estimate started at "silent room" and took about 6 s to catch up, so a room that was already noisy (video, fan, typing) was cut into long chunks of noise, and a command inside one ran about 10 s late.
 - **What:** the room's level is now also the lowest level of the last 1.5 s. Speech has dips between words, steady noise does not, so noise is learned within about 1.5 s and the utterance ends 0.65 s after the last word. The 0.65 s end-of-speech silence (was 1 s) from the working folder is included with its test.
 - **Tested:** two new helper tests (noise that starts suddenly; speech over background ends with the speech) and all 88 helper tests pass. **Not tried live:** restart `pnpm dev` and say "open Chrome" in hands-free; the `heard (… s)` figure should now be 2–3 s, not 9–15 s.
 - **Seen in the same log, not fixed:** a held-key recording made while hands-free was decoding a long chunk took 3.1 s (the model decodes one thing at a time), so shorter hands-free chunks should help that too. macOS's own "press Fn twice" shortcut should be **Off** (it was turned on).
 
-### 00:33 · Double-tap Fn toggles hands-free (`2fc184a`)
+### 00:31 · Double-tap Fn toggles hands-free (`2fc184a`)
 - **Why:** the founder asked to switch hands-free on and off with Fn, Fn instead of the switch.
 - **What:** two quick taps of the hold key (each under 0.25 s, the second within 0.45 s of the first) turn hands-free on, or off if it is on. The second press is swallowed, so no recording starts for it; Fn with another key or Shift is never counted as a tap. The pill shows the error if hands-free cannot start (model still loading, no microphone).
 - **Tested:** unit tests for the timing rules (1,536 desktop tests). **Not tried on the keyboard yet.** Note: macOS has its own "press Fn twice" shortcut (System Settings → Keyboard → Dictation); set it to Off or it may fight with this.
 
-### 00:31 · Voice off switch for hands-free, fewer mishearing mistakes (`9486cf8`)
+### 00:29 · Voice off switch for hands-free, fewer mishearing mistakes (`9486cf8`)
 - **Why:** from the founder's live log: hands-free had no way to switch off by voice; "NewTek", "NewTown", "He tender" were typed or ignored instead of acting as "new tab" and "hit enter"; "Thanks for watching!" (Whisper's invention from near-silence) reached the AI as a command.
 - **What:** say **"stop listening"**, "turn off hands-free", "hands-free off" or "go to sleep" (whole utterance only) and hands-free turns off. Whole-utterance mishearings of "new tab", "hit enter" and "scroll down" now match the command. "Thanks for watching", "please subscribe", "subtitles by …" are dropped when they are the entire transcript.
 - **Measured, not changed:** on-device speech standalone took 0.4–0.65 s for 1–2 s of audio on this Mac, but 1–3 s in the founder's session (a busy MacBook Air with Chrome, WhatsApp and the dev app open). Word times add about 10 ms, so they are not the cause. A hint prompt of command words for the Whisper model was tried and **rejected**: it added about 200 ms and blanked one sample.
