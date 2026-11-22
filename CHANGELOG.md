@@ -40,6 +40,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 07:28 · Very short commands no longer dropped (`84d1b66`)
+- **Found by a drop test (15 short phrases spoken three rounds, app log vs spoken):** 12 reached the app; every "send it" (3 of 3) and one "backspace" never produced even a "found no words" line, so the speech cutter dropped them: it threw away anything under 0.3 s of sound and a quick "send it" has about 0.25 s. The other misses were the speech model mishearing the computer voice ("Let's go down", "Plug save", "Klaxade"); several of those still ran.
+- **What:** sound of 0.18 s or more counts as an utterance (a click or cough of 90 ms is still dropped). With a second helper listening to the same speakers, 13 of 15 phrases came through (2 of 3 "send it"; one was heard as "- Sounded.").
+- **Tested:** helper unit tests (97) and that run. **The app needs a restart to load it**, and a person's voice has not been measured the same way.
+
 ### 07:18 · Dialogue dashes, and a log line for words the model could not find (`e3beeec`)
 - **From the re-run of the multi-test sweep (new helper, hands-free on, test page in Chrome):** passed with the page's own record: next field, type hello world (typed without quotes), backspace (the short-clip fix works), select all then delete that (the box cleared), previous field (even heard as "Previous feel."), type AWS hit enter (AWS typed and submitted), click Save, typing mode on and two sentences typed, stop typing.
 - **Failed and fixed:** "Delete last word." was heard as "- Delete last word." (Whisper's dash for a turn in a conversation) and ignored. A leading dash, or one between sentences, is now removed before matching.
