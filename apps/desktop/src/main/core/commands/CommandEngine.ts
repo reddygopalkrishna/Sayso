@@ -157,6 +157,7 @@ export class CommandEngine {
    * the sentence is not exactly one command or a chain of known commands (so nothing runs).
    */
   matchChain(text: string): InstantMatch[] | null {
+    text = joinBeforeMessage(text);
     // An explicit joint (comma, "then") wins: "open Chrome, new tab" is two steps, not "open" a
     // target called "Chrome new tab". Without a joint, or when a part is not a command, the
     // whole sentence is tried as one command. A message is never cut up: from the part that says
@@ -265,6 +266,19 @@ export class CommandEngine {
 
 /** Most commands one sentence may chain. More than this is refused, so nothing runs by accident. */
 export const MAX_CHAIN_STEPS = 4;
+
+/**
+ * "open WhatsApp and send hi to Ravi": a bare "and" is not a joint, except right before a message
+ * ("open Tom and Jerry" stays one command). That one "and" becomes a comma.
+ */
+function joinBeforeMessage(text: string): string {
+  for (const m of text.matchAll(/\s+and\s+/gi)) {
+    if (messageArgument(text.slice(m.index + m[0].length)) !== null) {
+      return `${text.slice(0, m.index)}, ${text.slice(m.index + m[0].length)}`;
+    }
+  }
+  return text;
+}
 
 /**
  * Splits a sentence into steps at explicit joints only: a comma, a semicolon, "then" or "and

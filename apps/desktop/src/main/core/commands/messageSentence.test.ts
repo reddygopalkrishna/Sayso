@@ -8,9 +8,14 @@ describe('messageArgument', () => {
     ['Send Priya a message saying hi', 'Priya saying hi'],
     ['tell Priya that hi there', 'Priya saying hi there'],
     ['tell Priya to say hi', 'Priya saying hi'],
+    ['send hi to Ravi', 'Ravi saying hi'],
+    ['Send hi to Ravi on WhatsApp', 'Ravi on WhatsApp saying hi'],
+    ['send a hello message to Ravi on whatsapp', 'Ravi on whatsapp saying hello'],
+    ['send good morning to Ravi Kumar', 'Ravi Kumar saying good morning'],
+    ['send I will be late to Priya on Slack', 'Priya on Slack saying I will be late'],
   ])('%j', (spoken, arg) => expect(messageArgument(spoken)).toBe(arg));
 
-  it.each(['tell Priya hi', 'message', 'message Priya', 'open Slack', 'send it'])(
+  it.each(['tell Priya hi', 'message', 'message Priya', 'open Slack', 'send it', 'send it to Ravi', 'send a message to Ravi', 'send that to Priya on Slack'])(
     '%j is not a message',
     (spoken) => expect(messageArgument(spoken)).toBeNull(),
   );
