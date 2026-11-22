@@ -40,6 +40,11 @@ Known gaps, in rough priority order. Add to this list whenever something is defe
 
 ## 2026-11-22
 
+### 06:15 · WhatsApp message confirmed live (changelog only, no code)
+- **Result:** with a new app run (restarted after the fixes), the sentence "send hi to My notes on WhatsApp" was spoken once (synthetic voice, speakers to microphone, hands-free on). The log showed heard "Send hi to my notes on WhatsApp." (STT 495 ms) → `send_message ran` → finished in 8.6 s. **The founder confirmed that "hi" arrived in their own "My notes (You)" chat.**
+- **This is one confirmed send, not a test of reliability:** the contact was the founder's own chat (distinctive name, first search result, empty message box). Other contacts, a second person with the same name, a chat with an unsent draft, and a real human voice have not been tried.
+- **What it took (in order):** the rule for "send hi to <name>" (06:00), clicking into the message box (06:10) and allowing a closing full stop (06:12). The two earlier "ran" reports (one through the AI interpreter on the old app, one on stale code) did not deliver anything.
+
 ### 06:08 · Message sentences with a closing full stop (`9dbb62c`)
 - **Why (live retry):** the app heard "Send hi to my notes on WhatsApp." and answered "Say which app": the new "send hi to <name>" form took "my notes on WhatsApp." (with the full stop) as one long name. Nothing was typed or sent.
 - **Also learned:** the first live attempt (05:5x) ran on the app started before the "send hi to …" form existed, so that sentence went through the AI interpreter, not the new rule; the founder's later screenshot showed it never reached the chat either.
