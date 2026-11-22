@@ -15,7 +15,7 @@ public struct SpeechSegmenter: Sendable {
         /// Silence that ends an utterance.
         public var endSilenceMs = 650
         /// Shorter than this (a click, a cough) is dropped.
-        public var minSpeechMs = 300
+        public var minSpeechMs = 180
         /// A longer utterance is cut here and the rest becomes the next one.
         public var maxSegmentMs = 30_000
         /// Audio kept from just before speech was noticed, so the first word is not clipped.

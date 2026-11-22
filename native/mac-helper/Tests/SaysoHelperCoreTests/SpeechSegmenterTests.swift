@@ -199,4 +199,10 @@ private func ms(_ samples: [Float]) -> Int { samples.count / 16 }
         #expect(out.count == 1)
         #expect(ms(out[0]) >= 1_100)
     }
+
+    @Test func aVeryShortCommandIsAnUtterance() {
+        // Seen live: "send it" said quickly has only about 0.25 s of sound and was dropped.
+        let out = segments(of: quiet(ms: 800) + speech(ms: 250) + quiet(ms: 2_000))
+        #expect(out.count == 1)
+    }
 }
